@@ -7,7 +7,19 @@ declare function useNuxtApp(): any
 
 export function useApi() {
   const config = useRuntimeConfig()
-  const base = (config.public.apiBase as string).replace(/\/$/, '')
+  let base = (config.public.apiBase as string || '').replace(/\/$/, '')
+  
+  // ALWAYS use relative path to route through server proxy (prevents CORS)
+  // This ensures all API requests go through same-origin Nuxt server
+  if (!base || base.startsWith('http') || base === 'https://gotawfeer.com/project/api') {
+    // Force relative path to use Nuxt server proxy
+    base = '/api'
+  }
+  
+  // Ensure base starts with / for relative paths
+  if (base && !base.startsWith('/') && !base.startsWith('http')) {
+    base = '/' + base
+  }
   const { token } = useAuth() as { token: { value: string | null } }
   const { guestId, setGuestId } = useGuest() as { guestId: { value: number | null }, setGuestId: (n: number) => void }
   // Avoid calling useI18n here to prevent "must be called at the top of setup" in plugin context

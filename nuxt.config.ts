@@ -5,12 +5,19 @@ export default defineNuxtConfig({
   srcDir: '.',
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://gotawfeer.com/project/api',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
     }
   },
   nitro: {
     preset: 'vercel',
     compatibilityDate: '2025-09-11',
+    devProxy: {
+      '/api': {
+        target: 'https://gotawfeer.com/project/api',
+        changeOrigin: true,
+        prependPath: true,
+      }
+    },
     routeRules: {
       '/api/**': { 
         proxy: 'https://gotawfeer.com/project/api/**',
