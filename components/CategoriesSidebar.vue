@@ -26,7 +26,6 @@
           :src="getCategoryImage(category)" 
           :alt="category.name"
           class="category-icon"
-          @error="handleImageError"
         />
         <!-- Category Name Tooltip -->
         <div 

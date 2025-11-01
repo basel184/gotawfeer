@@ -28,15 +28,15 @@ const paymentMethods = computed(() => {
   const translations = {
     ar: {
       cash_on_delivery: 'الدفع عند الاستلام',
-      wallet: 'المحفظة الرقمية',
-      card: 'بطاقة ائتمان',
-      bank_transfer: 'تحويل بنكي'
+      tabby: 'تابي - ادفع على 4 أقساط',
+      tamara: 'تمارا - ادفع لاحقاً',
+      paymob: 'Paymob - دفع آمن'
     },
     en: {
       cash_on_delivery: 'Cash on Delivery',
-      wallet: 'Digital Wallet',
-      card: 'Credit Card',
-      bank_transfer: 'Bank Transfer'
+      tabby: 'Tabby - Pay in 4 Installments',
+      tamara: 'Tamara - Pay Later',
+      paymob: 'Paymob - Secure Payment'
     }
   }
   
@@ -45,12 +45,13 @@ const paymentMethods = computed(() => {
   
   const methods = [
     { id: 'cash_on_delivery', name: localeTranslations.cash_on_delivery, icon: '💰', available: true },
-    { id: 'wallet', name: localeTranslations.wallet, icon: '💳', available: true },
-    { id: 'card', name: localeTranslations.card, icon: '💳', available: true },
-    { id: 'bank_transfer', name: localeTranslations.bank_transfer, icon: '🏦', available: true }
+    { id: 'tabby', name: localeTranslations.tabby, icon: '💳', available: true },
+    { id: 'tamara', name: localeTranslations.tamara, icon: '🛒', available: true },
+    { id: 'paymob', name: localeTranslations.paymob, icon: '💳', available: true }
   ]
   
   console.log('Payment methods (direct translations):', methods.map(m => ({ id: m.id, name: m.name, locale: currentLocale })))
+  console.log('Tamara method found:', methods.find(m => m.id === 'tamara')) // Debug log
   return methods
 })
 
@@ -266,8 +267,17 @@ function removeCoupon() {
   couponCode.value = ''
 }
 
+// Select payment method
+function selectPaymentMethod(methodId: string) {
+  console.log('Payment method clicked:', methodId)
+  selectedPaymentMethod.value = methodId
+  console.log('Selected payment method set to:', selectedPaymentMethod.value)
+}
+
 // Place order
 async function placeOrder() {
+  console.log('placeOrder called, selectedPaymentMethod:', selectedPaymentMethod.value) // Debug log
+  
   if (!selectedAddress.value) {
     alert(t('checkout.errors.select_address') || 'يرجى اختيار عنوان التسليم')
     return
@@ -303,13 +313,253 @@ async function placeOrder() {
       coupon_code: appliedCoupon.value?.coupon_code || ''
     }
     
+    console.log('Selected payment method:', selectedPaymentMethod.value) // Debug log
+    console.log('Available payment methods:', paymentMethods.value) // Debug log
     console.log('Sending order data:', orderData) // Debug log
-    const response = await $get('v1/customer/order/place', orderData)
+    
+    // Debug: Log payment method for Tamara
+    if (selectedPaymentMethod.value === 'tamara') {
+      console.log('Processing Tamara payment with method:', orderData.payment_method)
+    }
+    
+    const response = await $post('v1/customer/order/place', orderData)
     console.log('Order placement response:', response) // Debug log
     
-    // Check if order was created successfully
+    // Handle Paymob payment first
+    if (selectedPaymentMethod.value === 'paymob') {
+      console.log('Paymob payment selected, response:', response)
+      
+      // For Paymob, redirect to payment URL
+      let paymentUrl = null
+      
+      if (response.payment_url) {
+        paymentUrl = response.payment_url
+      } else if (response.checkout_url) {
+        paymentUrl = response.checkout_url
+      } else if (response.payment_data?.payment_url) {
+        paymentUrl = response.payment_data.payment_url
+      } else if (response.payment_data?.checkout_url) {
+        paymentUrl = response.payment_data.checkout_url
+      } else if (response.payment_data?.redirect_url) {
+        paymentUrl = response.payment_data.redirect_url
+      }
+      
+      console.log('Payment URL found:', paymentUrl)
+      
+      if (paymentUrl) {
+        console.log('Redirecting to Paymob payment page...', paymentUrl)
+        
+        // Show loading message
+        alert('جاري فتح صفحة دفع Paymob...')
+        
+        // Force redirect immediately
+        setTimeout(() => {
+          window.location.href = paymentUrl
+        }, 100)
+        
+        // Also try window.open as backup
+        setTimeout(() => {
+          window.open(paymentUrl, '_self')
+        }, 200)
+        
+        // Try multiple methods to open the URL
+        try {
+          // Method 1: Direct redirect
+          window.location.href = paymentUrl
+        } catch (error) {
+          console.error('Direct redirect failed:', error)
+          try {
+            // Method 2: Using window.open
+            window.open(paymentUrl, '_self')
+          } catch (error2) {
+            console.error('Window.open failed:', error2)
+            try {
+              // Method 3: Using location.replace
+              window.location.replace(paymentUrl)
+            } catch (error3) {
+              console.error('Location.replace failed:', error3)
+              // Method 4: Create a link and click it
+              const link = document.createElement('a')
+              link.href = paymentUrl
+              link.target = '_self'
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            }
+          }
+        }
+        
+        // Fallback: Show alert with URL after a short delay
+        setTimeout(() => {
+          if (window.location.href === window.location.origin + window.location.pathname) {
+            // Try one more time
+            window.location.href = paymentUrl
+            setTimeout(() => {
+              if (window.location.href === window.location.origin + window.location.pathname) {
+                alert('يرجى النقر على الرابط لفتح صفحة دفع Paymob:\n' + paymentUrl)
+              }
+            }, 500)
+          }
+        }, 1000)
+        return
+      } else {
+        console.error('No payment URL found in response:', response)
+        alert('خطأ في إنشاء رابط دفع Paymob')
+        return
+      }
+    }
+
+    // Handle Tabby payment
+    if (selectedPaymentMethod.value === 'tabby') {
+      console.log('Tabby payment selected, response:', response)
+      
+      // For Tabby, redirect to payment URL
+      let paymentUrl = null
+      
+      if (response.payment_url) {
+        paymentUrl = response.payment_url
+      } else if (response.checkout_url) {
+        paymentUrl = response.checkout_url
+      } else if (response.payment_data?.payment_url) {
+        paymentUrl = response.payment_data.payment_url
+      } else if (response.payment_data?.checkout_url) {
+        paymentUrl = response.payment_data.checkout_url
+      } else if (response.payment_data?.redirect_url) {
+        paymentUrl = response.payment_data.redirect_url
+      }
+      
+      console.log('Payment URL found:', paymentUrl)
+      
+      if (paymentUrl) {
+        console.log('Redirecting to Tabby payment page...', paymentUrl)
+        
+        // Show loading message
+        alert('جاري فتح صفحة دفع تابي...')
+        
+        // Force redirect immediately
+        setTimeout(() => {
+          window.location.href = paymentUrl
+        }, 100)
+        
+        // Also try window.open as backup
+        setTimeout(() => {
+          window.open(paymentUrl, '_self')
+        }, 200)
+        
+        // Try multiple methods to open the URL
+        try {
+          // Method 1: Direct redirect
+          window.location.href = paymentUrl
+        } catch (error) {
+          console.error('Direct redirect failed:', error)
+          try {
+            // Method 2: Using window.open
+            window.open(paymentUrl, '_self')
+          } catch (error2) {
+            console.error('Window.open failed:', error2)
+            try {
+              // Method 3: Using location.replace
+              window.location.replace(paymentUrl)
+            } catch (error3) {
+              console.error('Location.replace failed:', error3)
+              // Method 4: Create a link and click it
+              const link = document.createElement('a')
+              link.href = paymentUrl
+              link.target = '_self'
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            }
+          }
+        }
+        
+        // Fallback: Show alert with URL after a short delay
+        setTimeout(() => {
+          if (window.location.href === window.location.origin + window.location.pathname) {
+            // Try one more time
+            window.location.href = paymentUrl
+            setTimeout(() => {
+              if (window.location.href === window.location.origin + window.location.pathname) {
+                alert('يرجى النقر على الرابط لفتح صفحة دفع تابي:\n' + paymentUrl)
+              }
+            }, 500)
+          }
+        }, 1000)
+        return
+      } else {
+        console.error('No payment URL found in response:', response)
+        alert('خطأ في إنشاء رابط دفع تابي')
+        return
+      }
+    }
+
+    // Handle Tamara payment
+    if (selectedPaymentMethod.value === 'tamara') {
+      console.log('Tamara payment selected, response:', response)
+      
+      // For Tamara, redirect to payment URL
+      let paymentUrl = null
+      
+      if (response.payment_url) {
+        paymentUrl = response.payment_url
+      } else if (response.payment_data?.payment_url) {
+        paymentUrl = response.payment_data.payment_url
+      } else if (response.payment_data?.checkout_url) {
+        paymentUrl = response.payment_data.checkout_url
+      } else if (response.payment_data?.redirect_url) {
+        paymentUrl = response.payment_data.redirect_url
+      }
+      
+      console.log('Payment URL found:', paymentUrl)
+      
+      if (paymentUrl) {
+        console.log('Redirecting to Tamara payment page...', paymentUrl)
+      
+        // Try multiple methods to open the URL
+        try {
+          // Method 1: Direct redirect
+          window.location.href = paymentUrl
+        } catch (error) {
+          console.error('Direct redirect failed:', error)
+          try {
+            // Method 2: Using window.open
+            window.open(paymentUrl, '_self')
+          } catch (error2) {
+            console.error('Window.open failed:', error2)
+            try {
+              // Method 3: Using location.replace
+              window.location.replace(paymentUrl)
+            } catch (error3) {
+              console.error('Location.replace failed:', error3)
+              // Method 4: Create a link and click it
+              const link = document.createElement('a')
+              link.href = paymentUrl
+              link.target = '_self'
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            }
+          }
+        }
+        
+        // Fallback: Show alert with URL after a short delay
+        setTimeout(() => {
+          if (window.location.href === window.location.origin + window.location.pathname) {
+            alert('يرجى النقر على الرابط لفتح صفحة دفع تمارا:\n' + paymentUrl)
+          }
+        }, 1000)
+        return
+      } else {
+        console.error('No payment URL found in response:', response)
+        alert('خطأ في إنشاء رابط دفع تمارا')
+        return
+      }
+    }
+    
+    // Check if order was created successfully for other payment methods
     if (response?.order_ids && response.order_ids.length > 0) {
-      // Clear cart
+      
+      // For other payment methods, clear cart and redirect
       await cart.clearAll()
       
       // Redirect to success page or order details
@@ -467,7 +717,7 @@ onMounted(async () => {
                   active: selectedPaymentMethod === method.id,
                   disabled: !method.available 
                 }"
-                @click="method.available && (selectedPaymentMethod = method.id)"
+                @click="selectPaymentMethod(method.id)"
               >
                 <div class="method-icon">{{ method.icon }}</div>
                 <div class="method-info">
