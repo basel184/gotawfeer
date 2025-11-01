@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   srcDir: '.',
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000/api',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://gotawfeer.com/project/api',
     }
   },
   nitro: {
@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     compatibilityDate: '2025-09-11',
     routeRules: {
       '/api/**': { 
-        proxy: 'http://localhost:8000/api/**',
+        proxy: 'https://gotawfeer.com/project/api/**',
         cors: true
       }
     }
