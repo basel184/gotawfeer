@@ -14,7 +14,7 @@
             {{ t('footer.brand.description2') }}
           </p>
           <div class="social-links">
-            <a href="#" class="social-link" aria-label="Google">
+            <a href="https://snapchat.com/t/dpmi7a5g" class="social-link" aria-label="Google">
               <i class="fa-brands fa-snapchat"></i>
             </a>
             <a href="https://www.tiktok.com/@gotawfeer?_t=ZS-8xzCD5bV1Ca&_r=1" class="social-link" aria-label="Twitter">
@@ -23,7 +23,7 @@
             <a href="https://www.instagram.com/gotawfeer/" class="social-link" aria-label="Instagram">
               <i class="fa-brands fa-instagram"></i>
             </a>
-            <a href="#" class="social-link" aria-label="LinkedIn">
+            <a href="https://www.facebook.com/share/1CVErHZmQ9/?mibextid=wwXIfr" class="social-link" aria-label="LinkedIn">
               <i class="fa-brands fa-facebook"></i>
             </a>
           </div>
