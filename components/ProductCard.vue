@@ -11,46 +11,23 @@ const emit = defineEmits<{
   (e: 'remove', product: any): void;
 }>()
 
-// Success message state
-const showSuccessMessage = ref(false)
-const successMessage = ref('')
-
-// Show success message function
-const showSuccess = (message: string) => {
-  successMessage.value = message
-  showSuccessMessage.value = true
-  setTimeout(() => {
-    showSuccessMessage.value = false
-  }, 3000) // Hide after 3 seconds
-}
-
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
   let p = s.trim().replace(/\\/g, '/')
   
-  // Handle different path formats
-  if (p.startsWith('public/')) {
-    p = p.replace(/^public\//, '')
-  } else if (p.startsWith('app/public/')) {
-    p = p.replace(/^app\/public\//, 'storage/')
-  } else if (p.startsWith('storage/')) {
-    // Already correct format
-  } else if (!p.startsWith('http') && !p.startsWith('/')) {
-    // If it's just a filename, determine the correct storage path
-    if (p.includes('testimonial')) {
-      p = `storage/testimonials/${p}`
-    } else if (p.includes('brand')) {
-      p = `storage/brand/${p}`
-    } else if (p.includes('product')) {
-      p = `storage/product/${p}`
-    } else {
-      p = `storage/${p}`
-    }
-  }
+  // Remove common prefixes
+  p = p.replace(/^public\//, '')
+  p = p.replace(/^app\/public\//, '')
+  p = p.replace(/^storage\/app\/public\//, '')
   
   // Clean up slashes
   p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  
+  // Ensure it starts with storage/
+  if (!p.startsWith('storage/')) {
+    p = 'storage/' + p
+  }
   
   return p
 }
@@ -361,10 +338,7 @@ const handleAdd = async (e: Event) => {
     }
     
     await cart.add(cartData)
-    // Refresh cart to update counts and totals
-    await cart.list()
     emit('add', props.product)
-    showSuccess('تم إضافة المنتج للسلة بنجاح!')
     console.log('✅ تم إضافة المنتج للسلة بنجاح')
   } catch (error: any) {
     console.error('❌ خطأ في إضافة المنتج للسلة:', error)
@@ -379,10 +353,7 @@ const inc = async (e: Event) => {
     const currentQty = qty.value
     const newQty = currentQty + 1
     await cart.updateByProduct(props.product, newQty)
-    // Refresh cart to update counts and totals
-    await cart.list()
     emit('update', { product: props.product, qty: newQty })
-    showSuccess(`تم تحديث الكمية إلى ${newQty}`)
     console.log('تم تحديث الكمية:', newQty)
   } catch (error: any) {
     console.error('خطأ في تحديث الكمية:', error)
@@ -398,17 +369,11 @@ const dec = async (e: Event) => {
     if (currentQty > 1) {
       const newQty = currentQty - 1
       await cart.updateByProduct(props.product, newQty)
-      // Refresh cart to update counts and totals
-      await cart.list()
       emit('update', { product: props.product, qty: newQty })
-      showSuccess(`تم تحديث الكمية إلى ${newQty}`)
       console.log('تم تحديث الكمية:', newQty)
     } else if (currentQty === 1) {
       await cart.removeByProduct(props.product)
-      // Refresh cart to update counts and totals
-      await cart.list()
       emit('remove', props.product)
-      showSuccess('تم إزالة المنتج من السلة')
       console.log('تم إزالة المنتج من السلة')
     }
   } catch (error: any) {
@@ -423,10 +388,7 @@ const clearQty = async (e: Event) => {
   
   try {
     await cart.removeByProduct(props.product)
-    // Refresh cart to update counts and totals
-    await cart.list()
     emit('remove', props.product)
-    showSuccess('تم إزالة المنتج من السلة')
     console.log('تم إزالة المنتج من السلة')
   } catch (error: any) {
     console.error('خطأ في إزالة المنتج من السلة:', error)
@@ -566,18 +528,6 @@ const inStock = computed<boolean>(() => {
       </div>
     </div>
   </NuxtLink>
-
-  <!-- Success Message -->
-  <teleport to="body">
-    <div v-if="showSuccessMessage" class="success-toast">
-      <div class="success-content">
-        <svg width="20" height="20" viewBox="0 0 24 24">
-          <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-        </svg>
-        <span>{{ successMessage }}</span>
-      </div>
-    </div>
-  </teleport>
 </template>
 
 <style scoped>
@@ -637,17 +587,21 @@ img {
 .chip.green { background: #10b981 }
 .chip.pink { background: #ec4899 }
 .chip.blue { background: #3b82f6 }
-
+.swiper-slide:hover .card-tools {
+  bottom: -12%;
+}
 .card-tools {
-  position: absolute; 
-  left: 12px; 
-  top: 12px; 
-  transition: all 0.3s ease;
-  z-index: 10;
-  background-color: #F2F2F2;
-  border-radius: 15px;
-  padding-block: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
+    position: absolute;
+    left: 50%;
+    bottom: -100px;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+    z-index: 10;
+    border-radius: 15px;
+    padding-block: 3px;
+    width: 80%;
+    justify-content: space-around;
+    flex-direction: row !important;
 }
 .fab { 
   width: 32px; 
@@ -661,6 +615,7 @@ img {
   cursor: pointer; 
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
+  background-color: #fff;
 }
 
 .fab.wish svg {
@@ -955,53 +910,5 @@ img {
 .add-to-cart-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* Success Toast Styles */
-.success-toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
-  animation: slideInRight 0.3s ease-out;
-}
-
-.success-content {
-  background: #10b981;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  font-weight: 600;
-  font-size: 14px;
-  min-width: 200px;
-}
-
-.success-content svg {
-  flex-shrink: 0;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* RTL Support */
-[dir="rtl"] .success-toast {
-  right: auto;
-  left: 20px;
-}
-
-[dir="rtl"] .success-content {
-  text-align: right;
 }
 </style>

@@ -15,16 +15,16 @@
           </p>
           <div class="social-links">
             <a href="#" class="social-link" aria-label="Google">
-              <i class="fa-brands fa-google"></i>
+              <i class="fa-brands fa-snapchat"></i>
             </a>
             <a href="#" class="social-link" aria-label="Twitter">
-              <i class="fa-brands fa-twitter"></i>
+              <i class="fa-brands fa-tiktok"></i>
             </a>
             <a href="#" class="social-link" aria-label="Instagram">
               <i class="fa-brands fa-instagram"></i>
             </a>
             <a href="#" class="social-link" aria-label="LinkedIn">
-              <i class="fa-brands fa-linkedin-in"></i>
+              <i class="fa-brands fa-facebook"></i>
             </a>
           </div>
         </div>

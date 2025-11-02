@@ -56,7 +56,7 @@ const recommended = ref<any[]>([])
 
 // Helpers to normalize media paths similar to ProductCard
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
   let p = (s || '').trim().replace(/\\/g, '/')
   
@@ -1470,9 +1470,27 @@ watch(mainIndex, (newIndex) => {
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
-          <p>هذا المنتج لا يرد ولا يستبدل</p>
-          <p>يجب إضافة حبة العرض في السلة للحصول على العرض</p>
-          <p>يتم تطبيق الخصم على المنتج الاقل سعراً</p>
+          <strong>.هذا المنتج ال يرد وألستبدل لضمان سالمتكم اال إذا تتبق سياسة اإلرجاع
+          </strong>
+          <p>جميع المنتجات أصلية ومستوردة من الوكالء المعتمدين
+          </p>
+          <p>
+            :سياسة توفر المنتجات
+          </p>
+          <ul>
+            <li>
+              <p>
+
+                جميع المنتجات المعروضة خاضعة لتوفرها في المخزون وقت تنفيذ الطلب. بعد تأكيد الطلب عبر الموقع، سيتم إخطاركم في حال عدم توفر أي
+                . من المنتجات المطلوبة. وفي هذه الحالة، يمكنكم اختيار استرداد قيمة المنتج غير المتوفر فقط
+              </p>
+            </li>
+            <li>
+              <p>
+                .قد يختلف شكل عبوة المنتج الخارجي عن الصورة المعروضة في الموقع بسبب تحديثات التصميم من المصنع، لكن محتوى المنتج يظل كما هو
+              </p>
+            </li>
+          </ul>
         </div>
 
         <!-- Payment Options -->

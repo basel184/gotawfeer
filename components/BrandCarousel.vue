@@ -11,7 +11,7 @@ const props = defineProps<{ brands: any[] }>()
 const swiperModules = [Navigation, Pagination, Autoplay]
 
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '') + 'http://127.0.0.1:8000/storage/app/public/brand/'
+const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '') + 'https://gotawfeer.com/project/storage/app/public/brand/'
 
 // Debug information
 console.log('BrandCarousel - assetBase:', assetBase)

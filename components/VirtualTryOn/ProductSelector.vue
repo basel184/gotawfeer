@@ -363,7 +363,7 @@ const getProductImage = (product: any) => {
       return product.thumbnail.path
     }
     if (product.thumbnail.key) {
-      return `http://127.0.0.1:8000${product.thumbnail.key}`
+      return `https://gotawfeer.com/project${product.thumbnail.key}`
     }
   }
   
@@ -372,7 +372,7 @@ const getProductImage = (product: any) => {
     if (product.thumbnail.startsWith('http')) {
       return product.thumbnail
     }
-    return `http://127.0.0.1:8000${product.thumbnail}`
+    return `https://gotawfeer.com/project${product.thumbnail}`
   }
   
   // Fallback to placeholder
