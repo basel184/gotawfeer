@@ -686,16 +686,6 @@ function openLoginModal() {
   loginForm.value = { email: '', password: '' }
 }
 
-function handleUserAction() {
-  if (auth.user.value) {
-    // User is logged in, redirect to account page
-    navigateTo(getLocalizedPath('/account'))
-  } else {
-    // User is not logged in, open login modal
-    openLoginModal()
-  }
-}
-
 function closeLoginModal() {
   loginModalOpen.value = false
   loginError.value = ''
@@ -875,7 +865,7 @@ async function handleRegisterSubmit() {
                 <div class="row mobile-none" >
                   <div class="col-6">
                     <div class="info-left" style="float: left;width: 90%;border-radius:25px;background: #F58040;">
-                      <div class="d-flex align-items-center gap-2">
+                      <div class="d-flex align-items-center gap-2 justify-content-center ">
                         <div class="info-icon">
                           <svg class="bg-dark p-2 m-1" style="border-radius:50%" width="40" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M16 7.184C16 3.14 12.86 0 9 0S2 3.14 2 7c-1.163.597-2 1.696-2 3v2a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1 5 5 0 0 1 10 0 1 1 0 0 0-1 1v6a1 1 0 0 0 1 1v1h-2.592c-.206-.581-.756-1-1.408-1H8a1.5 1.5 0 0 0 0 3h6a2 2 0 0 0 2-2v-1.183A2.992 2.992 0 0 0 18 12v-2a2.99 2.99 0 0 0-2-2.816L-7 62" fill="#ffffff" fill-rule="evenodd"></path> </g></svg>
                         </div>
@@ -883,7 +873,7 @@ async function handleRegisterSubmit() {
                           <p style="font-size: 12px;"  class="mb-0 fw-bold text-white">{{ t('support_24_7') || 'دعم 24/7' }}
                             <br>
                             <span style="color: #232323">
-                              966537030838
+                              537030838
                             </span>
                             
                           </p>
@@ -893,7 +883,7 @@ async function handleRegisterSubmit() {
                   </div>
                   <div class="col-6">
                     <div class="info-left" style="float: left;width: 90%;border-radius:25px;background: #F58040;">
-                      <div class="d-flex align-items-center gap-2">
+                      <div class="d-flex align-items-center gap-2 justify-content-center ">
                         <div class="info-icon">
                           <svg class="bg-dark p-2 m-1" style="border-radius:50%" fill="#ffffff" width="40" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xml:space="preserve" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g> <g> <path d="M476.158,231.363l-13.259-53.035c3.625-0.77,6.345-3.986,6.345-7.839v-8.551c0-18.566-15.105-33.67-33.67-33.67h-60.392 V110.63c0-9.136-7.432-16.568-16.568-16.568H50.772c-9.136,0-16.568,7.432-16.568,16.568V256c0,4.427,3.589,8.017,8.017,8.017 c4.427,0,8.017-3.589,8.017-8.017V110.63c0-0.294,0.239-0.534,0.534-0.534h307.841c0.295,0,0.534,0.241,0.534,0.534v145.372 c0,4.427,3.589,8.017,8.017,8.017c4.427,0,8.017-3.589,8.017-8.017v-9.088h94.569c0.008,0,0.014,0.002,0.021,0.002 c0.008,0,0.015-0.001,0.022-0.001c11.637,0.008,21.518,7.646,24.912,18.171h-24.928c-4.427,0-8.017,3.589-8.017,8.017v17.102 c0,13.851,11.268,25.119,25.119,25.119h9.086v35.273h-20.962c-6.886-19.884-25.787-34.205-47.982-34.205 s-41.097,14.321-47.982,34.205h-3.86v-60.393c0-4.427-3.589-8.017-8.017-8.017c-4.427,0-8.017,3.589-8.017,8.017v60.391H192.817 c-6.886-19.884-25.787-34.205-47.982-34.205s-41.097,14.321-47.982,34.205H50.772c-0.295,0-0.534-0.241-0.534-0.534v-17.637 h34.739c4.427,0,8.017-3.589,8.017-8.017s-3.589-8.017-8.017-8.017h-42.75c-0.002,0-0.003,0-0.005,0s-0.003,0-0.005,0H8.017 c-4.427,0-8.017,3.589-8.017,8.017s3.589,8.017,8.017,8.017h26.188v17.637c0,9.136,7.432,16.568,16.568,16.568h43.304 c-0.002,0.178-0.014,0.356-0.014,0.534c0,27.995,22.777,50.772,50.772,50.772s50.772-22.777,50.772-50.772 c0-0.178-0.012-0.356-0.014-0.534h180.67c-0.002,0.178-0.014,0.356-0.014,0.534c0,27.995,22.777,50.772,50.772,50.772 c27.995,0,50.772-22.777,50.772-50.772c0-0.178-0.012-0.356-0.014-0.534h26.203c4.427,0,8.017-3.589,8.017-8.017v-85.511 C512,251.989,496.423,234.448,476.158,231.363z M375.182,144.301h60.392c9.725,0,17.637,7.912,17.637,17.637v0.534h-78.029 V144.301z M375.182,230.881v-52.376h71.235l13.094,52.376H375.182z M144.835,401.904c-19.155,0-34.739-15.583-34.739-34.739 s15.584-34.739,34.739-34.739c19.155,0,34.739,15.583,34.739,34.739S163.99,401.904,144.835,401.904z M427.023,401.904 c-19.155,0-34.739-15.583-34.739-34.739s15.584-34.739,34.739-34.739c19.155,0,34.739,15.583,34.739,34.739 S446.178,401.904,427.023,401.904z M495.967,299.29h-9.086c-5.01,0-9.086-4.076-9.086-9.086v-9.086h18.171V299.29z"></path> </g> </g> <g> <g> <path d="M144.835,350.597c-9.136,0-16.568,7.432-16.568,16.568c0,9.136,7.432,16.568,16.568,16.568 c9.136,0,16.568-7.432,16.568-16.568C161.403,358.029,153.971,350.597,144.835,350.597z"></path> </g> </g> <g> <g> <path d="M427.023,350.597c-9.136,0-16.568,7.432-16.568,16.568c0,9.136,7.432,16.568,16.568,16.568 c9.136,0,16.568-7.432,16.568-16.568C443.591,358.029,436.159,350.597,427.023,350.597z"></path> </g> </g> <g> <g> <path d="M332.96,316.393H213.244c-4.427,0-8.017,3.589-8.017,8.017s3.589,8.017,8.017,8.017H332.96 c4.427,0,8.017-3.589,8.017-8.017S337.388,316.393,332.96,316.393z"></path> </g> </g> <g> <g> <path d="M127.733,282.188H25.119c-4.427,0-8.017,3.589-8.017,8.017s3.589,8.017,8.017,8.017h102.614 c4.427,0,8.017-3.589,8.017-8.017S132.16,282.188,127.733,282.188z"></path> </g> </g> <g> <g> <path d="M204.693,136.818c-42.141,0-76.426,34.285-76.426,76.426s34.285,76.426,76.426,76.426s76.426-34.285,76.426-76.426 S246.834,136.818,204.693,136.818z M204.693,273.637c-33.3,0-60.392-27.092-60.392-60.392s27.092-60.392,60.392-60.392 s60.392,27.092,60.392,60.392S237.993,273.637,204.693,273.637z"></path> </g> </g> <g> <g> <path d="M236.015,233.229l-23.305-23.305V179.04c0-4.427-3.589-8.017-8.017-8.017s-8.017,3.589-8.017,8.017v34.205 c0,2.126,0.844,4.164,2.348,5.668l25.653,25.653c1.565,1.565,3.617,2.348,5.668,2.348s4.104-0.782,5.668-2.348 C239.146,241.435,239.146,236.36,236.015,233.229z"></path> </g> </g> </g></svg>
                         </div>
@@ -915,7 +905,7 @@ async function handleRegisterSubmit() {
               </div>
             </div>
             <div class="col-2 col-md-4 d-flex align-items-center justify-content-center d-xl-none   ">
-                <div class="sign-up-mobile" @click="handleUserAction">
+                <div class="sign-up-mobile">
                   <svg width="23" height="23" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M11.2332 14.6204C7.30234 14.6204 3.98508 15.2591 3.98508 17.7235C3.98508 20.1888 7.32409 20.8049 11.2332 20.8049C15.1632 20.8049 18.4813 20.1661 18.4813 17.7017C18.4813 15.2365 15.1423 14.6204 11.2332 14.6204ZM11.2332 2.68457C8.57033 2.68457 6.43677 4.81735 6.43677 7.47835C6.43677 10.1393 8.57033 12.273 11.2332 12.273C13.8952 12.273 16.0296 10.1393 16.0296 7.47835C16.0296 4.81735 13.8952 2.68457 11.2332 2.68457Z" fill="white"/>
                   </svg>
@@ -941,54 +931,9 @@ async function handleRegisterSubmit() {
                 <path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/>
               </svg>
               <span>{{ t('all_categories') || 'جميع الأقسام' }}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" class="chevron">
-                <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-              </svg>
             </button>
 
-            <div v-show="showCats" class="mega-menu" @mouseenter="showCats = true" @mouseleave="handleMegaMenuLeave">
-              <div class="mega-content">
-                <!-- Main Categories Column -->
-                <div class="mega-main-categories">
-                  <div 
-                    v-for="c in categories" 
-                    :key="c.id" 
-                    class="mega-category-item"
-                    @mouseenter="hoveredMegaCategory = c; keepMegaMenuOpen = true"
-                    @mouseleave="keepMegaMenuOpen = false"
-                  >
-                    <div class="mega-title" @click="goCategory(c)">
-                      {{ c.name }}
-                      <svg v-if="c.children && c.children.length > 0" width="12" height="12" viewBox="0 0 24 24" class="mega-arrow">
-                        <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Subcategories Area -->
-                <div class="mega-subcategories-area" @mouseenter="keepMegaMenuOpen = true" @mouseleave="keepMegaMenuOpen = false">
-                  <div v-if="hoveredMegaCategory && hoveredMegaCategory.children && hoveredMegaCategory.children.length > 0" class="mega-subcategories">
-                    <div class="mega-subcategories-content">
-                      <div 
-                        v-for="sc in hoveredMegaCategory.children" 
-                        :key="sc.id" 
-                        class="mega-subcategory-item"
-                        @click="goCategory(sc)"
-                      >
-                        {{ sc.name }}
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="mega-placeholder">
-                    <img src="https://dummyimage.com/220x160/f5f5f5/888&text=Promo" alt="promo" />
-                    <div class="brands">
-                      <img v-for="(b,i) in brandLogos" :key="i" :src="b" alt="brand" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -1170,7 +1115,7 @@ async function handleRegisterSubmit() {
                 </clipPath>
                 </defs>
               </svg>
-              <span v-if="compareCount >= 0" class="compare-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">{{ compareCount }}</span>
+              <span v-if="compareCount > 0" class="compare-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">{{ compareCount }}</span>
             </NuxtLink>
             
             <!-- Cart -->
@@ -1376,7 +1321,7 @@ async function handleRegisterSubmit() {
               {{ t('login.success') || 'تم تسجيل الدخول بنجاح' }}
             </div>
             
-            <button type="submit" class="login-btn2" style="    width: 100%;background:#f58040;color: #fff;padding: 10px;border-radius: 10px;" :disabled="loginLoading">
+            <button type="submit" class="login-btn2" style="    width: 100%;background: #232323;color: #fff;padding: 10px;border-radius: 10px;" :disabled="loginLoading">
               <span v-if="loginLoading">{{ t('loading') || 'جاري التحميل...' }}</span>
               <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
             </button>
@@ -1547,12 +1492,12 @@ async function handleRegisterSubmit() {
 
     <!-- Bottom navigation (mobile) -->
     <nav class="bottom-nav">
-      <NuxtLink :to="getLocalizedPath('/compare')" class="bn-item">
+      <NuxtLink  class="bn-item">
         <div class="bn-icon-wrapper">
           <svg width="22" height="22" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 512 385.87"><path fill-rule="nonzero" d="M214.19 67.27h149.05V8.17c0-4.51 3.66-8.17 8.17-8.17 2.21 0 4.21.87 5.68 2.29l132.02 112.09c3.44 2.91 3.87 8.06.96 11.49-.32.39-.67.73-1.05 1.04L376.68 239.27c-3.44 2.91-8.59 2.48-11.49-.96a8.098 8.098 0 0 1-1.93-5.27l-.02-59.1H214.19c-4.51 0-8.17-3.66-8.17-8.17V75.45c0-4.52 3.66-8.18 8.17-8.18zm75.44 161.02H140.59c-4.51 0-8.17-3.66-8.17-8.18v-49.63L20.76 265.27l111.66 94.8v-49.64c0-4.51 3.66-8.17 8.17-8.17h149.04v-73.97zm-140.87-16.35h149.05c4.51 0 8.17 3.66 8.17 8.17v90.32c0 4.52-3.66 8.18-8.17 8.18H148.76v59.1a8.268 8.268 0 0 1-1.95 5.27c-2.9 3.43-8.05 3.86-11.49.96L2.98 271.58c-.38-.31-.73-.66-1.05-1.04-2.91-3.44-2.48-8.59.96-11.49l132.02-112.09a8.141 8.141 0 0 1 5.68-2.29c4.51 0 8.17 3.66 8.17 8.17v59.1zM371.41 83.62H222.37v73.97h149.04c4.52 0 8.18 3.66 8.18 8.18v49.64l111.65-94.8-111.65-94.8v49.64c0 4.51-3.66 8.17-8.18 8.17z"/></svg>
-          <span v-if="compareCount > 0" class="bn-cart-badge">{{ compareCount }}</span>
+          <span v-if="cartCount > 0" class="bn-cart-badge">{{ cartCount }}</span>
         </div>
-        <span>{{ t('compare') }}</span>
+        <span>{{ t('bag') }}</span>
       </NuxtLink>
       <!-- <NuxtLink :to="getLocalizedPath('/')" class="bn-item">
         <svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3L2 12h3v8z"/></svg>
@@ -1611,8 +1556,6 @@ body {
 /* Main Header Container */
 .app-header { 
   background: #1a1a1a;
-  position: sticky; 
-  top: 0; 
   z-index: 1000;
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
   border-bottom: 1px solid #f0f0f0;
@@ -1679,7 +1622,7 @@ body {
 
 /* Main Header */
 .main-header {
-  padding: 16px 0;
+  padding: 5px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -2018,7 +1961,6 @@ body {
 /* Navigation Bar */
 .nav-bar {
   background: #f8f9fa;
-  padding: 5px 0;
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
@@ -3526,15 +3468,5 @@ body {
 /* =========== */
 .info-left {
   width: 100% !important;
-}
-
-/* Sign up mobile button */
-.sign-up-mobile {
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.sign-up-mobile:hover {
-  opacity: 0.8;
 }
 </style>

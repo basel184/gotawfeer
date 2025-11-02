@@ -64,7 +64,7 @@ const hasSectionItems = computed(() => Array.isArray((sectionItems as any).value
 
 // Minimal image helpers for side banners
 const cfg2 = useRuntimeConfig() as any
-const assetBase = (cfg2?.public?.apiBase || 'http://127.0.0.1:8000/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg2?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
 // Prefer Laravel web host for server-rendered pages (collections). Fallbacks handle dev (3000->8000)
 const webBase = computed(() => {
   let base = assetBase || ''

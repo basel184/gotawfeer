@@ -178,12 +178,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.pill:hover {
-  border-color: #d1d5db;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
 .pill.disabled {
   opacity: 0.6;
   cursor: default;

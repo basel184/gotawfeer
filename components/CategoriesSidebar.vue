@@ -26,6 +26,7 @@
           :src="getCategoryImage(category)" 
           :alt="category.name"
           class="category-icon"
+          @error="handleImageError"
         />
         <!-- Category Name Tooltip -->
         <div 
@@ -81,6 +82,7 @@
             @click="goToSubcategory(subcategory)"
           >
             <h5>{{ subcategory.name }}</h5>
+            <p>( 8 منتج )</p>
           </div>
         </div>
         
@@ -462,7 +464,6 @@ onUnmounted(() => {
 /* ===== SUBCATEGORIES OVERLAY ===== */
 .subcategories-overlay {
   position: fixed;
-  top: -20px;
   left: auto;
   right: 185px;
   bottom: 0;
@@ -470,7 +471,7 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  padding: 80px 20px 20px 20px;
+  height: 100vh;
 }
 [dir="ltr"] .subcategories-overlay{
   right: auto;
@@ -490,7 +491,7 @@ onUnmounted(() => {
   padding: 24px;
   max-width: 600px;
   width: 100%;
-  max-height: 70vh;
+  height: 100vh;
   overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   margin-right: 20px;
@@ -635,10 +636,11 @@ onUnmounted(() => {
     color: #fff;
     position: fixed;
     inset-inline-start: 43px;
-    top: 50%;
+    top: 90%;
     transform: translate(-50%, -50%);
     cursor: pointer;
     transition: .3s;
+    z-index: 999;
 }
 .toggle-sidebar.hide {
       inset-inline-start: -20px;

@@ -108,11 +108,11 @@ function getProductImage(item: any): string {
   }
   
   if (item.product?.thumbnail) {
-    return `${cfg?.public?.baseURL || 'http://127.0.0.1:8000'}/storage/product/thumbnail/${item.product.thumbnail}`
+    return `${cfg?.public?.baseURL || 'https://gotawfeer.com/project'}/storage/product/thumbnail/${item.product.thumbnail}`
   }
   
   if (item.thumbnail) {
-    return `${cfg?.public?.baseURL || 'http://127.0.0.1:8000'}/storage/product/thumbnail/${item.thumbnail}`
+    return `${cfg?.public?.baseURL || 'https://gotawfeer.com/project'}/storage/product/thumbnail/${item.thumbnail}`
   }
   
   // Fallback to placeholder

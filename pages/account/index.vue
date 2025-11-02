@@ -26,7 +26,7 @@ function getImageUrl(imagePath: string | undefined, fallback: string = '/images/
   }
   
   // If it's a relative path, build the full URL
-  const baseURL = config?.public?.baseURL || 'http://127.0.0.1:8000'
+  const baseURL = config?.public?.baseURL || 'https://gotawfeer.com/project'
   console.log('Base URL:', baseURL)
   
   // Handle different image path formats
