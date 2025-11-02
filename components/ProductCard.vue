@@ -978,7 +978,14 @@ img {
   font-weight: 700; 
   margin-bottom: 4px; 
   display: inline-block;
-  width : 50%;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  height: 40px;
 }
 
 .title { 
@@ -1063,5 +1070,8 @@ img {
 .add-to-cart-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.grid .card:hover .card-tools {
+  bottom: -15px;
 }
 </style>

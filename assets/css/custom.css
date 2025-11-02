@@ -144,3 +144,21 @@ html[dir="rtl"] .whatsapp {
   color: white;
   font-size: 2rem;
 }
+.rating {
+    height: 40px !important;
+}
+.offer-product-card picture {
+    display: flex;
+    width: 80px;
+    height: 80px;
+}
+.offer-product-card picture img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+@media (max-width: 767.98px) {
+    .info {
+        padding: 0 !important;
+    }
+}
