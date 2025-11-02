@@ -47,7 +47,7 @@ export function useApi() {
     const cleanPath = path.replace(/^\//, '')
     
     if (base.startsWith('http')) {
-      // Absolute URL - use URL constructor
+      // Absolute URL - use URL constructor (handles existing query params automatically)
       const url = new URL(`${base}/${cleanPath}`)
       if (guestId?.value) url.searchParams.set('guest_id', String(guestId.value))
       const loc = localeValue()
@@ -56,9 +56,15 @@ export function useApi() {
     } else {
       // Relative URL - build query string manually
       const fullBase = base.startsWith('/') ? base : `/${base}`
-      const fullPath = `${fullBase}/${cleanPath}`
       
-      const params = new URLSearchParams()
+      // Check if path already contains query string
+      const [pathPart, existingQuery] = cleanPath.split('?')
+      const fullPath = `${fullBase}/${pathPart}`
+      
+      // Parse existing query params if any
+      const params = existingQuery ? new URLSearchParams(existingQuery) : new URLSearchParams()
+      
+      // Add guest_id and locale (will overwrite if they exist)
       if (guestId?.value) params.set('guest_id', String(guestId.value))
       const loc = localeValue()
       if (loc) params.set('locale', String(loc))

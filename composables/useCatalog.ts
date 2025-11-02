@@ -9,11 +9,29 @@ export function useCatalog() {
   }
 
   // Brands: returns { total_size, limit, offset, brands: [] }
-  const brands = (params: any = {}) => {
+  const brands = async (params: any = {}) => {
     const defaults = { limit: 200, offset: 1 }
     const merged = { ...defaults, ...params }
     const qs = new URLSearchParams(merged as Record<string, string>).toString()
-    return $get(`v1/brands?${qs}`)
+    const response = await $get(`v1/brands?${qs}`)
+    
+    console.log('[useCatalog] Brands API response:', response)
+    
+    // Handle different response structures
+    if (Array.isArray(response)) {
+      return { total_size: response.length, brands: response }
+    }
+    if (response?.brands) {
+      return response
+    }
+    if (response?.data) {
+      return {
+        total_size: response.total_size || response.total || (Array.isArray(response.data) ? response.data.length : 0),
+        brands: Array.isArray(response.data) ? response.data : []
+      }
+    }
+    // Return empty structure if response doesn't match expected format
+    return { total_size: 0, brands: [] }
   }
 
   return { categories, brands }

@@ -34,6 +34,24 @@ const brand = ref<number[]>([])
 const cats = ref<any[]>([])
 const brandsResp = ref<any>({ total_size: 0, brands: [] })
 
+// Computed for brands list
+const brandsList = computed(() => {
+  const resp = brandsResp.value
+  if (!resp) return []
+  
+  // Handle different response structures
+  if (Array.isArray(resp)) {
+    return resp
+  }
+  if (Array.isArray(resp.brands)) {
+    return resp.brands
+  }
+  if (Array.isArray(resp.data)) {
+    return resp.data
+  }
+  return []
+})
+
 // Initialize with safe defaults
 const items = ref<any[]>([])
 const total = ref(0)
@@ -108,8 +126,34 @@ onMounted(async () => {
     cats.value = []
   }
   try { 
-    brandsResp.value = await brands({ limit: 200, offset: 1 }) 
+    const brandsData = await brands({ limit: 200, offset: 1 })
+    console.log('[shop] Brands API response:', brandsData)
+    console.log('[shop] Brands structure:', {
+      isArray: Array.isArray(brandsData),
+      hasBrands: !!brandsData?.brands,
+      hasData: !!brandsData?.data,
+      keys: brandsData ? Object.keys(brandsData) : [],
+      total: brandsData?.total_size || brandsData?.total
+    })
+    
+    // Handle different response structures
+    if (Array.isArray(brandsData)) {
+      brandsResp.value = { total_size: brandsData.length, brands: brandsData }
+    } else if (brandsData?.brands) {
+      brandsResp.value = brandsData
+    } else if (brandsData?.data) {
+      brandsResp.value = { 
+        total_size: brandsData.total_size || brandsData.total || brandsData.data.length,
+        brands: Array.isArray(brandsData.data) ? brandsData.data : []
+      }
+    } else {
+      brandsResp.value = { total_size: 0, brands: [] }
+    }
+    
+    console.log('[shop] Final brandsResp:', brandsResp.value)
+    console.log('[shop] Number of brands:', brandsResp.value.brands?.length || 0)
   } catch (e) { 
+    console.error('[shop] Error loading brands:', e)
     console.warn(t('shop.errors.brands_failed'), e)
     brandsResp.value = { total_size: 0, brands: [] }
   }
@@ -479,10 +523,15 @@ const clearFilters = () => {
 
       <div class="box">
         <div class="box-title">{{ t('shop.brands') }}</div>
-        <div class="list">
-          <label v-for="b in (brandsResp?.brands || [])" :key="b.id" class="chk">
+        <div class="list" v-if="brandsList.length > 0">
+          <label v-for="b in brandsList" :key="b.id" class="chk">
             <input type="checkbox" :value="b.id" v-model="brand" /> {{ b.name }}
           </label>
+        </div>
+        <div v-else class="empty-list">
+          <p style="padding: 12px; color: #6b7280; font-size: 14px; text-align: center;">
+            {{ t('shop.no_brands') || 'لا توجد براندات متاحة' }}
+          </p>
         </div>
       </div>
     </aside>
@@ -616,11 +665,16 @@ const clearFilters = () => {
           <!-- Brands -->
           <div class="filter-group">
             <label class="filter-label">{{ t('shop.brands') }}</label>
-            <div class="filter-options">
-              <label v-for="b in (brandsResp?.brands || [])" :key="b.id" class="filter-option">
+            <div class="filter-options" v-if="brandsList.length > 0">
+              <label v-for="b in brandsList" :key="b.id" class="filter-option">
                 <input type="checkbox" :value="b.id" v-model="brand" />
                 <span>{{ b.name }}</span>
               </label>
+            </div>
+            <div v-else class="empty-message">
+              <p style="padding: 12px; color: #6b7280; font-size: 14px; text-align: center;">
+                {{ t('shop.no_brands') || 'لا توجد براندات متاحة' }}
+              </p>
             </div>
           </div>
         </div>
