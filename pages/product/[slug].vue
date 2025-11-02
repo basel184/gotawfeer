@@ -749,29 +749,42 @@ const updateSelectedVariant = () => {
   console.log('البحث عن المتغير:', {
     selectedColor: selectedColor.value,
     selectedSize: selectedSize.value,
+    hasColors: availableColors.value.length > 0,
     searchPattern: `${selectedColor.value}-${selectedSize.value}`,
     availableVariations: product.value.variation
   })
   
-  // Try different search patterns
-  let variant = product.value.variation.find((v: any) => 
-    v.type === `${selectedColor.value}-${selectedSize.value}`
-  )
+  let variant = null
   
-  // If not found, try with different separators
-  if (!variant) {
+  // If product has no colors, search by size directly
+  if (!selectedColor.value || availableColors.value.length === 0) {
+    if (selectedSize.value) {
+      variant = product.value.variation.find((v: any) => 
+        v.type === selectedSize.value || v.type === String(selectedSize.value)
+      )
+    }
+  } else {
+    // If product has colors, search by color-size combination
+    // Try different search patterns
     variant = product.value.variation.find((v: any) => 
-      v.type === `${selectedColor.value}_${selectedSize.value}` ||
-      v.type === `${selectedColor.value} ${selectedSize.value}` ||
-      v.type === `${selectedColor.value}/${selectedSize.value}`
+      v.type === `${selectedColor.value}-${selectedSize.value}`
     )
-  }
-  
-  // If still not found, try partial matches
-  if (!variant) {
-    variant = product.value.variation.find((v: any) => 
-      v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value)
-    )
+    
+    // If not found, try with different separators
+    if (!variant) {
+      variant = product.value.variation.find((v: any) => 
+        v.type === `${selectedColor.value}_${selectedSize.value}` ||
+        v.type === `${selectedColor.value} ${selectedSize.value}` ||
+        v.type === `${selectedColor.value}/${selectedSize.value}`
+      )
+    }
+    
+    // If still not found, try partial matches
+    if (!variant) {
+      variant = product.value.variation.find((v: any) => 
+        v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value)
+      )
+    }
   }
   
   selectedVariant.value = variant || null
@@ -842,8 +855,21 @@ const selectSize = (size: any) => {
 const isSizeAvailable = (sizeValue: string) => {
   if (!product.value?.variation) return true
   
+  // If product has no colors, search by size directly
+  if (!selectedColor.value || availableColors.value.length === 0) {
+    const variant = product.value.variation.find((v: any) => 
+      v.type === sizeValue || v.type === String(sizeValue)
+    )
+    return variant && variant.qty > 0
+  }
+  
+  // If product has colors, search by color-size combination
   const variant = product.value.variation.find((v: any) => 
-    v.type === `${selectedColor.value}-${sizeValue}`
+    v.type === `${selectedColor.value}-${sizeValue}` ||
+    v.type === `${selectedColor.value}_${sizeValue}` ||
+    v.type === `${selectedColor.value} ${sizeValue}` ||
+    v.type === `${selectedColor.value}/${sizeValue}` ||
+    (v.type.includes(selectedColor.value) && v.type.includes(sizeValue))
   )
   
   return variant && variant.qty > 0

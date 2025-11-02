@@ -71,11 +71,36 @@ const initializeFromQuery = () => {
   }
 }
 
-// Fetch filter sources
+// Fetch filter sources and initialize page
 onMounted(async () => {
   // Initialize filters from query parameters
   initializeFromQuery()
   
+  // Apply route query parameters
+  const catParam = route.query.category
+  if (Array.isArray(catParam)) {
+    category.value = catParam.map(v => Number(v)).filter(n => !isNaN(n))
+  } else if (typeof catParam === 'string' && catParam) {
+    const n = Number(catParam)
+    if (!isNaN(n)) category.value = [n]
+  }
+  
+  const brandParam = route.query.brand
+  if (Array.isArray(brandParam)) {
+    brand.value = brandParam.map(v => Number(v)).filter(n => !isNaN(n))
+  } else if (typeof brandParam === 'string' && brandParam) {
+    const n = Number(brandParam)
+    if (!isNaN(n)) brand.value = [n]
+  }
+  
+  const searchParam = route.query.q
+  if (typeof searchParam === 'string' && searchParam) {
+    q.value = searchParam
+    console.log('[shop] onMounted - معامل البحث:', searchParam)
+    console.log('[shop] onMounted - q.value تم تعيينه إلى:', q.value)
+  }
+  
+  // Fetch filter data
   try { 
     cats.value = await categories() 
   } catch (e) { 
@@ -99,9 +124,22 @@ onMounted(async () => {
     console.warn(t('shop.errors.wishlist_load_failed'), e)
   }
   
+  // Load initial page of products
+  console.log('[shop] onMounted - استدعاء loadPage')
+  console.log('[shop] onMounted - q.value:', q.value)
+  console.log('[shop] onMounted - route.query:', route.query)
+  
+  await loadPage()
+  
+  // Setup infinite scroll after initial load
+  setupInfiniteScroll()
 })
 
 onBeforeUnmount(() => {
+  if (io) { 
+    io.disconnect()
+    io = null 
+  }
 })
 
 // Results with pagination via infinite scroll
@@ -192,13 +230,24 @@ const loadPage = async () => {
     console.log('[shop] قائمة المنتجات:', list)
     
     // On first page, reset items
-    if (offset.value === 1) items.value = []
-    items.value = items.value.concat(list)
-    total.value = Number(res?.total_size || list.length)
-    offset.value = Number(res?.offset || offset.value)
+    if (offset.value === 1) {
+      items.value = []
+      console.log('[shop] بدء تحميل الصفحة الأولى')
+    }
     
-    // Next page
+    // Add new items to existing ones
+    items.value = items.value.concat(list)
+    total.value = Number(res?.total_size || res?.total || 0)
+    
+    console.log('[shop] تم تحميل:', list.length, 'منتج')
+    console.log('[shop] إجمالي المنتجات المحملة:', items.value.length)
+    console.log('[shop] إجمالي المنتجات المتاحة:', total.value)
+    console.log('[shop] الصفحة الحالية:', offset.value)
+    
+    // Increment offset for next page
     offset.value = offset.value + 1
+    
+    console.log('[shop] الصفحة التالية:', offset.value)
     
     // Complete progress
     loadingProgress.value = 100
@@ -228,6 +277,8 @@ const resetAndFetch = async () => {
   total.value = 0
   items.value = []
   await loadPage()
+  // Re-setup observer after reset
+  setupInfiniteScroll()
 }
 
 // Fetch on any filter change, debounced
@@ -251,45 +302,46 @@ watch(filterKey, () => {
 // Infinite scroll sentinel
 const sentinel = ref<HTMLElement | null>(null)
 let io: IntersectionObserver | null = null
-onMounted(() => {
-  io = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting) loadPage()
-    }
-  }, { rootMargin: '200px' })
-  if (sentinel.value) io.observe(sentinel.value)
-})
-onBeforeUnmount(() => { if (io) { io.disconnect(); io = null } })
 
-// Apply route query (e.g., from header category click)
-onMounted(() => {
-  const catParam = route.query.category
-  if (Array.isArray(catParam)) {
-    category.value = catParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof catParam === 'string' && catParam) {
-    const n = Number(catParam)
-    if (!isNaN(n)) category.value = [n]
+// Setup Intersection Observer for infinite scroll
+const setupInfiniteScroll = () => {
+  // Disconnect previous observer if exists
+  if (io) {
+    io.disconnect()
+    io = null
   }
-  
-  const brandParam = route.query.brand
-  if (Array.isArray(brandParam)) {
-    brand.value = brandParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof brandParam === 'string' && brandParam) {
-    const n = Number(brandParam)
-    if (!isNaN(n)) brand.value = [n]
+
+  // Wait for next tick to ensure sentinel is in DOM
+  setTimeout(() => {
+    if (sentinel.value) {
+      io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && !loading.value && !done.value) {
+              console.log('[shop] Sentry visible, loading next page...')
+              loadPage()
+            }
+          }
+        },
+        { 
+          rootMargin: '300px', // Load earlier
+          threshold: 0.1 
+        }
+      )
+      io.observe(sentinel.value)
+      console.log('[shop] IntersectionObserver setup complete')
+    } else {
+      console.warn('[shop] Sentinel element not found')
+    }
+  }, 100)
+}
+
+// Re-setup observer when sentinel ref changes (after DOM is ready)
+watch(sentinel, (newVal) => {
+  if (newVal && !io && items.value.length > 0) {
+    // Only setup if we have items loaded
+    setupInfiniteScroll()
   }
-  
-  const searchParam = route.query.q
-  if (typeof searchParam === 'string' && searchParam) {
-    q.value = searchParam
-    console.log('[shop] onMounted - معامل البحث:', searchParam)
-    console.log('[shop] onMounted - q.value تم تعيينه إلى:', q.value)
-  }
-  
-  console.log('[shop] onMounted - استدعاء loadPage')
-  console.log('[shop] onMounted - q.value:', q.value)
-  console.log('[shop] onMounted - route.query:', route.query)
-  loadPage()
 })
 
 // React to route query changes
