@@ -196,7 +196,14 @@ const getCategoryImage = (category: any) => {
 
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement
-  target.src = '/images/category-placeholder.png'
+  // Try placeholder, if that fails, use a data URI
+  if (!target.src.includes('category-placeholder.png')) {
+    target.src = '/images/category-placeholder.png'
+  } else {
+    // If placeholder also fails, use a data URI fallback
+    target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="%23e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="10">?</text></svg>'
+    target.onerror = null // Prevent infinite loop
+  }
 }
 
 const goToSubcategory = (subcategory: any) => {
