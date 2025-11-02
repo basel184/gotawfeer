@@ -11,16 +11,8 @@ export default defineNuxtConfig({
   nitro: {
     preset: 'vercel',
     compatibilityDate: '2025-09-11',
-    devProxy: {
-      '/api': {
-        target: 'https://gotawfeer.com/project/api',
-        changeOrigin: true,
-        prependPath: true,
-      }
-    },
     routeRules: {
       '/api/**': { 
-        proxy: 'https://gotawfeer.com/project/api/**',
         cors: true
       }
     }

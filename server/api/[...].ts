@@ -1,21 +1,26 @@
 export default defineEventHandler(async (event) => {
-  const url = event.node.req.url
+  const url = event.node.req.url || ''
   
-  // Skip Tamara routes (they have their own handlers)
-  if (url?.includes('/v1/tamara') || url?.includes('/test-tamara')) {
+  // Only proxy API requests
+  if (!url.startsWith('/api/')) {
     return
   }
   
-  // Only proxy API requests that don't have specific handlers
-  if (!url?.startsWith('/api/')) {
+  // Skip Tamara routes (they have their own handlers)
+  // Note: This check must come after /api/ check
+  if (url.includes('/v1/tamara') || url.includes('/test-tamara')) {
     return
   }
   
   // Remove /api prefix and build target URL
   // Split URL into path (getQuery will handle query string)
   const [pathPart] = url.replace(/^\/api/, '').split('?')
-  const path = pathPart || ''
+  const path = pathPart || '/'
+  
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : '/' + path
   const targetBase = 'https://gotawfeer.com/project/api'
+  const targetUrl = targetBase + cleanPath
   
   // Set CORS headers
   setHeader(event, 'Access-Control-Allow-Origin', '*')
@@ -47,7 +52,7 @@ export default defineEventHandler(async (event) => {
     // Get query parameters (getQuery already parses query string from URL)
     const query = getQuery(event)
     // Build target URL with path
-    const fullUrl = new URL(targetBase + path)
+    const fullUrl = new URL(targetUrl)
     // Add all query parameters
     Object.entries(query).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
@@ -78,6 +83,14 @@ export default defineEventHandler(async (event) => {
     
     return response
   } catch (error: any) {
+    console.error('[API Proxy Error]', {
+      url: targetUrl,
+      method: event.node.req.method,
+      error: error.message,
+      status: error.response?.status || error.statusCode,
+      data: error.data || error.response?.data
+    })
+    
     const statusCode = error.response?.status || error.statusCode || 500
     const message = error.message || 'Proxy error'
     
