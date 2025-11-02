@@ -82,7 +82,16 @@
             @click="goToSubcategory(subcategory)"
           >
             <h5>{{ subcategory.name }}</h5>
-            <p>( 8 منتج )</p>
+            <p v-if="subcategory?.product_count || subcategory?.products_count">
+              ( {{ subcategory.product_count || subcategory.products_count }} 
+              {{ (subcategory.product_count || subcategory.products_count) === 1 
+                ? (t('all_products') || 'منتج') 
+                : (t('all_products') || 'منتجات') 
+              }} )
+            </p>
+            <p v-else class="no-count">
+              ( {{ t('all_products') || 'منتجات' }} )
+            </p>
           </div>
         </div>
         
