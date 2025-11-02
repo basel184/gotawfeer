@@ -263,6 +263,148 @@ watch(() => route.path, (newPath) => {
 }, { immediate: true })
 
 // Helper function to get localized path
+// Cart dropdown helper functions
+const getItemImage = (item: any): string => {
+  const p = item?.product || {}
+  
+  // Helper to extract URL from object or string
+  const extractUrl = (v: any): string | null => {
+    if (!v) return null
+    if (typeof v === 'string') return v
+    if (typeof v === 'object' && v.path) return v.path
+    if (typeof v === 'object' && v.key) return v.key
+    return null
+  }
+  
+  // Try full URLs first
+  const fullUrl = extractUrl(p?.thumbnail_full_url) || 
+                  extractUrl(p?.image_full_url) || 
+                  extractUrl(item?.thumbnail_full_url) ||
+                  extractUrl(item?.image_full_url)
+  
+  if (fullUrl && /^(https?:|data:|blob:)/i.test(fullUrl)) {
+    return fullUrl
+  }
+  
+  // Fallback to simple thumbnail/image fields
+  const raw = p?.thumbnail || item?.thumbnail || p?.image || item?.image || ''
+  if (!raw) return '/images/placeholder.png'
+  
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw
+  
+  // Build path
+  const assetBase = (runtimeConfig?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  let path = String(raw).trim().replace(/\\/g, '/')
+  path = path.replace(/^public\//, '').replace(/^app\/public\//, '').replace(/^storage\//, '')
+  
+  if (!path.includes('/')) {
+    path = `storage/app/public/product/thumbnail/${path}`
+  } else if (!path.startsWith('storage/')) {
+    path = `storage/app/public/product/${path}`
+  }
+  
+  return `${assetBase}/${path}`
+}
+
+const getItemName = (item: any): string => {
+  const p = item?.product || {}
+  return p?.name || item?.name || item?.product_name || p?.product_name || t('product') || 'منتج'
+}
+
+const getItemQuantity = (item: any): number => {
+  return Number(item?.quantity || item?.qty || 1)
+}
+
+const formatItemPrice = (item: any): string => {
+  let price = Number(item?.price || 0)
+  
+  // Try different price fields
+  if (item?.base_price && Number(item.base_price) > 0) {
+    price = Number(item.base_price)
+  } else if (item?.final_price && Number(item.final_price) > 0) {
+    price = Number(item.final_price)
+  } else if (item?.unit_price && Number(item.unit_price) > 0) {
+    price = Number(item.unit_price)
+  } else if (item?.product?.unit_price && Number(item.product.unit_price) > 0) {
+    price = Number(item.product.unit_price)
+  }
+  
+  // Apply discount if exists
+  const discount = Number(item?.discount || 0)
+  if (discount > 0) {
+    const discountType = item?.discount_type || 'flat'
+    const isPercent = String(discountType).toLowerCase().startsWith('per')
+    const discountAmount = isPercent ? (price * discount) / 100 : discount
+    price = Math.max(0, price - discountAmount)
+  }
+  
+  const qty = getItemQuantity(item)
+  const total = price * qty
+  
+  return money(total)
+}
+
+const removeItem = async (item: any) => {
+  const key = item?.id || item?.key
+  if (!key) return
+  
+  try {
+    await cart.remove(Number(key))
+    await cart.list() // Refresh cart
+  } catch (error: any) {
+    console.error('Error removing item from cart:', error)
+  }
+}
+
+const increaseQty = async (item: any) => {
+  const key = item?.id || item?.key
+  if (!key) return
+  
+  const currentQty = getItemQuantity(item)
+  const newQty = currentQty + 1
+  
+  try {
+    await cart.update({ key: Number(key), quantity: newQty })
+    await cart.list() // Refresh cart
+  } catch (error: any) {
+    console.error('Error updating cart quantity:', error)
+  }
+}
+
+const decreaseQty = async (item: any) => {
+  const key = item?.id || item?.key
+  if (!key) return
+  
+  const currentQty = getItemQuantity(item)
+  
+  if (currentQty > 1) {
+    const newQty = currentQty - 1
+    try {
+      await cart.update({ key: Number(key), quantity: newQty })
+      await cart.list() // Refresh cart
+    } catch (error: any) {
+      console.error('Error updating cart quantity:', error)
+    }
+  } else {
+    // Remove item if quantity is 1
+    await removeItem(item)
+  }
+}
+
+const getRemainingForFreeShipping = (): number => {
+  const FREE_SHIPPING_THRESHOLD = 200 // Adjust based on your requirement
+  const remaining = FREE_SHIPPING_THRESHOLD - cartTotal.value
+  return Math.max(0, remaining)
+}
+
+const handleImageError = (e: Event) => {
+  const target = e.target as HTMLImageElement
+  if (!target.src.includes('placeholder.png')) {
+    target.src = '/images/placeholder.png'
+    target.onerror = null // Prevent infinite loop
+  }
+}
+
 const getLocalizedPath = (path: string) => {
   if (i18nLocale.value === 'en') {
     return path.startsWith('/en') ? path : '/en' + path
@@ -1143,7 +1285,117 @@ async function handleRegisterSubmit() {
       <span class="cart-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">1</span>
     </div>
 
+    <!-- Cart Dropdown -->
+  <Transition name="slide-cart">
+    <div v-if="isCartOpen" class="cart-dropdown">
+      <!-- Header -->
+      <div class="cart-header">
+        <button class="close-btn" @click="closeCart">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 1L1 13M1 1L13 13" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>{{ t('close') || 'إغلاق' }}</span>
+        </button>
+        <h3>{{ t('cart.title') || 'سلة التسوق' }}</h3>
+      </div>
 
+      <!-- Loading State -->
+      <div v-if="cart.loading.value" class="cart-loading">
+        <div class="loading-spinner"></div>
+        <p>{{ t('cart.loading') || 'جاري تحميل السلة...' }}</p>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="!cart.items.value || cart.items.value.length === 0" class="cart-empty">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V17C17 18.1 17.9 19 19 19C20.1 19 21 18.1 21 17V13M9 19.5C9 20.3 9.7 21 10.5 21C11.3 21 12 20.3 12 19.5C12 18.7 11.3 18 10.5 18C9.7 18 9 18.7 9 19.5ZM19.5 19.5C19.5 20.3 20.2 21 21 21C21.8 21 22.5 20.3 22.5 19.5C22.5 18.7 21.8 18 21 18C20.2 18 19.5 18.7 19.5 19.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p>{{ t('cart.empty') || 'سلة التسوق فارغة' }}</p>
+      </div>
+
+      <!-- Cart Items -->
+      <div v-else class="cart-items">
+        <div 
+          v-for="item in cart.items.value" 
+          :key="item.id || item.key"
+          class="cart-item"
+        >
+          <button 
+            class="remove-item" 
+            @click="removeItem(item)"
+            :disabled="cart.loading.value"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 1L1 11M1 1L11 11" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          
+          <div class="item-image">
+            <img 
+              :src="getItemImage(item)" 
+              :alt="getItemName(item)"
+              @error="handleImageError"
+            >
+          </div>
+          
+          <div class="item-details">
+            <h4>{{ getItemName(item) }}</h4>
+            <p v-if="item.sku" class="item-sku">{{ t('cart.sku') || 'SKU' }}: {{ item.sku }}</p>
+            
+            <div class="item-quantity">
+              <button 
+                class="qty-btn" 
+                @click="decreaseQty(item)"
+                :disabled="cart.loading.value"
+              >-</button>
+              <input 
+                type="text" 
+                :value="getItemQuantity(item)" 
+                readonly
+              >
+              <button 
+                class="qty-btn" 
+                @click="increaseQty(item)"
+                :disabled="cart.loading.value"
+              >+</button>
+            </div>
+            
+            <div class="item-price">{{ formatItemPrice(item) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cart Footer -->
+      <div v-if="!cart.loading.value && cart.items.value && cart.items.value.length > 0" class="cart-footer">
+        <div class="cart-subtotal">
+          <span>{{ t('cart.subtotal') || 'المجموع:' }}</span>
+          <span class="total-amount">{{ money(cartTotal) }}</span>
+        </div>
+        
+        <div v-if="getRemainingForFreeShipping() > 0" class="shipping-info">
+          {{ t('cart.add_for_free_shipping') || 'أضف' }} 
+          <span class="shipping-amount">{{ money(getRemainingForFreeShipping()) }}</span> 
+          {{ t('cart.to_cart_for_free_shipping') || 'إلى سلة المشتريات واحصل على شحن مجاني!' }}
+        </div>
+        
+        <NuxtLink 
+          :to="getLocalizedPath('/cart')" 
+          class="view-cart-btn"
+          @click="closeCart"
+        >
+          {{ t('cart.view_cart') || 'عرض السلة' }}
+        </NuxtLink>
+        
+        <NuxtLink 
+          :to="getLocalizedPath('/checkout')" 
+          class="checkout-btn"
+          @click="closeCart"
+        >
+          {{ t('cart.checkout') || 'إتمام الطلب' }}
+        </NuxtLink>
+      </div>
+    </div>
+  </Transition>
 
 
     <!-- Overlay -->
@@ -1551,81 +1803,15 @@ async function handleRegisterSubmit() {
           <span>{{ t('wishlist') }}</span>
         </button>
       </template>
-<!-- زر السلة الجديد -->
-<div class="bn-item" @click="toggleCart">
-  <svg width="22" height="22" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 122.9 107.5" style="enable-background:new 0 0 122.9 107.5" xml:space="preserve">
-    <g>
-      <path d="M3.9,7.9C1.8,7.9,0,6.1,0,3.9C0,1.8,1.8,0,3.9,0h10.2c0.1,0,0.3,0,0.4,0c3.6,0.1,6.8,0.8,9.5,2.5c3,1.9,5.2,4.8,6.4,9.1 c0,0.1,0,0.2,0.1,0.3l1,4H119c2.2,0,3.9,1.8,3.9,3.9c0,0.4-0.1,0.8-0.2,1.2l-10.2,41.1c-0.4,1.8-2,3-3.8,3v0H44.7 c1.4,5.2,2.8,8,4.7,9.3c2.3,1.5,6.3,1.6,13,1.5h0.1v0h45.2c2.2,0,3.9,1.8,3.9,3.9c0,2.2-1.8,3.9-3.9,3.9H62.5v0 c-8.3,0.1-13.4-0.1-17.5-2.8c-4.2-2.8-6.4-7.6-8.6-16.3l0,0L23,13.9c0-0.1,0-0.1-0.1-0.2c-0.6-2.2-1.6-3.7-3-4.5 c-1.4-0.9-3.3-1.3-5.5-1.3c-0.1,0-0.2,0-0.3,0H3.9L3.9,7.9z M96,88.3c5.3,0,9.6,4.3,9.6,9.6c0,5.3-4.3,9.6-9.6,9.6 c-5.3,0-9.6-4.3-9.6-9.6C86.4,92.6,90.7,88.3,96,88.3L96,88.3z M53.9,88.3c5.3,0,9.6,4.3,9.6,9.6c0,5.3-4.3,9.6-9.6,9.6 c-5.3,0-9.6-4.3-9.6-9.6C44.3,92.6,48.6,88.3,53.9,88.3L53.9,88.3z M33.7,23.7l8.9,33.5h63.1l8.3-33.5H33.7L33.7,23.7z"/>
-    </g>
-  </svg>
-  <span>{{ t('bag') }}</span>
-</div>
-
+      <NuxtLink :to="getLocalizedPath('/cart')" class="bn-item">
+        <div class="bn-icon-wrapper">
+          <svg width="22" height="22" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 122.9 107.5" style="enable-background:new 0 0 122.9 107.5" xml:space="preserve"><g><path d="M3.9,7.9C1.8,7.9,0,6.1,0,3.9C0,1.8,1.8,0,3.9,0h10.2c0.1,0,0.3,0,0.4,0c3.6,0.1,6.8,0.8,9.5,2.5c3,1.9,5.2,4.8,6.4,9.1 c0,0.1,0,0.2,0.1,0.3l1,4H119c2.2,0,3.9,1.8,3.9,3.9c0,0.4-0.1,0.8-0.2,1.2l-10.2,41.1c-0.4,1.8-2,3-3.8,3v0H44.7 c1.4,5.2,2.8,8,4.7,9.3c2.3,1.5,6.3,1.6,13,1.5h0.1v0h45.2c2.2,0,3.9,1.8,3.9,3.9c0,2.2-1.8,3.9-3.9,3.9H62.5v0 c-8.3,0.1-13.4-0.1-17.5-2.8c-4.2-2.8-6.4-7.6-8.6-16.3l0,0L23,13.9c0-0.1,0-0.1-0.1-0.2c-0.6-2.2-1.6-3.7-3-4.5 c-1.4-0.9-3.3-1.3-5.5-1.3c-0.1,0-0.2,0-0.3,0H3.9L3.9,7.9z M96,88.3c5.3,0,9.6,4.3,9.6,9.6c0,5.3-4.3,9.6-9.6,9.6 c-5.3,0-9.6-4.3-9.6-9.6C86.4,92.6,90.7,88.3,96,88.3L96,88.3z M53.9,88.3c5.3,0,9.6,4.3,9.6,9.6c0,5.3-4.3,9.6-9.6,9.6 c-5.3,0-9.6-4.3-9.6-9.6C44.3,92.6,48.6,88.3,53.9,88.3L53.9,88.3z M33.7,23.7l8.9,33.5h63.1l8.3-33.5H33.7L33.7,23.7z"/></g></svg>
+          <span v-if="cartCount > 0" class="bn-cart-badge">{{ cartCount }}</span>
+        </div>
+        <span>{{ t('bag') }}</span>
+      </NuxtLink>
 
     </nav>
-        <!-- Cart Dropdown -->
-     <Transition name="slide-cart">
-      <div v-if="isCartOpen" class="cart-dropdown">
-        <!-- Header -->
-        <div class="cart-header">
-          <button class="close-btn" @click="closeCart">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M13 1L1 13M1 1L13 13" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>Close</span>
-          </button>
-          <h3>Shopping cart</h3>
-        </div>
-
-        <!-- Cart Items -->
-        <div class="cart-items">
-          <div class="cart-item">
-            <button class="remove-item">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 1L1 11M1 1L11 11" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </button>
-            
-            <div class="item-image">
-              <img  alt="Product">
-            </div>
-            
-            <div class="item-details">
-              <h4>10-مجموعة فرش الشعر من سوناتا | Sonata Hair Brush Set- 10</h4>
-              <p class="item-sku">SKU: 6955050921604</p>
-              
-              <div class="item-quantity">
-                <button class="qty-btn">-</button>
-                <input type="text" value="1" readonly>
-                <button class="qty-btn">+</button>
-              </div>
-              
-              <div class="item-price">15 ر.س</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Cart Footer -->
-        <div class="cart-footer">
-          <div class="cart-subtotal">
-            <span>المجموع:</span>
-            <span class="total-amount">15 ر.س</span>
-          </div>
-          
-          <div class="shipping-info">
-            أضف <span class="shipping-amount">185 ر.س</span> إلى سلة المشتريات واحصل على شحن مجاني!
-          </div>
-          
-          <button class="view-cart-btn">
-            عرض السلة
-          </button>
-          
-          <button class="checkout-btn">
-            إتمام الطلب
-          </button>
-        </div>
-      </div>
-    </Transition>
   </header>
 </template>
 
@@ -3604,7 +3790,7 @@ body {
   width: 340px;
   background: white;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-  z-index: 100000;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -3812,6 +3998,7 @@ body {
 
 .view-cart-btn,
 .checkout-btn {
+  display: block;
   width: 100%;
   padding: 12px;
   border: none;
@@ -3820,6 +4007,8 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
+  text-align: center;
+  text-decoration: none;
 }
 
 .view-cart-btn {
@@ -3840,6 +4029,64 @@ body {
 
 .checkout-btn:hover {
   background: #f57c00;
+}
+
+.view-cart-btn:disabled,
+.checkout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Cart Loading State */
+.cart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.cart-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #2675BA;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cart-loading p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Cart Empty State */
+.cart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.cart-empty svg {
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+.cart-empty p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
 }
 
 /* Overlay */
