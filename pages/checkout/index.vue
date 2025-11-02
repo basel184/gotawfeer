@@ -27,13 +27,11 @@ const paymentMethods = computed(() => {
   // Define translations directly to ensure they work
   const translations = {
     ar: {
-      cash_on_delivery: 'الدفع عند الاستلام',
       tabby: 'تابي - ادفع على 4 أقساط',
       tamara: 'تمارا - ادفع لاحقاً',
       paymob: 'Paymob - دفع آمن'
     },
     en: {
-      cash_on_delivery: 'Cash on Delivery',
       tabby: 'Tabby - Pay in 4 Installments',
       tamara: 'Tamara - Pay Later',
       paymob: 'Paymob - Secure Payment'
@@ -44,7 +42,6 @@ const paymentMethods = computed(() => {
   const localeTranslations = translations[currentLocale as keyof typeof translations] || translations.ar
   
   const methods = [
-    { id: 'cash_on_delivery', name: localeTranslations.cash_on_delivery, icon: '💰', available: true },
     { id: 'tabby', name: localeTranslations.tabby, icon: '💳', available: true },
     { id: 'tamara', name: localeTranslations.tamara, icon: '🛒', available: true },
     { id: 'paymob', name: localeTranslations.paymob, icon: '💳', available: true }
