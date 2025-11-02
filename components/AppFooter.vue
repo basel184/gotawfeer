@@ -17,10 +17,10 @@
             <a href="#" class="social-link" aria-label="Google">
               <i class="fa-brands fa-snapchat"></i>
             </a>
-            <a href="#" class="social-link" aria-label="Twitter">
+            <a href="https://www.tiktok.com/@gotawfeer?_t=ZS-8xzCD5bV1Ca&_r=1" class="social-link" aria-label="Twitter">
               <i class="fa-brands fa-tiktok"></i>
             </a>
-            <a href="#" class="social-link" aria-label="Instagram">
+            <a href="https://www.instagram.com/gotawfeer/" class="social-link" aria-label="Instagram">
               <i class="fa-brands fa-instagram"></i>
             </a>
             <a href="#" class="social-link" aria-label="LinkedIn">
