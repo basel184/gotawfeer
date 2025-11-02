@@ -243,18 +243,26 @@ const loadCategories = async () => {
 }
 
 // Lifecycle
+// Lifecycle
 onMounted(() => {
   loadCategories()
 
   const toggleSidebarV = document.getElementsByClassName("toggle-sidebar")[0];
   const catSidebar = document.querySelector(".categories-sidebar");
+  const categoriesBtn = document.querySelector(".categories-btn"); // ← زر الأقسام الجديد
 
-  toggleSidebarV?.addEventListener("click", () => {
+  const toggleSidebar = () => {
     catSidebar?.classList.toggle("hide");
     toggleSidebarV?.classList.toggle("hide");
-    
-  });
+  };
+
+  // عند الضغط على زر الهامبرجر
+  toggleSidebarV?.addEventListener("click", toggleSidebar);
+
+  // عند الضغط على زر الأقسام الجديد
+  categoriesBtn?.addEventListener("click", toggleSidebar);
 })
+
 
 onUnmounted(() => {
   if (hideTimeout.value) {

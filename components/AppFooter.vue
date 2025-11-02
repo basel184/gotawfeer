@@ -221,7 +221,7 @@ function closeLoginModal() {
 .app-footer {
   background-image: url('../images/BG.png');
   color: #ffffff;
-  padding: 60px 0 100px;
+  padding: 30px 0 70px;
   margin-top: 0;
   background-size: cover;
   background-position: center;

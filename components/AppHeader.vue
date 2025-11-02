@@ -843,10 +843,12 @@ async function handleRegisterSubmit() {
             <div class="col-7 col-md-7">
               <!-- Search Section -->
               <div class="search-section">
-                <div class="search-container" @click="searchOpen = true">
-                  <div class="search-box search-box-desktop">
-                    <svg width="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-                        <input type="text" :placeholder="t('search.placeholder')" readonly class="search-input" />
+                <div class="search-container">
+                  <div class="search-box search-box-desktop p-0 border 0">
+                    <div class="so-search border-0">
+                                <svg  width="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                                <input v-model="q" type="text" :placeholder="t('search.placeholder')" @keyup.enter="goSearch()" autofocus />
+                    </div>
                   </div>
 
                 </div>
@@ -1636,6 +1638,11 @@ body {
   color: inherit;
   text-decoration: none;
   transition: transform 0.2s ease;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .brand:hover {
@@ -2000,6 +2007,9 @@ body {
   background: #f8f9ff;
   color: #000000;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+.categories-btn:hover svg path {
+  fill: #fff;
 }
 .categories-btn .categories-icon:hover {
   color: #ffffff;
@@ -2408,6 +2418,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+  
 }
 
 .brands img {

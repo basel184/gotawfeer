@@ -1550,6 +1550,69 @@ watch(mainIndex, (newIndex) => {
         <div class="stock-status" :class="{ in: currentVariantStock, out: !currentVariantStock }">
           {{ currentVariantStock ? `متوفر في المخزون (${currentVariantStock} قطعة)` : 'غير متوفر حالياً' }}
         </div>
+        <div class="offer-products mt-3">
+          <h4>
+            منتجات عليها عروض
+          </h4>
+          <div class="offer-products-container mt-4">
+            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
+              <picture >
+                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
+              </picture>
+              <div class="offer-product-card-content">
+                <h6>
+                  بكج الرجل السعودى
+                </h6>
+                <div class="offer-product-card-price d-flex align-items-center gap-3">
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                </div>
+              </div>
+            </div>
+            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
+              <picture >
+                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
+              </picture>
+              <div class="offer-product-card-content">
+                <h6>
+                  بكج الرجل السعودى
+                </h6>
+                <div class="offer-product-card-price d-flex align-items-center gap-3">
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                </div>
+              </div>
+            </div>
+            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
+              <picture >
+                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
+              </picture>
+              <div class="offer-product-card-content">
+                <h6>
+                  بكج الرجل السعودى
+                </h6>
+                <div class="offer-product-card-price d-flex align-items-center gap-3">
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                </div>
+              </div>
+            </div>
+            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
+              <picture >
+                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
+              </picture>
+              <div class="offer-product-card-content">
+                <h6>
+                  بكج الرجل السعودى
+                </h6>
+                <div class="offer-product-card-price d-flex align-items-center gap-3">
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
