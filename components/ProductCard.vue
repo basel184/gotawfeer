@@ -14,31 +14,68 @@ const emit = defineEmits<{
 const cfg = useRuntimeConfig() as any
 const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
+  if (!s || !s.trim()) {
+    if (process.client) console.warn('[ProductCard] fixPath: empty input')
+    return ''
+  }
+  
   let p = s.trim().replace(/\\/g, '/')
+  
+  // If it's already a full URL, return as is (handled in normalize)
+  if (/^(https?:|data:|blob:)/i.test(p)) {
+    if (process.client) console.log('[ProductCard] fixPath: already full URL', p)
+    return p
+  }
   
   // Remove common prefixes
   p = p.replace(/^public\//, '')
   p = p.replace(/^app\/public\//, '')
+  p = p.replace(/^storage\/app\/public\/product\/thumbnail\//, '')
   p = p.replace(/^storage\/app\/public\//, '')
+  p = p.replace(/^storage\/product\/thumbnail\//, '')
+  p = p.replace(/^storage\//, '')
   
   // Clean up slashes
-  p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  p = p.replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '')
   
-  // Ensure it starts with storage/
-  if (!p.startsWith('storage/')) {
-    p = 'storage/' + p
+  // If empty after cleanup, return empty
+  if (!p) {
+    if (process.client) console.warn('[ProductCard] fixPath: empty after cleanup', { original: s })
+    return ''
+  }
+  
+  // If it's just a filename (no slashes), assume it's a product thumbnail
+  // This handles cases like: 66666.webp, 2025-10-16-68f09dce45585.webp, etc.
+  if (!p.includes('/')) {
+    // Always add to product/thumbnail path for filenames only
+    p = `storage/app/public/product/thumbnail/${p}`
+    if (process.client) console.log('[ProductCard] fixPath: filename only, added path', { original: s, result: p })
+  } else {
+    // If it already has a path structure, ensure it starts with storage/app/public/
+    if (!p.startsWith('storage/app/public/')) {
+      p = `storage/app/public/${p}`
+    }
+    if (process.client) console.log('[ProductCard] fixPath: path structure', { original: s, result: p })
   }
   
   return p
 }
 // Normalize various backend image shapes: string path/URL, JSON string, object with path/url, or arrays
 const normalize = (s: any): string => {
-  if (!s) return ''
+  if (!s) {
+    if (process.client) console.warn('[ProductCard] normalize: empty input')
+    return ''
+  }
   // If array, take first
   if (Array.isArray(s)) return normalize(s[0])
   let v: any = s
   if (typeof s === 'string') {
     const trimmed = s.trim()
+    // Skip empty strings
+    if (!trimmed) {
+      if (process.client) console.warn('[ProductCard] normalize: empty string after trim')
+      return ''
+    }
     // Attempt to parse JSON arrays/objects like images: "[...]"
     if ((trimmed.startsWith('[') || trimmed.startsWith('{'))) {
       try {
@@ -54,10 +91,23 @@ const normalize = (s: any): string => {
     v = (s as any).path || (s as any).url || (s as any).image || ''
   }
   v = (typeof v === 'string' ? v : '').trim()
-  if (!v) return ''
-  if (/^(https?:|data:|blob:)/i.test(v)) return v
+  if (!v) {
+    if (process.client) console.warn('[ProductCard] normalize: empty value after processing', { input: s, type: typeof s })
+    return ''
+  }
+  // If it's already a full URL, return as is
+  if (/^(https?:|data:|blob:)/i.test(v)) {
+    if (process.client) console.log('[ProductCard] normalize: already full URL', v)
+    return v
+  }
+  // Fix path and build full URL
   const fixedPath = fixPath(v)
+  if (!fixedPath) {
+    if (process.client) console.warn('[ProductCard] normalize: fixPath returned empty', { input: v })
+    return ''
+  }
   const result = `${assetBase}/${fixedPath}`
+  if (process.client) console.log('[ProductCard] normalize: final result', { input: s, value: v, fixedPath, result })
   return result
 }
 
@@ -68,30 +118,122 @@ const link = computed(() => {
 })
 const imgSrc = computed(() => {
   const p: any = props.product || {}
+  
+  // Helper to check if URL object is valid
+  const isValidUrlObject = (obj: any): boolean => {
+    if (!obj || typeof obj !== 'object') return false
+    // If it's an object, check if path exists and status is not 404
+    if (obj.path && obj.status !== 404) return true
+    // If key exists but path is null/404, consider it invalid
+    if (obj.key && (!obj.path || obj.status === 404)) return false
+    return true
+  }
+  
+  // Helper to extract value from URL object
+  const extractUrlValue = (obj: any): any => {
+    if (!obj || typeof obj !== 'object') return obj
+    // If path exists and is valid, use it
+    if (obj.path && obj.status !== 404) return obj.path
+    // If key exists but path is invalid, return key as fallback
+    if (obj.key) return obj.key
+    return null
+  }
+  
+  // Try to get thumbnail_full_url, but check if it's valid
+  let thumbnailFullUrl = p?.thumbnail_full_url || p?.product?.thumbnail_full_url
+  if (thumbnailFullUrl && typeof thumbnailFullUrl === 'object') {
+    // If it's an object with invalid path (null/404), skip it and use thumbnail instead
+    if (!isValidUrlObject(thumbnailFullUrl)) {
+      thumbnailFullUrl = null
+    } else {
+      thumbnailFullUrl = extractUrlValue(thumbnailFullUrl)
+    }
+  }
+  
+  // Try to get image_full_url, but check if it's valid
+  let imageFullUrl = p?.image_full_url || p?.product?.image_full_url
+  if (imageFullUrl && typeof imageFullUrl === 'object') {
+    if (!isValidUrlObject(imageFullUrl)) {
+      imageFullUrl = null
+    } else {
+      imageFullUrl = extractUrlValue(imageFullUrl)
+    }
+  }
+  
+  // Helper to get string value from field (handle arrays)
+  const getStringValue = (field: any): string | null => {
+    if (!field) return null
+    if (typeof field === 'string') return field
+    if (Array.isArray(field) && field.length > 0) {
+      // If array, take first element that is a string
+      const first = field.find((item: any) => typeof item === 'string')
+      return first || null
+    }
+    if (typeof field === 'object' && field.path) return field.path
+    if (typeof field === 'object' && field.key) return field.key
+    return null
+  }
+  
+  // Try each field and get string value
   const raw =
-    // Prefer full URLs if provided (can be object with path or array)
-    p?.thumbnail_full_url ||
-    p?.image_full_url ||
-    p?.photo_full_url ||
-    p?.images_full_url ||
-    // Fall back to simple fields
-    p?.thumbnail ||
-    p?.image ||
-    p?.photo ||
-    p?.images ||
-    p?.gallery_images ||
+    // Prefer valid full URLs if provided
+    getStringValue(thumbnailFullUrl) ||
+    getStringValue(imageFullUrl) ||
+    getStringValue(p?.photo_full_url) ||
+    getStringValue(p?.images_full_url) ||
+    getStringValue(p?.product?.photo_full_url) ||
+    getStringValue(p?.product?.images_full_url) ||
+    // Fall back to simple fields (these are usually strings)
+    getStringValue(p?.thumbnail) ||
+    getStringValue(p?.image) ||
+    getStringValue(p?.photo) ||
+    getStringValue(p?.images) ||
+    getStringValue(p?.gallery_images) ||
     // Nested under product
-    p?.product?.thumbnail_full_url ||
-    p?.product?.image_full_url ||
-    p?.product?.photo_full_url ||
-    p?.product?.images_full_url ||
-    p?.product?.thumbnail ||
-    p?.product?.image ||
-    p?.product?.photo ||
-    p?.product?.images ||
-    p?.product?.gallery_images ||
+    getStringValue(p?.product?.thumbnail) ||
+    getStringValue(p?.product?.image) ||
+    getStringValue(p?.product?.photo) ||
+    getStringValue(p?.product?.images) ||
+    getStringValue(p?.product?.gallery_images) ||
     ''
+  // Debug: Log what we're getting from product
+  if (process.client) {
+    console.log('[ProductCard] Raw thumbnail data:', {
+      productId: p?.id || p?.product_id,
+      productName: p?.name || p?.product_name,
+      thumbnail: p?.thumbnail,
+      thumbnail_full_url: p?.thumbnail_full_url,
+      image: p?.image,
+      image_full_url: p?.image_full_url,
+      raw: raw,
+      assetBase: assetBase
+    })
+  }
+  
   const result = normalize(raw)
+  
+  // Debug logging
+  if (process.client) {
+    console.log('[ProductCard] Image URL generated:', {
+      raw,
+      result,
+      isEmpty: !result || result === `${assetBase}/`,
+      productId: p?.id || p?.product_id,
+      productName: p?.name || p?.product_name
+    })
+  }
+  
+  // If no result, return placeholder
+  if (!result || result === `${assetBase}/`) {
+    if (process.client) {
+      console.warn('[ProductCard] No image URL generated, using placeholder:', {
+        raw,
+        productId: p?.id || p?.product_id
+      })
+    }
+    return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+  }
+  
   return result
 })
 const title = computed(() => {
@@ -181,7 +323,18 @@ const reviewsCount = computed<number>(() => {
   return isFinite(n) && n >= 0 ? Math.round(n) : 0
 })
 const onErr = (e: any) => {
-  e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+  const failedSrc = e.target.src
+  console.error('[ProductCard] Image load failed:', {
+    failedSrc,
+    product: props.product?.id || props.product?.product_id,
+    imgSrc: imgSrc.value
+  })
+  
+  // Prevent infinite loop - only set placeholder if not already set
+  if (!failedSrc.includes('data:image/svg+xml')) {
+    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+    e.target.onerror = null // Prevent infinite loop
+  }
 }
 
 // Wishlist + Add to cart
