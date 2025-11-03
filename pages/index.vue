@@ -478,6 +478,78 @@ const onImgErr = (e: any) => {
           </div>
         </div>
       </section>
+          <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-products">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-lg-6 mb-3">
+                <picture>
+                  <img class="mw-100" src="https://gotawfeer.com/project/storage/app/public/product/thumbnail/%D8%AA%D9%81%D8%A7%D8%AD-%D8%A7%D8%AD%D9%85%D8%B1.webp" alt="صورة المنتج">
+                </picture>
+              </div>
+              <div class="col-lg-6">
+                <div class="product-content-popup">
+                  <h5>
+	1-مجموعه فرش الشعر من سوناتا  |  Sonata Hair Brush Set-1
+                  </h5>
+                  <div class="brands-popup d-flex align-items-center gap-2">
+                    <a href="#" class="text-decoration-none">
+                      <picture>
+                        <img class="cover-image-class" src="https://gotawfeer.com/wp-content/uploads/2025/07/Group-72.png" alt="">
+                      </picture>
+                    </a>
+                  </div>
+                  <h5 class="price final mt-3">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></h5>
+                </div>
+                <div class="buttons d-flex align-items-center gap-2">
+                  <a href="" class="main-btn">إضافة إلى السلة</a>
+                  <a href="" class="second-btn">تفاصيل المنتج</a>
+                </div>
+                <div class="cat border-top mt-3 pt-3 d-flex align-items-center gap-2">
+                  <strong>التصنيفات:</strong>
+                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled ">
+                    <li>
+                      <a class="text-decoration-none text-black" href="#">
+                        الشعر
+                      </a>
+                    </li>
+                    <li>
+                      <a class="text-decoration-none text-black" href="#">
+                        الشعر
+                      </a>
+                    </li>
+                    <li>
+                      <a class="text-decoration-none text-black" href="#">
+                        الشعر
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <strong class="mt-4 mb-2 d-block ">مشاركة</strong>
+                <div class="share d-flex align-items-center gap-2">
+                  <a href="#" class="text-decoration-none">
+                    <i class="fa-brands fa-facebook"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none">
+                    <i class="fa-brands fa-telegram"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none">
+                    <i class="fa-brands fa-square-snapchat"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none">
+                    <i class="fa-brands fa-linkedin"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 

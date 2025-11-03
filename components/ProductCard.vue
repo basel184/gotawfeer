@@ -600,11 +600,10 @@ const inStock = computed<boolean>(() => {
           </svg>
           <div v-else class="compare-spinner"></div>
         </button>
-        <button class=" fab wish">
+        <button class="fab wish" data-bs-toggle="modal" data-bs-target="#exampleModal" type="button" @click.stop.prevent>
           <svg svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5.28198 9.25345C5.9701 9.6655 6.75742 9.88245 7.55947 9.88105C8.14273 9.88184 8.72039 9.76735 9.25925 9.54415C9.79812 9.32095 10.2875 8.99345 10.6994 8.58047C11.1124 8.1686 11.4399 7.67917 11.6631 7.14031C11.8863 6.60145 12.0008 6.02378 12 5.44053C12 4.21428 11.5033 3.10448 10.6994 2.30058C10.2875 1.8876 9.79812 1.5601 9.25925 1.3369C8.72039 1.1137 8.14273 0.999209 7.55947 1C6.33323 1 5.22343 1.49668 4.41953 2.30058C4.00655 2.71245 3.67905 3.20188 3.45585 3.74075C3.23265 4.27961 3.11816 4.85727 3.11895 5.44053C3.11781 6.22824 3.32697 7.00199 3.72484 7.68184C4.06495 8.26207 4.01034 8.98966 3.53472 9.46528L1 12" stroke="#6F6F6F" stroke-width="1.5"/>
           </svg>
-
         </button>
       </div>
       <div class="status-card count-down d-none">
@@ -617,7 +616,7 @@ const inStock = computed<boolean>(() => {
       
       <!-- add/qty area bottom-left; lock if out of stock -->
     </div>
-    
+
     <div class="info">
       <!-- Brand and Title -->
       <div class="rating d-flex align-items-center justify-content-between ">
