@@ -787,11 +787,13 @@ const onImgErr = (e: any) => {
               <div class="col-lg-6">
                 <div class="product-content-popup">
                   <h5>{{ modalProductTitle }}</h5>
-                  <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2">
-                    <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none">
+                  <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
+                    <strong class="me-2">البراند:</strong>
+                    <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                       <picture>
                         <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
                       </picture>
+                      <span class="brand-name">{{ modalProductBrand.name }}</span>
                     </NuxtLink>
                   </div>
                   <h5 class="price final mt-3">
@@ -811,11 +813,11 @@ const onImgErr = (e: any) => {
                   </template>
                   <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
                 </div>
-                <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3 d-flex align-items-center gap-2">
-                  <strong>التصنيفات:</strong>
-                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled">
+                <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3">
+                  <strong class="d-block mb-2">التصنيفات:</strong>
+                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
                     <li v-for="(cat, index) in modalProductCategories" :key="index">
-                      <NuxtLink class="text-decoration-none text-black" :to="`/category/${cat.id}`">
+                      <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
                         {{ cat.name }}
                       </NuxtLink>
                     </li>
@@ -1387,5 +1389,55 @@ const onImgErr = (e: any) => {
   width: 1rem;
   height: 1rem;
   border-width: 0.2em;
+}
+
+/* Brand and Categories Styles */
+.brands-popup {
+  padding: 8px 0;
+}
+
+.brands-popup .cover-image-class {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 4px;
+}
+
+.brands-popup .brand-name {
+  color: #111827;
+  font-weight: 600;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.brands-popup a:hover .brand-name {
+  color: #F58040;
+}
+
+.cat {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.category-badge:hover {
+  background: #F58040;
+  color: #fff;
+  border-color: #F58040;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
 }
 </style>
