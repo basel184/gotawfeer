@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
   }
   
   // Proxy the request
+  let fullUrl: URL | null = null
   try {
     const headers: Record<string, string> = {}
     
@@ -52,14 +53,14 @@ export default defineEventHandler(async (event) => {
     // Get query parameters (getQuery already parses query string from URL)
     const query = getQuery(event)
     // Build target URL with path
-    const fullUrl = new URL(targetUrl)
+    fullUrl = new URL(targetUrl)
     // Add all query parameters
     Object.entries(query).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
         if (Array.isArray(value)) {
-          value.forEach(v => fullUrl.searchParams.append(key, String(v)))
+          value.forEach(v => fullUrl!.searchParams.append(key, String(v)))
         } else {
-          fullUrl.searchParams.set(key, String(value))
+          fullUrl!.searchParams.set(key, String(value))
         }
       }
     })
@@ -75,20 +76,47 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    const response = await $fetch(fullUrl.toString(), {
+    // Ensure Content-Type is set for POST/PUT requests with body
+    if (body && !headers['Content-Type'] && !headers['content-type']) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
+    const fullUrlString = fullUrl.toString()
+    console.log('[API Proxy] Request:', {
+      method: event.node.req.method,
+      url: fullUrlString,
+      hasBody: !!body,
+      bodyKeys: body ? Object.keys(body) : [],
+      headers: Object.keys(headers)
+    })
+    
+    const response = await $fetch(fullUrlString, {
       method: event.node.req.method as any,
       headers,
-      body,
+      body: body ? JSON.stringify(body) : undefined,
+      timeout: 30000, // 30 seconds timeout
+    }).catch((fetchError: any) => {
+      console.error('[API Proxy] Fetch Error:', {
+        url: fullUrlString,
+        method: event.node.req.method,
+        error: fetchError.message,
+        cause: fetchError.cause,
+        stack: fetchError.stack
+      })
+      throw fetchError
     })
     
     return response
   } catch (error: any) {
     console.error('[API Proxy Error]', {
       url: targetUrl,
+      fullUrl: fullUrl?.toString(),
       method: event.node.req.method,
       error: error.message,
       status: error.response?.status || error.statusCode,
-      data: error.data || error.response?.data
+      statusMessage: error.response?.statusText || error.statusMessage,
+      data: error.data || error.response?.data,
+      cause: error.cause
     })
     
     const statusCode = error.response?.status || error.statusCode || 500

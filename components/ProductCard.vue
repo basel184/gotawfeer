@@ -456,13 +456,36 @@ const qty = computed(() => {
   // Use cart.qtyOf if available, otherwise fall back to props.qty
   return cart.qtyOf(props.product) || props.qty || 0
 })
-const isBusy = computed(() => !!props.busy || cart.loading.value)
+
+// Local loading state for this specific product
+const isAddingToCart = ref(false)
+const isBusy = computed(() => !!props.busy || isAddingToCart.value || cart.loading.value)
+
+// Success message state
+const showSuccessMessage = ref(false)
+
+// Function to show success message
+const showSuccessToast = () => {
+  showSuccessMessage.value = true
+  setTimeout(() => {
+    showSuccessMessage.value = false
+  }, 3000)
+}
+
+// Function to open cart dropdown
+const openCartDropdown = () => {
+  if (process.client) {
+    const event = new CustomEvent('open-cart')
+    window.dispatchEvent(event)
+  }
+}
 
 const handleAdd = async (e: Event) => {
   e.preventDefault(); e.stopPropagation()
   if (isBusy.value) return
   
   try {
+    isAddingToCart.value = true
     const productId = props.product?.id || props.product?.product_id
     if (!productId) {
       console.error('Product ID not found')
@@ -491,10 +514,21 @@ const handleAdd = async (e: Event) => {
     }
     
     await cart.add(cartData)
+    // cart.add() already calls list(true) internally, so UI will update automatically
+    
+    // Show success message
+    showSuccessToast()
+    
+    // Open cart dropdown
+    openCartDropdown()
+    
     emit('add', props.product)
     console.log('✅ تم إضافة المنتج للسلة بنجاح')
   } catch (error: any) {
     console.error('❌ خطأ في إضافة المنتج للسلة:', error)
+    alert('حدث خطأ في إضافة المنتج للسلة')
+  } finally {
+    isAddingToCart.value = false
   }
 }
 
@@ -707,6 +741,20 @@ const openProductModal = (e: Event) => {
 
       </div>
     </div>
+    
+    <!-- Success Toast Message -->
+    <teleport to="body">
+      <Transition name="slide-fade">
+        <div v-if="showSuccessMessage" class="success-toast">
+          <div class="success-content">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span>تم إضافة السلة بنجاح</span>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
   </NuxtLink>
 </template>
 
@@ -1100,5 +1148,59 @@ img {
 }
 .grid .card:hover .card-tools {
   bottom: -15px;
+}
+
+/* Success Toast Styles */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+}
+
+.success-content {
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.success-content svg {
+  flex-shrink: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* RTL Support */
+[dir="rtl"] .success-toast {
+  right: auto;
+  left: 20px;
+}
+
+[dir="rtl"] .success-content {
+  text-align: right;
 }
 </style>

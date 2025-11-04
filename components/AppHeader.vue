@@ -34,6 +34,13 @@ const closeCart = () => {
   isCartOpen.value = false
 }
 
+// Listen for cart open event
+if (process.client) {
+  window.addEventListener('open-cart', () => {
+    isCartOpen.value = true
+  })
+}
+
 // Cart count
 const cartCount = computed(() => {
   const items = cart.items.value || []

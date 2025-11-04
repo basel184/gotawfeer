@@ -74,7 +74,7 @@ export function useCart() {
       // Prepare data for API
       const apiData: any = {
         id: payload.product_id,
-        quantity: payload.quantity
+        quantity: payload.quantity || 1
       }
       
       // Add all variant-related fields
@@ -95,10 +95,25 @@ export function useCart() {
       
       console.log('[Cart:add] apiData:', apiData)
       
-      await $post('v1/cart/add', apiData)
-      return list()
+      const response = await $post('v1/cart/add', apiData).catch((err: any) => {
+        console.error('[Cart:add] Error details:', {
+          message: err.message,
+          statusCode: err.statusCode,
+          statusMessage: err.statusMessage,
+          data: err.data,
+          response: err.response
+        })
+        throw err
+      })
+      
+      console.log('[Cart:add] Success:', response)
+      // Force refresh cart list to update UI immediately
+      await list(true)
+      return items.value
     } catch (e: any) {
-      error.value = e?.message || 'Failed to add to cart'
+      const errorMessage = e?.data?.message || e?.message || 'Failed to add to cart'
+      error.value = errorMessage
+      console.error('[Cart:add] Final error:', errorMessage, e)
       throw e
     } finally {
       loading.value = false
@@ -111,7 +126,9 @@ export function useCart() {
     
     try {
       await $put('v1/cart/update', payload)
-      return list()
+      // Force refresh cart list to update UI immediately
+      await list(true)
+      return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to update cart'
       throw e
@@ -139,7 +156,9 @@ export function useCart() {
     
     try {
       await $del('v1/cart/remove', { key })
-      return list()
+      // Force refresh cart list to update UI immediately
+      await list(true)
+      return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to remove from cart'
       throw e
@@ -162,7 +181,9 @@ export function useCart() {
     try {
       // API requires a key param but value is unused; pass a sentinel
       await $del('v1/cart/remove-all', { key: 'all' })
-      return list()
+      // Force refresh cart list to update UI immediately
+      await list(true)
+      return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to clear cart'
       throw e

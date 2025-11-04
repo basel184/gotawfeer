@@ -198,11 +198,61 @@ const shareOnLinkedIn = () => {
   }
 }
 
+// Check if product has variants/options
+const hasProductOptions = computed(() => {
+  if (!selectedProductForModal.value) return false
+  const product = selectedProductForModal.value
+  
+  // Check for colors
+  const hasColors = (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) ||
+                    (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) ||
+                    (product?.product?.colors_formatted && Array.isArray(product.product.colors_formatted) && product.product.colors_formatted.length > 0) ||
+                    (product?.product?.colors && Array.isArray(product.product.colors) && product.product.colors.length > 0)
+  
+  // Check for sizes
+  const hasSizes = (product?.choice_options && Array.isArray(product.choice_options)) ||
+                   (product?.product?.choice_options && Array.isArray(product.product.choice_options))
+  
+  // Check for variations
+  const hasVariations = (product?.variation && Array.isArray(product.variation) && product.variation.length > 0) ||
+                        (product?.product?.variation && Array.isArray(product.product.variation) && product.product.variation.length > 0)
+  
+  return hasColors || hasSizes || hasVariations
+})
+
+// Loading state for modal add to cart
+const isAddingToCart = ref(false)
+
+// Success message state
+const showSuccessMessage = ref(false)
+
+// Function to show success message
+const showSuccessToast = () => {
+  showSuccessMessage.value = true
+  setTimeout(() => {
+    showSuccessMessage.value = false
+  }, 3000)
+}
+
+// Function to open cart dropdown
+const openCartDropdown = () => {
+  if (process.client) {
+    // Access cart dropdown state from AppHeader
+    const appHeader = document.querySelector('header')
+    if (appHeader) {
+      // Trigger cart open event or directly access the state
+      const event = new CustomEvent('open-cart')
+      window.dispatchEvent(event)
+    }
+  }
+}
+
 // Add to cart function
 const handleAddToCart = async () => {
-  if (!selectedProductForModal.value) return
+  if (!selectedProductForModal.value || isAddingToCart.value) return
   
   try {
+    isAddingToCart.value = true
     const product = selectedProductForModal.value
     const productId = product?.id || product?.product_id
     if (!productId) {
@@ -230,9 +280,44 @@ const handleAddToCart = async () => {
     if (product?.sku) cartData.sku = product.sku
     
     await cart.add(cartData)
+    // cart.add() already calls list(true) internally, so UI will update automatically
+    
+    // Show success message
+    showSuccessToast()
+    
+    // Open cart dropdown
+    openCartDropdown()
+    
+    // Close modal
+    if (process.client) {
+      const modalElement = document.getElementById('exampleModal')
+      if (modalElement) {
+        const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
+        if (modal) {
+          modal.hide()
+        }
+      }
+    }
+    
     console.log('✅ تم إضافة المنتج للسلة بنجاح')
   } catch (error: any) {
     console.error('❌ خطأ في إضافة المنتج للسلة:', error)
+    alert('حدث خطأ في إضافة المنتج للسلة')
+  } finally {
+    isAddingToCart.value = false
+  }
+}
+
+// Function to close modal and navigate to product page
+const handleProductDetails = () => {
+  if (process.client) {
+    const modalElement = document.getElementById('exampleModal')
+    if (modalElement) {
+      const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
+      if (modal) {
+        modal.hide()
+      }
+    }
   }
 }
 
@@ -714,8 +799,16 @@ const onImgErr = (e: any) => {
                   </h5>
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">
-                  <a href="#" class="main-btn" @click.prevent="handleAddToCart">إضافة إلى السلة</a>
-                  <NuxtLink :to="modalProductLink" class="second-btn">تفاصيل المنتج</NuxtLink>
+                  <template v-if="hasProductOptions">
+                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">تحديد خيارات</NuxtLink>
+                  </template>
+                  <template v-else>
+                    <a href="#" class="main-btn" @click.prevent="handleAddToCart" :disabled="isAddingToCart">
+                      <span v-if="!isAddingToCart">إضافة إلى السلة</span>
+                      <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    </a>
+                  </template>
+                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
                 </div>
                 <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3 d-flex align-items-center gap-2">
                   <strong>التصنيفات:</strong>
@@ -748,6 +841,20 @@ const onImgErr = (e: any) => {
         </div>
       </div>
     </div>
+    
+    <!-- Success Toast Message -->
+    <teleport to="body">
+      <Transition name="slide-fade">
+        <div v-if="showSuccessMessage" class="success-toast">
+          <div class="success-content">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span>تم إضافة السلة بنجاح</span>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
   </main>
 </template>
 
@@ -1214,5 +1321,70 @@ const onImgErr = (e: any) => {
   .section-header h2 { font-size: 25px; }
   .hero-side { grid-template-columns: 1fr; }
   .hero-side-card img { height: 180px; }
+}
+
+/* Success Toast Styles */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+}
+
+.success-content {
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.success-content svg {
+  flex-shrink: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* RTL Support */
+[dir="rtl"] .success-toast {
+  right: auto;
+  left: 20px;
+}
+
+[dir="rtl"] .success-content {
+  text-align: right;
+}
+
+.main-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.2em;
 }
 </style>
