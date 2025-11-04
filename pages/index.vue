@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import 'swiper/css'
@@ -14,6 +14,65 @@ const swiperModules = [Navigation, Pagination, Autoplay]
 
 // Active slide state for testimonials
 const activeTestimonialSlide = ref(0)
+
+// Countdown timer for promo (7 days)
+const countdownDays = ref(7)
+const countdownHours = ref(0)
+const countdownMinutes = ref(0)
+const countdownSeconds = ref(0)
+
+// Countdown interval reference
+let countdownInterval: any = null
+
+// Initialize countdown
+const initializeCountdown = () => {
+  // Clear any existing interval
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+  }
+  
+  // Set end date to 7 days from now
+  const endDate = new Date()
+  endDate.setDate(endDate.getDate() + 7)
+  endDate.setHours(0, 0, 0, 0) // Set to midnight
+  
+  const updateCountdown = () => {
+    const now = new Date().getTime()
+    const distance = endDate.getTime() - now
+    
+    if (distance < 0) {
+      // Countdown finished, reset to 7 days
+      endDate.setDate(endDate.getDate() + 7)
+      endDate.setHours(0, 0, 0, 0)
+      return
+    }
+    
+    // Calculate time units
+    countdownDays.value = Math.floor(distance / (1000 * 60 * 60 * 24))
+    countdownHours.value = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    countdownMinutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+    countdownSeconds.value = Math.floor((distance % (1000 * 60)) / 1000)
+  }
+  
+  // Update immediately
+  updateCountdown()
+  
+  // Update every second
+  countdownInterval = setInterval(updateCountdown, 1000)
+}
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
+})
+
+// Format countdown number with leading zero
+const formatCountdown = (num: number): string => {
+  return num.toString().padStart(2, '0')
+}
 
 const { $get } = useApi()
 const { data: cfg } = await useAsyncData('cfg', () => $get('v1/config'))
@@ -31,6 +90,9 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load wishlist or cart:', error)
   }
+  
+  // Initialize countdown
+  initializeCountdown()
 })
 
 // Modal state - global state for product modal
@@ -611,6 +673,7 @@ const onImgErr = (e: any) => {
                 <div class="products-carousel-section">
                   <div class="products-carousel">
                     <Swiper
+                      v-if="s.products && s.products.length > 0"
                       :modules="swiperModules"
                       :slides-per-view="5"
                       :navigation="false"
@@ -621,11 +684,13 @@ const onImgErr = (e: any) => {
                         1024: { slidesPerView: 4, spaceBetween: 15 },
                         1200: { slidesPerView: 5, spaceBetween: 15 }
                       }"
+                      :watch-overflow="true"
                       class="products-swiper"
+                      @swiper="(swiper) => { if (swiper && swiper.update) swiper.update() }"
                     >
                       <SwiperSlide 
                         v-for="(product, index) in s.products" 
-                        :key="product.id || index"
+                        :key="product.id || product.product_id || index"
                       >
                         <ProductCard :product="product" />
                       </SwiperSlide>
@@ -634,10 +699,26 @@ const onImgErr = (e: any) => {
                 </div>
                 <div class="promo-banner-section flex-column ">
                   <div class="promo-countdown ">
-                    <h4 class="d-flex text-white" dir="ltr">
-                      <p>07 :</p>
-                      <p>40 :</p>
-                      <p>46 </p>
+                    <h4 class="d-flex text-white align-items-center justify-content-center gap-2" dir="ltr">
+                      <span class="countdown-item">
+                        <span class="countdown-number">{{ formatCountdown(countdownDays) }}</span>
+                        <span class="countdown-label">يوم</span>
+                      </span>
+                      <span class="countdown-separator">:</span>
+                      <span class="countdown-item">
+                        <span class="countdown-number">{{ formatCountdown(countdownHours) }}</span>
+                        <span class="countdown-label">ساعة</span>
+                      </span>
+                      <span class="countdown-separator">:</span>
+                      <span class="countdown-item">
+                        <span class="countdown-number">{{ formatCountdown(countdownMinutes) }}</span>
+                        <span class="countdown-label">دقيقة</span>
+                      </span>
+                      <span class="countdown-separator">:</span>
+                      <span class="countdown-item">
+                        <span class="countdown-number">{{ formatCountdown(countdownSeconds) }}</span>
+                        <span class="countdown-label">ثانية</span>
+                      </span>
                     </h4>
                   </div>
                   <div class="promo-banner">
@@ -674,6 +755,7 @@ const onImgErr = (e: any) => {
                 <h2 class="text-white text-center pt-3">آراء عملائنا</h2>
                 <div v-if="s?.testimonials_layout === 'slider'" class="testimonials-swiper">
                   <Swiper
+                    v-if="s.testimonials_data && s.testimonials_data.length > 0"
                     :modules="swiperModules"
                     :slides-per-view="3"
                     :space-between="30"
@@ -684,6 +766,8 @@ const onImgErr = (e: any) => {
                       disableOnInteraction: false,
                     }"
                     :centered-slides="true"
+                    :loop="s.testimonials_data.length > 3"
+                    :watch-overflow="true"
                     :breakpoints="{
                       320: {
                         slidesPerView: 2,
@@ -696,7 +780,8 @@ const onImgErr = (e: any) => {
                         centeredSlides: true
                       }
                     }"
-                    @slide-change="(swiper) => activeTestimonialSlide = swiper.activeIndex"
+                    @swiper="(swiper) => { if (swiper && swiper.update) swiper.update() }"
+                    @slide-change="(swiper) => { if (swiper) activeTestimonialSlide = swiper.activeIndex }"
                     class="testimonials-swiper-container"
                   >
                     <SwiperSlide v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-slide" :class="{ 'center-slide': index === activeTestimonialSlide }">
@@ -1449,5 +1534,73 @@ const onImgErr = (e: any) => {
   border-color: #F58040;
   transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
+}
+
+/* Countdown Styles */
+.countdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.countdown-number {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.countdown-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.countdown-separator {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 4px;
+  padding: 0 2px;
+}
+
+.promo-countdown h4 {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .countdown-item {
+    min-width: 50px;
+    padding: 6px 8px;
+  }
+  
+  .countdown-number {
+    font-size: 18px;
+  }
+  
+  .countdown-label {
+    font-size: 9px;
+  }
+  
+  .countdown-separator {
+    font-size: 16px;
+    margin: 0 2px;
+  }
+  
+  .promo-countdown h4 {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
 }
 </style>

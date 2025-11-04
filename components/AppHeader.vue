@@ -1280,7 +1280,7 @@ async function handleRegisterSubmit() {
                 </clipPath>
                 </defs>
               </svg>
-              <span v-if="compareCount > 0" class="compare-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">{{ compareCount }}</span>
+              <span v-if="compareCount >= 0" class="compare-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">{{ compareCount }}</span>
             </NuxtLink>
             
 <div class="cart-dropdown-wrapper">
@@ -1289,7 +1289,7 @@ async function handleRegisterSubmit() {
       <svg width="19" height="19" viewBox="0 0 19 19" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12.7667 14.463C12.1639 14.463 11.6701 14.9674 11.6701 15.5904C11.6701 16.206 12.1639 16.7103 12.7667 16.7103C13.3767 16.7103 13.8705 16.206 13.8705 15.5904C13.8705 14.9674 13.3767 14.463 12.7667 14.463ZM4.5968 14.463C3.99404 14.463 3.50022 14.9674 3.50022 15.5904C3.50022 16.206 3.99404 16.7103 4.5968 16.7103C5.20681 16.7103 5.70063 16.206 5.70063 15.5904C5.70063 14.9674 5.20681 14.463 4.5968 14.463ZM16.1448 2.17489L16.0708 2.18116L14.3388 2.44742C14.0918 2.49266 13.9103 2.69959 13.8885 2.95176L13.7505 4.61313C13.7287 4.85121 13.5399 5.02921 13.3075 5.02921H3.50007C3.05709 5.02921 2.7666 5.18497 2.47612 5.52614C2.18563 5.86731 2.1348 6.35682 2.20016 6.80109L2.89006 11.6665C3.02077 12.6018 3.80508 13.2908 4.72737 13.2908H12.6503C13.6162 13.2908 14.415 12.535 14.4949 11.556L15.163 3.47094L16.2596 3.2781C16.5501 3.22618 16.7534 2.93693 16.7026 2.64026C16.6517 2.33691 16.3685 2.13591 16.0708 2.18116L16.1448 2.17489ZM5.8893 7.77269H7.90091C8.20591 7.77269 8.44556 8.01745 8.44556 8.32895C8.44556 8.63304 8.20591 8.88521 7.90091 8.88521H5.8893C5.5843 8.88521 5.34465 8.63304 5.34465 8.32895C5.34465 8.01745 5.5843 7.77269 5.8893 7.77269Z" fill="white"/>
       </svg>
-      <span class="cart-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">1</span>
+      <span v-if="cartCount > 0" class="cart-badge badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">{{ cartCount }}</span>
     </div>
 
     <!-- Cart Dropdown -->

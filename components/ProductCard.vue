@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, onMounted } from 'vue'
+import { computed, ref, watchEffect, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useBrands } from '../composables/useBrands'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
@@ -246,6 +246,36 @@ const wishlist = useWishlist()
 const compare = useCompare()
 
 // Load cart, wishlist and compare on component mount
+// Tooltip instances
+const tooltipInstances = ref<any[]>([])
+
+// Initialize tooltips for a specific element
+const initTooltip = (element: any) => {
+  if (!element || !process.client || !(window as any).bootstrap) return null
+  
+  try {
+    // Dispose existing tooltip if any
+    const existingTooltip = (window as any).bootstrap.Tooltip.getInstance(element)
+    if (existingTooltip) {
+      existingTooltip.dispose()
+    }
+    
+    // Create new tooltip
+    const tooltip = new (window as any).bootstrap.Tooltip(element, {
+      trigger: 'hover',
+      placement: element.getAttribute('data-bs-placement') || 'top',
+      container: 'body',
+      html: false
+    })
+    
+    tooltipInstances.value.push(tooltip)
+    return tooltip
+  } catch (error) {
+    console.warn('Failed to initialize tooltip:', error)
+    return null
+  }
+}
+
 onMounted(async () => {
   try {
     await Promise.all([
@@ -255,6 +285,30 @@ onMounted(async () => {
     compare.init()
   } catch (error) {
     console.error('Failed to load cart or wishlist:', error)
+  }
+  
+  // Initialize Bootstrap tooltips
+  if (process.client && (window as any).bootstrap) {
+    await nextTick()
+    // Use setTimeout to ensure DOM is fully rendered
+    setTimeout(() => {
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      tooltipTriggerList.forEach((tooltipTriggerEl: any) => {
+        initTooltip(tooltipTriggerEl)
+      })
+    }, 100)
+  }
+})
+
+// Cleanup tooltips on unmount
+onBeforeUnmount(() => {
+  if (process.client) {
+    tooltipInstances.value.forEach((tooltip: any) => {
+      if (tooltip && typeof tooltip.dispose === 'function') {
+        tooltip.dispose()
+      }
+    })
+    tooltipInstances.value = []
   }
 })
 
@@ -354,6 +408,39 @@ const isInCompare = computed(() => {
   const productId = props.product?.id || props.product?.product_id
   if (!productId) return false
   return compare.isInCompare(Number(productId))
+})
+
+// Watch for state changes to update tooltip text
+watch([wished, isInCompare], () => {
+  if (process.client && (window as any).bootstrap) {
+    nextTick(() => {
+      // Update tooltip titles dynamically
+      const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
+      if (!cardElement) return
+      
+      // Update wishlist tooltip
+      const wishButton = cardElement.querySelector('[data-bs-toggle="tooltip"][data-wished]')
+      if (wishButton) {
+        const tooltip = (window as any).bootstrap.Tooltip.getInstance(wishButton)
+        if (tooltip) {
+          const newTitle = wished.value ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'
+          wishButton.setAttribute('data-bs-title', newTitle)
+          tooltip.setContent({ '.tooltip-inner': newTitle })
+        }
+      }
+      
+      // Update compare tooltip
+      const compareButton = cardElement.querySelector('[data-bs-toggle="tooltip"].compare-btn')
+      if (compareButton) {
+        const tooltip = (window as any).bootstrap.Tooltip.getInstance(compareButton)
+        if (tooltip) {
+          const newTitle = isInCompare.value ? 'إزالة من المقارنة' : 'إضافة للمقارنة'
+          compareButton.setAttribute('data-bs-title', newTitle)
+          tooltip.setContent({ '.tooltip-inner': newTitle })
+        }
+      }
+    })
+  }
 })
 
 const toggleWish = async (e: Event) => {
@@ -700,7 +787,7 @@ const openProductModal = (e: Event) => {
 </script>
 
 <template>
-  <NuxtLink :to="(link as any) || '#'" class="card" dir="rtl" :aria-disabled="!(link as any)" @click="!(link as any) && $event.preventDefault()">
+  <NuxtLink :to="(link as any) || '#'" class="card" dir="rtl" :aria-disabled="!(link as any)" @click="!(link as any) && $event.preventDefault()" :data-product-id="props.product?.id || props.product?.product_id">
     <div class="thumb">
       <!-- wishlist at top-left -->
       <div class="card-tools d-flex flex-column">
@@ -711,6 +798,9 @@ const openProductModal = (e: Event) => {
           :disabled="wishlistLoading"
           :data-wished="wished"
           :data-loading="wishlistLoading"
+          data-bs-toggle="tooltip"
+          :data-bs-title="wished ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'"
+          data-bs-placement="top"
           aria-label="Wishlist"
           >
           <svg v-if="!wishlistLoading" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -725,6 +815,9 @@ const openProductModal = (e: Event) => {
           :class="{ 'in-compare': isInCompare }"
           @click="toggleCompare" 
           :disabled="compare.loading.value"
+          data-bs-toggle="tooltip"
+          :data-bs-title="isInCompare ? 'إزالة من المقارنة' : 'إضافة للمقارنة'"
+          data-bs-placement="top"
           aria-label="Compare"
         >
           <svg v-if="!compare.loading.value" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -732,7 +825,16 @@ const openProductModal = (e: Event) => {
           </svg>
           <div v-else class="compare-spinner"></div>
         </button>
-        <button class="fab wish" data-bs-toggle="modal" data-bs-target="#exampleModal" type="button" @click.stop.prevent="openProductModal">
+        <button 
+          class="fab wish" 
+          data-bs-target="#exampleModal" 
+          type="button" 
+          @click.stop.prevent="openProductModal"
+          data-bs-toggle="tooltip"
+          data-bs-title="عرض المنتج"
+          data-bs-placement="top"
+          aria-label="View Product"
+        >
           <svg svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5.28198 9.25345C5.9701 9.6655 6.75742 9.88245 7.55947 9.88105C8.14273 9.88184 8.72039 9.76735 9.25925 9.54415C9.79812 9.32095 10.2875 8.99345 10.6994 8.58047C11.1124 8.1686 11.4399 7.67917 11.6631 7.14031C11.8863 6.60145 12.0008 6.02378 12 5.44053C12 4.21428 11.5033 3.10448 10.6994 2.30058C10.2875 1.8876 9.79812 1.5601 9.25925 1.3369C8.72039 1.1137 8.14273 0.999209 7.55947 1C6.33323 1 5.22343 1.49668 4.41953 2.30058C4.00655 2.71245 3.67905 3.20188 3.45585 3.74075C3.23265 4.27961 3.11816 4.85727 3.11895 5.44053C3.11781 6.22824 3.32697 7.00199 3.72484 7.68184C4.06495 8.26207 4.01034 8.98966 3.53472 9.46528L1 12" stroke="#6F6F6F" stroke-width="1.5"/>
           </svg>
