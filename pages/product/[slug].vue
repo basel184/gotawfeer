@@ -2004,7 +2004,7 @@ const handleProductDetails = () => {
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
-          <strong>.هذا المنتج لا يرد ولأستبدل لضمان سلامتكم الا إذا تتبق سياسة الإرجاع.
+          <strong>.هذا المنتج لا يرد ولا يستبدل لضمان سلامتكم الا إذا تطبق سياسة الإرجاع.
           </strong>
           <p>جميع المنتجات أصلية ومستوردة من الوكالء المعتمدين
           </p>
@@ -2126,7 +2126,7 @@ const handleProductDetails = () => {
                 <div class="offer-product-card-content">
                   <h6 class="text-black">{{ getProductTitle(offerProduct) }}</h6>
                   <div class="offer-product-card-price d-flex align-items-center gap-3">
-                    <span class="price final">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
                     <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
                   </div>
                 </div>
