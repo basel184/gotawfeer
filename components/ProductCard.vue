@@ -451,6 +451,76 @@ const currencySymbol = computed(() => {
 const currencyImage = computed(() => {
   return '/images/Group 1171274840.png'
 })
+
+// Product colors
+const productColors = computed(() => {
+  const p: any = props.product || {}
+  
+  // Try to get colors_formatted first
+  if (p?.colors_formatted && Array.isArray(p.colors_formatted) && p.colors_formatted.length > 0) {
+    return p.colors_formatted.map((color: any) => ({
+      name: color.name || color.code || 'Color',
+      code: color.code || color.name || '',
+      hex: color.hex || color.code || ''
+    }))
+  }
+  
+  // Try nested product.colors_formatted
+  if (p?.product?.colors_formatted && Array.isArray(p.product.colors_formatted) && p.product.colors_formatted.length > 0) {
+    return p.product.colors_formatted.map((color: any) => ({
+      name: color.name || color.code || 'Color',
+      code: color.code || color.name || '',
+      hex: color.hex || color.code || ''
+    }))
+  }
+  
+  // Try simple colors array
+  if (p?.colors && Array.isArray(p.colors) && p.colors.length > 0) {
+    return p.colors.map((color: string | any, index: number) => {
+      if (typeof color === 'string') {
+        return {
+          name: `Color ${index + 1}`,
+          code: color,
+          hex: color
+        }
+      }
+      return {
+        name: color.name || color.code || `Color ${index + 1}`,
+        code: color.code || color.name || color,
+        hex: color.hex || color.code || color
+      }
+    })
+  }
+  
+  // Try nested product.colors
+  if (p?.product?.colors && Array.isArray(p.product.colors) && p.product.colors.length > 0) {
+    return p.product.colors.map((color: string | any, index: number) => {
+      if (typeof color === 'string') {
+        return {
+          name: `Color ${index + 1}`,
+          code: color,
+          hex: color
+        }
+      }
+      return {
+        name: color.name || color.code || `Color ${index + 1}`,
+        code: color.code || color.name || color,
+        hex: color.hex || color.code || color
+      }
+    })
+  }
+  
+  return []
+})
+
+const visibleColors = computed(() => {
+  return productColors.value.slice(0, 3)
+})
+
+const remainingColorsCount = computed(() => {
+  const total = productColors.value.length
+  return total > 3 ? total - 3 : 0
+})
 // Cart controls with quantity
 const qty = computed(() => {
   // Use cart.qtyOf if available, otherwise fall back to props.qty
@@ -717,12 +787,16 @@ const openProductModal = (e: Event) => {
         </div>
 
       </div>
-      <div class="color-pallete-container d-flex align-items-center justify-content-between ">
-        <div class="color-pallete"></div>
-        <div class="color-pallete"></div>
-        <div class="color-pallete"></div>
-        <div class="color-pallete-num">
-          <span>23+</span>
+      <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center justify-content-between ">
+        <div 
+          v-for="(color, index) in visibleColors" 
+          :key="index"
+          class="color-pallete"
+          :style="{ backgroundColor: color.hex || color.code || '#ccc' }"
+          :title="color.name"
+        ></div>
+        <div v-if="remainingColorsCount > 0" class="color-pallete-num">
+          <span>{{ remainingColorsCount }}+</span>
         </div>
       </div>
       <div class="brand" v-if="brandName">{{ brandName }}</div>
@@ -1210,5 +1284,37 @@ img {
 
 [dir="rtl"] .success-content {
   text-align: right;
+}
+
+/* Color Palette Styles */
+.color-pallete-container {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.color-pallete {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.color-pallete:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.color-pallete-num {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
 }
 </style>
