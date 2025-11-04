@@ -1424,7 +1424,13 @@ watch(mainIndex, (newIndex) => {
             </svg>
           </button>
         </div>
-
+        <div class="brands-popup d-flex align-items-center gap-2">
+                    <a href="#" class="text-decoration-none">
+                      <picture>
+                        <img class="cover-image-class" src="https://gotawfeer.com/wp-content/uploads/2025/07/Group-72.png" alt="">
+                      </picture>
+                    </a>
+                  </div>
         <h1 class="title">{{ title }}</h1>
         
         <!-- Rating -->
@@ -1507,7 +1513,7 @@ watch(mainIndex, (newIndex) => {
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
-          <strong>.هذا المنتج ال يرد وألستبدل لضمان سالمتكم اال إذا تتبق سياسة اإلرجاع
+          <strong>.هذا المنتج لا يرد ولأستبدل لضمان سلامتكم الا إذا تتبق سياسة الإرجاع.
           </strong>
           <p>جميع المنتجات أصلية ومستوردة من الوكالء المعتمدين
           </p>
@@ -1533,12 +1539,23 @@ watch(mainIndex, (newIndex) => {
         <!-- Payment Options -->
         <div class="payment-options">
           <div class="payment-option">
-            <div class="payment-logo">Tabby</div>
+            <div class="payment-option-container d-flex align-items-center justify-content-between ">
+
+              <picture>
+                <img src="https://gotawfeer.com/wp-content/uploads/2022/12/1-150x84.png" alt="">
+              </picture>
+              <div class="payment-logo">Tabby</div>
+            </div>
             <div class="payment-text">قسم فاتورتك على 4 دفعات بدون فوائد</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
-            <div class="payment-logo">تمارا</div>
+            <div class="payment-option-container d-flex align-items-center justify-content-between ">
+          <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/3-150x84.png" alt="">
+            </picture>
+              <div class="payment-logo">تمارا</div>
+            </div>
             <div class="payment-text">قسم فاتورتك على 4 دفعات بدون فوائد</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
           </div>
@@ -1556,7 +1573,28 @@ watch(mainIndex, (newIndex) => {
             <span>{{ busy ? 'جاري الإضافة...' : 'أضف للسلة' }}</span>
           </button>
         </div>
-
+        <div class="payment-image mt-4 mb-3 d-flex align-items-center gap-2">
+          <strong>
+            وسائل الدفع :
+          </strong>
+          <div class="payment-image-container d-flex align-items-center gap-4">
+            <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/4-150x84.png" alt="">
+            </picture>
+            <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/3-150x84.png" alt="">
+            </picture>
+            <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/2-150x84.png" alt="">
+            </picture>
+            <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/1-150x84.png" alt="">
+            </picture>
+            <picture>
+              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/5-150x84.png" alt="">
+            </picture>
+          </div>
+        </div>
         <!-- Stock Status -->
         <div class="stock-status" :class="{ in: currentVariantStock, out: !currentVariantStock }">
           {{ currentVariantStock ? `متوفر في المخزون (${currentVariantStock} قطعة)` : 'غير متوفر حالياً' }}

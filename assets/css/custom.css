@@ -222,3 +222,12 @@ html[dir="rtl"] .whatsapp {
 .rating i:hover {
     color: gold;
 }
+.payment-image picture,
+.payment-option picture {
+    display: flex;
+    width: 70px;
+}
+.payment-image picture img,
+.payment-option picture img {
+    width: 100%;
+}
