@@ -787,7 +787,7 @@ const openProductModal = (e: Event) => {
         </div>
 
       </div>
-      <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center justify-content-between ">
+      <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center">
         <div 
           v-for="(color, index) in visibleColors" 
           :key="index"
@@ -1317,4 +1317,5 @@ img {
   justify-content: center;
   min-width: 32px;
 }
+
 </style>

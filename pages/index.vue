@@ -629,7 +629,14 @@ const onImgErr = (e: any) => {
                     </Swiper>
                   </div>
                 </div>
-                <div class="promo-banner-section">
+                <div class="promo-banner-section flex-column ">
+                  <div class="promo-countdown ">
+                    <h4 class="d-flex text-white" dir="ltr">
+                      <p>07 :</p>
+                      <p>40 :</p>
+                      <p>46 </p>
+                    </h4>
+                  </div>
                   <div class="promo-banner">
                     <div class="banner-content">
                       <h3 class="banner-title">اقوى</h3>
