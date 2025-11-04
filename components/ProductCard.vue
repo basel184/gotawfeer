@@ -1,9 +1,5 @@
 <script setup lang="ts">
-<<<<<<< HEAD
 import { computed, ref, watchEffect, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
-=======
-import { computed, ref, watchEffect, onMounted, nextTick } from 'vue'
->>>>>>> b2503b104b6af26550e3f43f80f740f9213a96fa
 import { useBrands } from '../composables/useBrands'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
@@ -292,8 +288,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load cart or wishlist:', error)
   }
-<<<<<<< HEAD
-  
+
   // Initialize Bootstrap tooltips
   if (process.client && (window as any).bootstrap) {
     await nextTick()
@@ -317,10 +312,6 @@ onBeforeUnmount(() => {
     })
     tooltipInstances.value = []
   }
-=======
-
-
->>>>>>> b2503b104b6af26550e3f43f80f740f9213a96fa
 })
 
 
@@ -815,9 +806,6 @@ const openProductModal = (e: Event) => {
           :data-bs-title="wished ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'"
           data-bs-placement="top"
           aria-label="Wishlist"
-          data-bs-toggle="tooltip" data-bs-placement="top"
-          data-bs-custom-class="custom-tooltip"
-          data-bs-title="المفضلة"
           >
           <svg v-if="!wishlistLoading" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10 1C11.6566 1 13 2.49112 13 4.33081C13 5.81587 12.475 9.34047 7.3072 12.9034C7.21463 12.9666 7.10836 13 7 13C6.89164 13 6.78537 12.9666 6.6928 12.9034C1.525 9.34047 1 5.81587 1 4.33081C1 2.49112 2.3434 1 4 1C5.6566 1 7 3.01867 7 3.01867C7 3.01867 8.3434 1 10 1Z" stroke="black" stroke-opacity="0.49" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
