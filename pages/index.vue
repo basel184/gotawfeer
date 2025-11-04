@@ -5,6 +5,7 @@ import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/pagination'
+import 'assets/css/custom.css'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 
@@ -780,7 +781,7 @@ const onImgErr = (e: any) => {
             <div v-if="selectedProductForModal" class="row">
               <div class="col-lg-6 mb-3">
                 <picture>
-                  <img class="mw-100" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
+                  <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
                 </picture>
               </div>
               <div class="col-lg-6">
