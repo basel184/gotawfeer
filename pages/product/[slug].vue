@@ -2028,7 +2028,7 @@ const handleProductDetails = () => {
         </div>
 
         <!-- Payment Options -->
-        <div class="payment-options">
+        <div class="payment-options ">
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
@@ -2049,6 +2049,19 @@ const handleProductDetails = () => {
             </div>
             <div class="payment-text">قسم فاتورتك على 4 دفعات بدون فوائد</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
+          </div>
+        </div>
+        <div class="order-now border py-2 px-3 d-flex justify-content-between align-items-center mb-3 rounded-3 ">
+          <div class="ship d-flex align-items-center gap-2">
+            <i class="fa-solid fa-truck-fast"></i>
+            <strong>التوصيل المتوقع
+            </strong>
+          </div>
+          <div class="d-flex flex-column ">
+            <p class="mb-3">مدة التوصيل لمدينة جدة ومكة: 3 أيام عمل.
+            </p>
+            <p class="mb-3">مدة التوصيل لكل انحاء المملكة: 5 أيام عمل
+            </p>
           </div>
         </div>
 
