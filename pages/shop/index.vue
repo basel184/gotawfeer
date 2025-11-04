@@ -16,6 +16,9 @@ const { categories, brands } = useCatalog()
 const cart = useCart()
 const wishlist = useWishlist()
 
+// Modal state - global state for product modal
+const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
+
 // Mobile filter state
 const mobileFilterOpen = ref(false)
 
@@ -492,6 +495,333 @@ const clearFilters = () => {
   sort_by.value = 'latest'
   resetAndFetch()
 }
+
+// Helper functions for modal
+const cfg = useRuntimeConfig() as any
+const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+
+const fixPath = (s: string) => {
+  let p = s.trim().replace(/\\/g, '/')
+  if (p.startsWith('public/')) {
+    p = p.replace(/^public\//, '')
+  } else if (p.startsWith('app/public/')) {
+    p = p.replace(/^app\/public\//, 'storage/')
+  } else if (p.startsWith('storage/')) {
+    // Already correct format
+  } else if (!p.startsWith('http') && !p.startsWith('/')) {
+    if (p.includes('product')) {
+      p = `storage/product/${p}`
+    } else {
+      p = `storage/${p}`
+    }
+  }
+  p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  return p
+}
+
+const toSrc = (u: any): string => {
+  if (!u) return ''
+  if (Array.isArray(u)) return toSrc(u[0])
+  let s: any = u
+  if (typeof u === 'string') {
+    const t = u.trim()
+    if (t.startsWith('[') || t.startsWith('{')) {
+      try { return toSrc(JSON.parse(t)) } catch {}
+    }
+    s = t
+  } else if (typeof u === 'object') {
+    s = (u as any).path || (u as any).url || (u as any).image || ''
+  }
+  s = (typeof s === 'string' ? s : '').trim()
+  if (!s) return ''
+  if (/^(https?:|data:|blob:)/i.test(s)) return s
+  return `${assetBase}/${fixPath(s)}`
+}
+
+const getProductImage = (product: any): string => {
+  if (!product) return ''
+  
+  const getStringValue = (field: any): string | null => {
+    if (!field) return null
+    if (typeof field === 'string') return field
+    if (Array.isArray(field) && field.length > 0) {
+      const first = field.find((item: any) => typeof item === 'string')
+      return first || null
+    }
+    if (typeof field === 'object' && field.path) return field.path
+    if (typeof field === 'object' && field.key) return field.key
+    return null
+  }
+  
+  const raw = getStringValue(product?.thumbnail_full_url) ||
+              getStringValue(product?.image_full_url) ||
+              getStringValue(product?.photo_full_url) ||
+              getStringValue(product?.images_full_url) ||
+              getStringValue(product?.thumbnail) ||
+              getStringValue(product?.image) ||
+              getStringValue(product?.photo) ||
+              getStringValue(product?.images) ||
+              ''
+  
+  if (!raw) return ''
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw
+  return toSrc(raw)
+}
+
+const getProductTitle = (product: any): string => {
+  if (!product) return 'Product'
+  return product?.name || product?.product_name || product?.product?.name || product?.product?.product_name || 'Product'
+}
+
+const getProductPrice = (product: any): { final: number; old: number; hasDiscount: boolean; discountPercent: number } => {
+  if (!product) return { final: 0, old: 0, hasDiscount: false, discountPercent: 0 }
+  
+  const basePrice = Number(product?.unit_price ?? product?.price ?? product?.product?.unit_price ?? product?.product?.price ?? 0)
+  const discount = Number(product?.discount ?? product?.product?.discount ?? 0)
+  const discountType = product?.discount_type || product?.product?.discount_type || 'flat'
+  
+  const isPercent = String(discountType).toLowerCase().startsWith('per')
+  const diff = discount && basePrice ? (isPercent ? (basePrice * discount) / 100 : discount) : 0
+  const finalPrice = Math.max(0, basePrice - diff)
+  const hasDiscount = finalPrice > 0 && finalPrice < basePrice
+  const discountPercent = basePrice && discount ? Math.max(0, Math.round(isPercent ? discount : (discount / basePrice) * 100)) : 0
+  
+  return { final: finalPrice, old: basePrice, hasDiscount, discountPercent }
+}
+
+const getProductBrand = (product: any): { name: string; id: number | null; image: string } => {
+  if (!product) return { name: '', id: null, image: '' }
+  
+  const brand = product?.brand || product?.product?.brand
+  const brandName = product?.brand_name || product?.brand?.name || product?.product?.brand_name || product?.product?.brand?.name || ''
+  const brandId = product?.brand_id || product?.brand?.id || product?.product?.brand_id || product?.product?.brand?.id || null
+  
+  let brandImage = ''
+  if (brand) {
+    const imgSrc = brand?.image_full_url?.path || 
+                   brand?.logo_full_url?.path || 
+                   brand?.image_full_url || 
+                   brand?.logo_full_url || 
+                   brand?.image || 
+                   brand?.logo || 
+                   ''
+    if (imgSrc) {
+      if (/^(https?:|data:|blob:)/i.test(imgSrc)) {
+        brandImage = imgSrc
+      } else {
+        brandImage = toSrc(imgSrc)
+      }
+    }
+  }
+  
+  return { name: brandName, id: brandId, image: brandImage || '/images/Group 1171274840.png' }
+}
+
+const getProductCategories = (product: any): Array<{ id: number | string; name: string }> => {
+  if (!product) return []
+  
+  const categories = product?.categories || product?.category || product?.product?.categories || product?.product?.category
+  
+  if (Array.isArray(categories)) {
+    return categories
+      .filter((cat: any) => cat && (cat.name || cat.category_name || cat.title))
+      .map((cat: any) => ({
+        id: cat.id || cat.category_id || '',
+        name: cat.name || cat.category_name || cat.title || ''
+      }))
+  }
+  
+  if (categories && typeof categories === 'object') {
+    return [{
+      id: categories.id || categories.category_id || '',
+      name: categories.name || categories.category_name || categories.title || ''
+    }]
+  }
+  
+  return []
+}
+
+const getProductLink = (product: any): string => {
+  if (!product) return '#'
+  const slug = product?.slug || product?.product?.slug
+  return slug ? `/product/${encodeURIComponent(String(slug))}` : '#'
+}
+
+const formatPrice = (n: number): string => {
+  if (!isFinite(n) || n <= 0) return '0'
+  try { 
+    return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) 
+  } catch { 
+    return String(n) 
+  }
+}
+
+const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+
+const onImgErr = (e: any) => {
+  e.target.src = placeholderImage
+}
+
+// Computed properties for modal
+const modalProductImage = computed(() => getProductImage(selectedProductForModal.value))
+const modalProductTitle = computed(() => getProductTitle(selectedProductForModal.value))
+const modalProductPrice = computed(() => getProductPrice(selectedProductForModal.value))
+const modalProductBrand = computed(() => getProductBrand(selectedProductForModal.value))
+const modalProductCategories = computed(() => getProductCategories(selectedProductForModal.value))
+const modalProductLink = computed(() => getProductLink(selectedProductForModal.value))
+
+// Share functions
+const shareUrl = computed(() => {
+  if (process.client && modalProductLink.value !== '#') {
+    return window.location.origin + modalProductLink.value
+  }
+  return ''
+})
+
+const shareText = computed(() => {
+  return `تحقق من ${modalProductTitle.value} - ${modalProductBrand.value.name}`
+})
+
+const shareOnFacebook = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+const shareOnTelegram = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl.value)}&text=${encodeURIComponent(shareText.value)}`, '_blank')
+  }
+}
+
+const shareOnSnapchat = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.snapchat.com/scan?attachmentUrl=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+const shareOnLinkedIn = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+// Check if product has variants/options
+const hasProductOptions = computed(() => {
+  if (!selectedProductForModal.value) return false
+  const product = selectedProductForModal.value
+  
+  // Check for colors
+  const hasColors = (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) ||
+                    (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) ||
+                    (product?.product?.colors_formatted && Array.isArray(product.product.colors_formatted) && product.product.colors_formatted.length > 0) ||
+                    (product?.product?.colors && Array.isArray(product.product.colors) && product.product.colors.length > 0)
+  
+  // Check for sizes
+  const hasSizes = (product?.choice_options && Array.isArray(product.choice_options)) ||
+                   (product?.product?.choice_options && Array.isArray(product.product.choice_options))
+  
+  // Check for variations
+  const hasVariations = (product?.variation && Array.isArray(product.variation) && product.variation.length > 0) ||
+                        (product?.product?.variation && Array.isArray(product.product.variation) && product.product.variation.length > 0)
+  
+  return hasColors || hasSizes || hasVariations
+})
+
+// Loading state for modal add to cart
+const isAddingToCart = ref(false)
+
+// Success message state
+const showSuccessMessage = ref(false)
+
+// Function to show success message
+const showSuccessToast = () => {
+  showSuccessMessage.value = true
+  setTimeout(() => {
+    showSuccessMessage.value = false
+  }, 3000)
+}
+
+// Function to open cart dropdown
+const openCartDropdown = () => {
+  if (process.client) {
+    const event = new CustomEvent('open-cart')
+    window.dispatchEvent(event)
+  }
+}
+
+// Add to cart function for modal
+const handleModalAddToCart = async () => {
+  if (!selectedProductForModal.value || isAddingToCart.value) return
+  
+  try {
+    isAddingToCart.value = true
+    const product = selectedProductForModal.value
+    const productId = product?.id || product?.product_id
+    if (!productId) {
+      console.error('Product ID not found')
+      return
+    }
+    
+    const priceData = modalProductPrice.value
+    const cartData: any = {
+      product_id: Number(productId),
+      quantity: 1,
+      price: priceData.final,
+      base_price: priceData.old
+    }
+    
+    if (priceData.hasDiscount) {
+      cartData.discount = Number(product?.discount ?? product?.product?.discount ?? 0)
+      cartData.discount_type = product?.discount_type || product?.product?.discount_type || 'flat'
+    }
+    
+    if (product?.variant) cartData.variant = product.variant
+    if (product?.color) cartData.color = product.color
+    if (product?.size) cartData.size = product.size
+    if (product?.variant_type) cartData.variant_type = product.variant_type
+    if (product?.sku) cartData.sku = product.sku
+    
+    await cart.add(cartData)
+    
+    // Show success message
+    showSuccessToast()
+    
+    // Open cart dropdown
+    openCartDropdown()
+    
+    // Close modal
+    if (process.client) {
+      const modalElement = document.getElementById('exampleModal')
+      if (modalElement) {
+        const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
+        if (modal) {
+          modal.hide()
+        }
+      }
+    }
+    
+    console.log('✅ تم إضافة المنتج للسلة بنجاح')
+  } catch (error: any) {
+    console.error('❌ خطأ في إضافة المنتج للسلة:', error)
+    alert('حدث خطأ في إضافة المنتج للسلة')
+  } finally {
+    isAddingToCart.value = false
+  }
+}
+
+// Function to close modal and navigate to product page
+const handleProductDetails = () => {
+  if (process.client) {
+    const modalElement = document.getElementById('exampleModal')
+    if (modalElement) {
+      const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
+      if (modal) {
+        modal.hide()
+      }
+    }
+  }
+}
 </script>
 
 <template>
@@ -690,6 +1020,95 @@ const clearFilters = () => {
         </div>
       </div>
     </div>
+    
+    <!-- Product Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-products">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="selectedProductForModal" class="row">
+              <div class="col-lg-6 mb-3">
+                <picture>
+                  <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
+                </picture>
+              </div>
+              <div class="col-lg-6">
+                <div class="product-content-popup">
+                  <h5>{{ modalProductTitle }}</h5>
+                  <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
+                    <strong class="me-2">البراند:</strong>
+                    <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
+                      <picture>
+                        <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
+                      </picture>
+                      <span class="brand-name">{{ modalProductBrand.name }}</span>
+                    </NuxtLink>
+                  </div>
+                  <h5 class="price final mt-3">
+                    {{ formatPrice(modalProductPrice.final) }} 
+                    <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" />
+                  </h5>
+                </div>
+                <div class="buttons d-flex align-items-center gap-2">
+                  <template v-if="hasProductOptions">
+                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">تحديد خيارات</NuxtLink>
+                  </template>
+                  <template v-else>
+                    <a href="#" class="main-btn" @click.prevent="handleModalAddToCart" :disabled="isAddingToCart">
+                      <span v-if="!isAddingToCart">إضافة إلى السلة</span>
+                      <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    </a>
+                  </template>
+                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
+                </div>
+                <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3">
+                  <strong class="d-block mb-2">التصنيفات:</strong>
+                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
+                    <li v-for="(cat, index) in modalProductCategories" :key="index">
+                      <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
+                        {{ cat.name }}
+                      </NuxtLink>
+                    </li>
+                  </ul>
+                </div>
+                <strong class="mt-4 mb-2 d-block">مشاركة</strong>
+                <div class="share d-flex align-items-center gap-2">
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnFacebook">
+                    <i class="fa-brands fa-facebook"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnTelegram">
+                    <i class="fa-brands fa-telegram"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnSnapchat">
+                    <i class="fa-brands fa-square-snapchat"></i>
+                  </a>
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnLinkedIn">
+                    <i class="fa-brands fa-linkedin"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Success Toast Message -->
+    <teleport to="body">
+      <Transition name="slide-fade">
+        <div v-if="showSuccessMessage" class="success-toast">
+          <div class="success-content">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span>تم إضافة السلة بنجاح</span>
+          </div>
+        </div>
+      </Transition>
+    </teleport>
   </div>
 </template>
 
@@ -1018,7 +1437,6 @@ const clearFilters = () => {
 .row { 
   display: flex; 
   align-items: center; 
-  gap: 8px 
 }
 
 .num { 
@@ -1258,5 +1676,200 @@ const clearFilters = () => {
   margin: 0; 
   font-size: 1rem; 
   opacity: 0.9;
+}
+
+/* Product Modal Styles */
+.modal-products .modal-dialog {
+  max-width: 800px;
+}
+
+.modal-products .pic-img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.product-content-popup h5 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.product-content-popup .price.final {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ef4444;
+}
+
+.main-btn, .second-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.main-btn {
+  background: #F58040;
+  color: white;
+  border: none;
+}
+
+.main-btn:hover:not(:disabled) {
+  background: #e6733a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
+}
+
+.main-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.second-btn {
+  background: transparent;
+  color: #F58040;
+  border: 2px solid #F58040;
+}
+
+.second-btn:hover {
+  background: #F58040;
+  color: white;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.2em;
+}
+
+/* Brand and Categories Styles */
+.brands-popup {
+  padding: 8px 0;
+}
+
+.brands-popup .cover-image-class {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 4px;
+}
+
+.brands-popup .brand-name {
+  color: #111827;
+  font-weight: 600;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.brands-popup a:hover .brand-name {
+  color: #F58040;
+}
+
+.cat {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.category-badge:hover {
+  background: #F58040;
+  color: #fff;
+  border-color: #F58040;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
+}
+
+.share a {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.share a:hover {
+  background: #F58040;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.share a i {
+  font-size: 18px;
+}
+
+/* Success Toast Styles */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+}
+
+.success-content {
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.success-content svg {
+  flex-shrink: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* RTL Support */
+[dir="rtl"] .success-toast {
+  right: auto;
+  left: 20px;
+}
+
+[dir="rtl"] .success-content {
+  text-align: right;
 }
 </style>
