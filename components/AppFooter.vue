@@ -104,7 +104,7 @@
             {{ loginError }}
           </div>
           
-          <button type="submit" class="login-btn" :disabled="loginLoading">
+          <button type="submit" class="main-btn" :disabled="loginLoading">
             <span v-if="loginLoading">{{ t('login.loading') || 'جاري تسجيل الدخول...' }}</span>
             <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
           </button>

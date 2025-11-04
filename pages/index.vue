@@ -5,6 +5,7 @@ import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/pagination'
+import 'assets/css/custom.css'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 

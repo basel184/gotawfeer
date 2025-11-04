@@ -253,3 +253,7 @@ html[dir="rtl"] .whatsapp {
     justify-content: center;
     font-weight: bold;
 }
+.accordion-button::after {
+    margin-right: auto !important;
+    margin-left: unset;
+}

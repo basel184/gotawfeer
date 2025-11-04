@@ -1726,7 +1726,7 @@ async function handleRegisterSubmit() {
               {{ t('register.success') || 'تم إنشاء الحساب بنجاح' }}
             </div>
 
-            <button type="submit" class="login-btn" :disabled="registerLoading">
+            <button type="submit" class="main-btn" :disabled="registerLoading">
               <span v-if="registerLoading">{{ t('creating_account') || 'جاري إنشاء الحساب...' }}</span>
               <span v-else>{{ t('register') || 'إنشاء حساب' }}</span>
             </button>
