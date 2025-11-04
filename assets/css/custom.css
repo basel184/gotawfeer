@@ -131,6 +131,18 @@
   border-radius: 50%;
   text-decoration: none;
 }
+.arrow-up {
+  position: fixed;
+  bottom: 8%;
+  inset-inline-end: 2%;
+  z-index: 99999;
+  background-color: #eee;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  text-decoration: none;
+  color: var(--primary-color);
+}
 html[dir="rtl"] .whatsapp {
       inset-inline-start: unset;
       inset-inline-end: 2%;
@@ -157,11 +169,7 @@ html[dir="rtl"] .whatsapp {
     height: auto;
     object-fit: contain;
 }
-@media (max-width: 767.98px) {
-    .info {
-        padding: 0 !important;
-    }
-}
+
 .main-btn {
     background-color: var(--primary-color);
     color: #fff;
@@ -268,4 +276,7 @@ html[dir="rtl"] .whatsapp {
 .slide-inner {
   display: flex;
   height: 100%;
+}
+.slide {
+    flex: 1;
 }

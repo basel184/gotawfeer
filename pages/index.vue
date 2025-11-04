@@ -581,6 +581,9 @@ const onImgErr = (e: any) => {
 <template>
   <main class="home" dir="rtl">
     <!-- Whatsapp -->
+     <a href="javascript:void(0);" class="arrow-up d-flex align-items-center justify-content-center" id="scrollTopBtn">
+      <i class="fa-solid fa-chevron-up"></i>
+    </a>
      <a href="https://wa.me/#" target="_blank" class="whatsapp d-flex align-items-center justify-content-center">
       <i class="fa-brands fa-whatsapp"></i>
     </a>
