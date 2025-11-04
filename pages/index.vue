@@ -31,6 +31,211 @@ onMounted(async () => {
     console.error('Failed to load wishlist or cart:', error)
   }
 })
+
+// Modal state - global state for product modal
+const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
+
+// Helper functions to extract product data for modal
+const getProductImage = (product: any): string => {
+  if (!product) return ''
+  
+  const getStringValue = (field: any): string | null => {
+    if (!field) return null
+    if (typeof field === 'string') return field
+    if (Array.isArray(field) && field.length > 0) {
+      const first = field.find((item: any) => typeof item === 'string')
+      return first || null
+    }
+    if (typeof field === 'object' && field.path) return field.path
+    if (typeof field === 'object' && field.key) return field.key
+    return null
+  }
+  
+  const raw = getStringValue(product?.thumbnail_full_url) ||
+              getStringValue(product?.image_full_url) ||
+              getStringValue(product?.photo_full_url) ||
+              getStringValue(product?.images_full_url) ||
+              getStringValue(product?.thumbnail) ||
+              getStringValue(product?.image) ||
+              getStringValue(product?.photo) ||
+              getStringValue(product?.images) ||
+              ''
+  
+  if (!raw) return ''
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw
+  return toSrc(raw)
+}
+
+const getProductTitle = (product: any): string => {
+  if (!product) return 'Product'
+  return product?.name || product?.product_name || product?.product?.name || product?.product?.product_name || 'Product'
+}
+
+const getProductPrice = (product: any): { final: number; old: number; hasDiscount: boolean; discountPercent: number } => {
+  if (!product) return { final: 0, old: 0, hasDiscount: false, discountPercent: 0 }
+  
+  const basePrice = Number(product?.unit_price ?? product?.price ?? product?.product?.unit_price ?? product?.product?.price ?? 0)
+  const discount = Number(product?.discount ?? product?.product?.discount ?? 0)
+  const discountType = product?.discount_type || product?.product?.discount_type || 'flat'
+  
+  const isPercent = String(discountType).toLowerCase().startsWith('per')
+  const diff = discount && basePrice ? (isPercent ? (basePrice * discount) / 100 : discount) : 0
+  const finalPrice = Math.max(0, basePrice - diff)
+  const hasDiscount = finalPrice > 0 && finalPrice < basePrice
+  const discountPercent = basePrice && discount ? Math.max(0, Math.round(isPercent ? discount : (discount / basePrice) * 100)) : 0
+  
+  return { final: finalPrice, old: basePrice, hasDiscount, discountPercent }
+}
+
+const getProductBrand = (product: any): { name: string; id: number | null; image: string } => {
+  if (!product) return { name: '', id: null, image: '' }
+  
+  const brand = product?.brand || product?.product?.brand
+  const brandName = product?.brand_name || product?.brand?.name || product?.product?.brand_name || product?.product?.brand?.name || ''
+  const brandId = product?.brand_id || product?.brand?.id || product?.product?.brand_id || product?.product?.brand?.id || null
+  
+  let brandImage = ''
+  if (brand) {
+    const imgSrc = brand?.image_full_url?.path || 
+                   brand?.logo_full_url?.path || 
+                   brand?.image_full_url || 
+                   brand?.logo_full_url || 
+                   brand?.image || 
+                   brand?.logo || 
+                   ''
+    if (imgSrc) {
+      if (/^(https?:|data:|blob:)/i.test(imgSrc)) {
+        brandImage = imgSrc
+      } else {
+        brandImage = toSrc(imgSrc)
+      }
+    }
+  }
+  
+  return { name: brandName, id: brandId, image: brandImage || '/images/Group 1171274840.png' }
+}
+
+const getProductCategories = (product: any): Array<{ id: number | string; name: string }> => {
+  if (!product) return []
+  
+  const categories = product?.categories || product?.category || product?.product?.categories || product?.product?.category
+  
+  if (Array.isArray(categories)) {
+    return categories
+      .filter((cat: any) => cat && (cat.name || cat.category_name || cat.title))
+      .map((cat: any) => ({
+        id: cat.id || cat.category_id || '',
+        name: cat.name || cat.category_name || cat.title || ''
+      }))
+  }
+  
+  if (categories && typeof categories === 'object') {
+    return [{
+      id: categories.id || categories.category_id || '',
+      name: categories.name || categories.category_name || categories.title || ''
+    }]
+  }
+  
+  return []
+}
+
+const getProductLink = (product: any): string => {
+  if (!product) return '#'
+  const slug = product?.slug || product?.product?.slug
+  return slug ? `/product/${encodeURIComponent(String(slug))}` : '#'
+}
+
+const formatPrice = (n: number): string => {
+  if (!isFinite(n) || n <= 0) return '0'
+  try { 
+    return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) 
+  } catch { 
+    return String(n) 
+  }
+}
+
+// Computed properties for modal
+const modalProductImage = computed(() => getProductImage(selectedProductForModal.value))
+const modalProductTitle = computed(() => getProductTitle(selectedProductForModal.value))
+const modalProductPrice = computed(() => getProductPrice(selectedProductForModal.value))
+const modalProductBrand = computed(() => getProductBrand(selectedProductForModal.value))
+const modalProductCategories = computed(() => getProductCategories(selectedProductForModal.value))
+const modalProductLink = computed(() => getProductLink(selectedProductForModal.value))
+
+// Share functions
+const shareUrl = computed(() => {
+  if (process.client && modalProductLink.value !== '#') {
+    return window.location.origin + modalProductLink.value
+  }
+  return ''
+})
+
+const shareText = computed(() => {
+  return `تحقق من ${modalProductTitle.value} - ${modalProductBrand.value.name}`
+})
+
+const shareOnFacebook = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+const shareOnTelegram = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl.value)}&text=${encodeURIComponent(shareText.value)}`, '_blank')
+  }
+}
+
+const shareOnSnapchat = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.snapchat.com/scan?attachmentUrl=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+const shareOnLinkedIn = () => {
+  if (process.client && shareUrl.value) {
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  }
+}
+
+// Add to cart function
+const handleAddToCart = async () => {
+  if (!selectedProductForModal.value) return
+  
+  try {
+    const product = selectedProductForModal.value
+    const productId = product?.id || product?.product_id
+    if (!productId) {
+      console.error('Product ID not found')
+      return
+    }
+    
+    const priceData = modalProductPrice.value
+    const cartData: any = {
+      product_id: Number(productId),
+      quantity: 1,
+      price: priceData.final,
+      base_price: priceData.old
+    }
+    
+    if (priceData.hasDiscount) {
+      cartData.discount = Number(product?.discount ?? product?.product?.discount ?? 0)
+      cartData.discount_type = product?.discount_type || product?.product?.discount_type || 'flat'
+    }
+    
+    if (product?.variant) cartData.variant = product.variant
+    if (product?.color) cartData.color = product.color
+    if (product?.size) cartData.size = product.size
+    if (product?.variant_type) cartData.variant_type = product.variant_type
+    if (product?.sku) cartData.sku = product.sku
+    
+    await cart.add(cartData)
+    console.log('✅ تم إضافة المنتج للسلة بنجاح')
+  } catch (error: any) {
+    console.error('❌ خطأ في إضافة المنتج للسلة:', error)
+  }
+}
+
 // Admin-defined Home Sections (Collections)
 const { data: homeSections } = await useAsyncData('home-sections', () => $get('v1/home-sections'))
 
@@ -123,8 +328,10 @@ const toSrc = (u: any): string => {
   if (/^(https?:|data:|blob:)/i.test(s)) return s
   return `${assetBase}/${fixPath(s)}`
 }
+const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+
 const onImgErr = (e: any) => {
-  e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="20">No image</text></svg>'
+  e.target.src = placeholderImage
 }
 
 // Swiper is now handled by the component itself
@@ -478,69 +685,60 @@ const onImgErr = (e: any) => {
           </div>
         </div>
       </section>
-          <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-products">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="row">
+            <div v-if="selectedProductForModal" class="row">
               <div class="col-lg-6 mb-3">
                 <picture>
-                  <img class="mw-100" src="https://gotawfeer.com/project/storage/app/public/product/thumbnail/%D8%AA%D9%81%D8%A7%D8%AD-%D8%A7%D8%AD%D9%85%D8%B1.webp" alt="صورة المنتج">
+                  <img class="mw-100" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
                 </picture>
               </div>
               <div class="col-lg-6">
                 <div class="product-content-popup">
-                  <h5>
-	1-مجموعه فرش الشعر من سوناتا  |  Sonata Hair Brush Set-1
-                  </h5>
-                  <div class="brands-popup d-flex align-items-center gap-2">
-                    <a href="#" class="text-decoration-none">
+                  <h5>{{ modalProductTitle }}</h5>
+                  <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2">
+                    <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none">
                       <picture>
-                        <img class="cover-image-class" src="https://gotawfeer.com/wp-content/uploads/2025/07/Group-72.png" alt="">
+                        <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
                       </picture>
-                    </a>
+                    </NuxtLink>
                   </div>
-                  <h5 class="price final mt-3">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></h5>
+                  <h5 class="price final mt-3">
+                    {{ formatPrice(modalProductPrice.final) }} 
+                    <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" />
+                  </h5>
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">
-                  <a href="" class="main-btn">إضافة إلى السلة</a>
-                  <a href="" class="second-btn">تفاصيل المنتج</a>
+                  <a href="#" class="main-btn" @click.prevent="handleAddToCart">إضافة إلى السلة</a>
+                  <NuxtLink :to="modalProductLink" class="second-btn">تفاصيل المنتج</NuxtLink>
                 </div>
-                <div class="cat border-top mt-3 pt-3 d-flex align-items-center gap-2">
+                <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3 d-flex align-items-center gap-2">
                   <strong>التصنيفات:</strong>
-                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled ">
-                    <li>
-                      <a class="text-decoration-none text-black" href="#">
-                        الشعر
-                      </a>
-                    </li>
-                    <li>
-                      <a class="text-decoration-none text-black" href="#">
-                        الشعر
-                      </a>
-                    </li>
-                    <li>
-                      <a class="text-decoration-none text-black" href="#">
-                        الشعر
-                      </a>
+                  <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled">
+                    <li v-for="(cat, index) in modalProductCategories" :key="index">
+                      <NuxtLink class="text-decoration-none text-black" :to="`/category/${cat.id}`">
+                        {{ cat.name }}
+                      </NuxtLink>
                     </li>
                   </ul>
                 </div>
-                <strong class="mt-4 mb-2 d-block ">مشاركة</strong>
+                <strong class="mt-4 mb-2 d-block">مشاركة</strong>
                 <div class="share d-flex align-items-center gap-2">
-                  <a href="#" class="text-decoration-none">
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnFacebook">
                     <i class="fa-brands fa-facebook"></i>
                   </a>
-                  <a href="#" class="text-decoration-none">
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnTelegram">
                     <i class="fa-brands fa-telegram"></i>
                   </a>
-                  <a href="#" class="text-decoration-none">
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnSnapchat">
                     <i class="fa-brands fa-square-snapchat"></i>
                   </a>
-                  <a href="#" class="text-decoration-none">
+                  <a href="#" class="text-decoration-none" @click.prevent="shareOnLinkedIn">
                     <i class="fa-brands fa-linkedin"></i>
                   </a>
                 </div>

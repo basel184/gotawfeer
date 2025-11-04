@@ -18,7 +18,7 @@ const SwiperComponent = Swiper
 const SwiperSlideComponent = SwiperSlide
 
 const route = useRoute()
-const { details: getDetails, related: getRelated } = useProducts() as any
+const { details: getDetails, related: getRelated, filter: filterProducts } = useProducts() as any
 const cart = useCart()
 const wishlist = useWishlist()
 
@@ -53,6 +53,121 @@ const error = ref<string>('')
 const product = ref<any>(null)
 const recLoading = ref(true)
 const recommended = ref<any[]>([])
+
+// Offer products (4 random products)
+const offerProducts = ref<any[]>([])
+const offerProductsLoading = ref(false)
+
+// Helper functions to extract product data
+const getProductImage = (product: any): string => {
+  if (!product) return ''
+  
+  const getStringValue = (field: any): string | null => {
+    if (!field) return null
+    if (typeof field === 'string') return field
+    if (Array.isArray(field) && field.length > 0) {
+      const first = field.find((item: any) => typeof item === 'string')
+      return first || null
+    }
+    if (typeof field === 'object' && field.path) return field.path
+    if (typeof field === 'object' && field.key) return field.key
+    return null
+  }
+  
+  const raw = getStringValue(product?.thumbnail_full_url) ||
+              getStringValue(product?.image_full_url) ||
+              getStringValue(product?.photo_full_url) ||
+              getStringValue(product?.images_full_url) ||
+              getStringValue(product?.thumbnail) ||
+              getStringValue(product?.image) ||
+              getStringValue(product?.photo) ||
+              getStringValue(product?.images) ||
+              ''
+  
+  if (!raw) return ''
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw
+  return normalize(raw)
+}
+
+const getProductTitle = (product: any): string => {
+  if (!product) return 'Product'
+  return product?.name || product?.product_name || product?.product?.name || product?.product?.product_name || 'Product'
+}
+
+const getProductPrice = (product: any): { final: number; old: number; hasDiscount: boolean } => {
+  if (!product) return { final: 0, old: 0, hasDiscount: false }
+  
+  const basePrice = Number(product?.unit_price ?? product?.price ?? product?.product?.unit_price ?? product?.product?.price ?? 0)
+  const discount = Number(product?.discount ?? product?.product?.discount ?? 0)
+  const discountType = product?.discount_type || product?.product?.discount_type || 'flat'
+  
+  const isPercent = String(discountType).toLowerCase().startsWith('per')
+  const diff = discount && basePrice ? (isPercent ? (basePrice * discount) / 100 : discount) : 0
+  const finalPrice = Math.max(0, basePrice - diff)
+  const hasDiscount = finalPrice > 0 && finalPrice < basePrice
+  
+  return { final: finalPrice, old: basePrice, hasDiscount }
+}
+
+const formatPrice = (n: number): string => {
+  if (!isFinite(n) || n <= 0) return '0'
+  try { 
+    return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) 
+  } catch { 
+    return String(n) 
+  }
+}
+
+// Load offer products
+const loadOfferProducts = async () => {
+  offerProductsLoading.value = true
+  try {
+    // Use POST request with body (as required by the API)
+    const body = {
+      limit: 50, // Get more products to have better random selection
+      offset: 1
+    }
+    
+    const response = await filterProducts(body)
+    
+    // Extract products from response (handle different response structures)
+    let products: any[] = []
+    if (Array.isArray(response)) {
+      products = response
+    } else if (Array.isArray(response?.data)) {
+      products = response.data
+    } else if (Array.isArray(response?.products)) {
+      products = response.products
+    } else if (Array.isArray(response?.items)) {
+      products = response.items
+    }
+    
+    // Filter out current product if it exists
+    const currentProductId = product.value?.id || product.value?.product_id
+    if (currentProductId) {
+      products = products.filter((p: any) => {
+        const pid = p?.id || p?.product_id
+        return pid !== currentProductId
+      })
+    }
+    
+    // Shuffle array and take 4 random products
+    const shuffled = [...products].sort(() => Math.random() - 0.5)
+    offerProducts.value = shuffled.slice(0, 4)
+  } catch (error) {
+    console.error('Failed to load offer products:', error)
+    offerProducts.value = []
+  } finally {
+    offerProductsLoading.value = false
+  }
+}
+
+// Load offer products when product is loaded
+watch(() => product.value, (newProduct) => {
+  if (newProduct) {
+    loadOfferProducts()
+  }
+}, { immediate: true })
 
 // Helpers to normalize media paths similar to ProductCard
 const cfg = useRuntimeConfig() as any
@@ -117,10 +232,12 @@ const images = computed<string[]>(() => {
 })
 const mainIndex = ref(0)
 const mainImage = computed(() => images.value[mainIndex.value] || '')
+const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+
 const onImgErr = (e: Event) => {
   const el = e.target as HTMLImageElement | null
   if (!el) return
-  el.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+  el.src = placeholderImage
 }
 
 // Swiper configuration
@@ -164,6 +281,46 @@ const title = computed(() => {
 const brandName = computed(() => {
   const p: any = product.value || {}
   return p?.brand_name || p?.brand?.name || p?.product?.brand_name || p?.product?.brand?.name || ''
+})
+
+// Brand image
+const brandImage = computed(() => {
+  const p: any = product.value || {}
+  const brand = p?.brand || p?.product?.brand
+  
+  if (!brand) return ''
+  
+  // Try different image sources in order of preference
+  let imageSrc = brand?.image_full_url?.path || 
+                 brand?.logo_full_url?.path || 
+                 brand?.image_full_url || 
+                 brand?.logo_full_url || 
+                 brand?.image || 
+                 brand?.logo || 
+                 ''
+  
+  if (!imageSrc) return ''
+  
+  // If it's already a full URL, return as is
+  if (/^(https?:|data:|blob:)/i.test(imageSrc)) {
+    return imageSrc
+  }
+  
+  // Normalize the path and build full URL
+  return normalize(imageSrc)
+})
+
+// Brand ID for link
+const brandId = computed(() => {
+  const p: any = product.value || {}
+  const brand = p?.brand || p?.product?.brand
+  return brand?.id || p?.brand_id || p?.product?.brand_id || null
+})
+
+// Brand link
+const brandLink = computed(() => {
+  const id = brandId.value
+  return id ? `/shop?brand=${id}` : '/shop'
 })
 const basePrice = computed<number>(() => {
   const p: any = product.value || {}
@@ -1142,27 +1299,44 @@ const loadReviews = async () => {
     const productId = product.value?.id || product.value?.product_id || product.value?.product?.id
     if (!productId) return
     
-    const cfg = useRuntimeConfig() as any
-    const apiBase = cfg?.public?.apiBase || ''
+    // Load reviews using $get from useApi
+    const reviewsResponse = await $get(`v1/products/reviews/${productId}`)
     
-    // Load reviews
-    const reviewsResponse = await $fetch(`${apiBase}/v1/products/reviews/${productId}`)
-    reviews.value = Array.isArray(reviewsResponse) ? reviewsResponse : []
+    // Handle different response structures
+    if (Array.isArray(reviewsResponse)) {
+      reviews.value = reviewsResponse
+    } else if (Array.isArray(reviewsResponse?.data)) {
+      reviews.value = reviewsResponse.data
+    } else if (Array.isArray(reviewsResponse?.reviews)) {
+      reviews.value = reviewsResponse.reviews
+    } else {
+      reviews.value = []
+    }
+    
     totalReviewsCount.value = reviews.value.length
     
-    // Load rating separately
-    try {
-      const ratingResponse = await $fetch(`${apiBase}/v1/products/rating/${productId}`)
-      averageRating.value = Number(ratingResponse) || 0
-    } catch (ratingError) {
-      console.warn('Could not load rating:', ratingError)
-      averageRating.value = 0
+    // Calculate average rating from reviews
+    if (reviews.value.length > 0) {
+      const sum = reviews.value.reduce((acc: number, review: any) => {
+        const rating = Number(review?.rating || review?.stars || 0)
+        return acc + rating
+      }, 0)
+      averageRating.value = sum / reviews.value.length
+    } else {
+      // Try to load rating separately if no reviews
+      try {
+        const ratingResponse = await $get(`v1/products/rating/${productId}`)
+        averageRating.value = Number(ratingResponse) || 0
+      } catch (ratingError) {
+        console.warn('Could not load rating:', ratingError)
+        averageRating.value = 0
+      }
     }
     
   } catch (e: any) {
     console.error('Error loading reviews:', e)
     // If it's a 404, it means no reviews exist yet
-    if (e?.status === 404) {
+    if (e?.status === 404 || e?.statusCode === 404) {
       reviews.value = []
       totalReviewsCount.value = 0
       averageRating.value = 0
@@ -1172,6 +1346,104 @@ const loadReviews = async () => {
     }
   } finally {
     reviewsLoading.value = false
+  }
+}
+
+// Calculate rating distribution (5 stars, 4 stars, etc.)
+const ratingDistribution = computed(() => {
+  const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+  
+  reviews.value.forEach((review: any) => {
+    const rating = Math.round(Number(review?.rating || review?.stars || 0))
+    if (rating >= 1 && rating <= 5) {
+      distribution[rating as keyof typeof distribution]++
+    }
+  })
+  
+  return distribution
+})
+
+// Calculate percentage for each rating
+const getRatingPercentage = (stars: number): number => {
+  if (totalReviewsCount.value === 0) return 0
+  const distribution = ratingDistribution.value
+  const count = distribution[stars as keyof typeof distribution] || 0
+  return Math.round((count / totalReviewsCount.value) * 100)
+}
+
+// Guest review form
+const guestReviewForm = ref({
+  rating: 5,
+  comment: '',
+  name: '',
+  email: ''
+})
+
+const guestReviewLoading = ref(false)
+const guestReviewError = ref('')
+
+// Submit guest review
+const submitGuestReview = async (e: Event) => {
+  e.preventDefault()
+  
+  if (!guestReviewForm.value.comment.trim()) {
+    guestReviewError.value = 'يرجى كتابة تعليق'
+    return
+  }
+  
+  if (!guestReviewForm.value.name.trim()) {
+    guestReviewError.value = 'يرجى إدخال الاسم'
+    return
+  }
+  
+  if (!guestReviewForm.value.email.trim()) {
+    guestReviewError.value = 'يرجى إدخال البريد الإلكتروني'
+    return
+  }
+  
+  guestReviewLoading.value = true
+  guestReviewError.value = ''
+  
+  try {
+    const productId = product.value?.id || product.value?.product_id || product.value?.product?.id
+    if (!productId) {
+      guestReviewError.value = 'خطأ في معرف المنتج'
+      return
+    }
+    
+    const response = await $post('v1/products/reviews/submit-guest', {
+      product_id: productId,
+      rating: guestReviewForm.value.rating,
+      comment: guestReviewForm.value.comment,
+      name: guestReviewForm.value.name,
+      email: guestReviewForm.value.email
+    })
+    
+    if (response) {
+      // Reset form
+      guestReviewForm.value = {
+        rating: 5,
+        comment: '',
+        name: '',
+        email: ''
+      }
+      
+      // Reload reviews
+      await loadReviews()
+      
+      // Show success message
+      showSuccess('تم إرسال التقييم بنجاح')
+    }
+  } catch (error: any) {
+    console.error('Guest review submission error:', error)
+    if (error?.data?.errors && Array.isArray(error.data.errors)) {
+      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
+      guestReviewError.value = errorMessages
+    } else {
+      guestReviewError.value = error?.data?.message || 'خطأ في إرسال التقييم'
+    }
+  } finally {
+    guestReviewLoading.value = false
   }
 }
 
@@ -1424,13 +1696,18 @@ watch(mainIndex, (newIndex) => {
             </svg>
           </button>
         </div>
-        <div class="brands-popup d-flex align-items-center gap-2">
-                    <a href="#" class="text-decoration-none">
-                      <picture>
-                        <img class="cover-image-class" src="https://gotawfeer.com/wp-content/uploads/2025/07/Group-72.png" alt="">
-                      </picture>
-                    </a>
-                  </div>
+        <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
+          <NuxtLink :to="brandLink" class="text-decoration-none">
+            <picture>
+              <img 
+                class="cover-image-class" 
+                :src="brandImage || '/images/Group 1171274840.png'" 
+                :alt="brandName"
+                @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
+              >
+            </picture>
+          </NuxtLink>
+        </div>
         <h1 class="title">{{ title }}</h1>
         
         <!-- Rating -->
@@ -1604,61 +1881,32 @@ watch(mainIndex, (newIndex) => {
             منتجات عليها عروض
           </h4>
           <div class="offer-products-container mt-4">
-            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
-              <picture >
-                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
-              </picture>
-              <div class="offer-product-card-content">
-                <h6>
-                  بكج الرجل السعودى
-                </h6>
-                <div class="offer-product-card-price d-flex align-items-center gap-3">
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                </div>
+            <div v-if="offerProductsLoading" class="text-center py-4">
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">جاري التحميل...</span>
               </div>
             </div>
-            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
-              <picture >
-                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
-              </picture>
-              <div class="offer-product-card-content">
-                <h6>
-                  بكج الرجل السعودى
-                </h6>
-                <div class="offer-product-card-price d-flex align-items-center gap-3">
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+            <template v-else-if="offerProducts.length > 0">
+              <NuxtLink 
+                v-for="(offerProduct, index) in offerProducts" 
+                :key="offerProduct?.id || offerProduct?.product_id || index"
+                :to="`/product/${encodeURIComponent(String(offerProduct?.slug || offerProduct?.product?.slug || ''))}`"
+                class="offer-product-card d-flex align-items-center gap-2 my-4 text-decoration-none"
+              >
+                <picture>
+                  <img :src="getProductImage(offerProduct) || placeholderImage" :alt="getProductTitle(offerProduct)" @error="onImgErr">
+                </picture>
+                <div class="offer-product-card-content">
+                  <h6>{{ getProductTitle(offerProduct) }}</h6>
+                  <div class="offer-product-card-price d-flex align-items-center gap-3">
+                    <span class="price final">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
-              <picture >
-                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
-              </picture>
-              <div class="offer-product-card-content">
-                <h6>
-                  بكج الرجل السعودى
-                </h6>
-                <div class="offer-product-card-price d-flex align-items-center gap-3">
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                </div>
-              </div>
-            </div>
-            <div class="offer-product-card d-flex align-items-center gap-2 my-4">
-              <picture >
-                <img  src="https://gotawfeer.com/wp-content/uploads/2025/09/2-150x200.webp" alt="">
-              </picture>
-              <div class="offer-product-card-content">
-                <h6>
-                  بكج الرجل السعودى
-                </h6>
-                <div class="offer-product-card-price d-flex align-items-center gap-3">
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                  <span class="price final">200 <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                </div>
-              </div>
+              </NuxtLink>
+            </template>
+            <div v-else class="text-center py-4 text-muted">
+              لا توجد منتجات متاحة حالياً
             </div>
           </div>
         </div>
@@ -1730,62 +1978,155 @@ watch(mainIndex, (newIndex) => {
           <div class="row">
             <div class="col-lg-6 mb-4 d-flex flex-column gap-4 ">
               <strong class="text-center mt-3">
-                المراجعات (0)
+                المراجعات ({{ totalReviewsCount }})
               </strong>
-              <div class="progress mt-2" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 0%"></div>
+              <!-- Rating distribution (5 stars to 1 star) -->
+              <div class="progress mt-2" role="progressbar" aria-label="5 stars" aria-valuenow="getRatingPercentage(5)" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" :style="`width: ${getRatingPercentage(5)}%`"></div>
+                <span class="ms-2">5 نجوم</span>
               </div>
-              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 25%"></div>
+              <div class="progress" role="progressbar" aria-label="4 stars" aria-valuenow="getRatingPercentage(4)" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" :style="`width: ${getRatingPercentage(4)}%`"></div>
+                <span class="ms-2">4 نجوم</span>
               </div>
-              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 50%"></div>
+              <div class="progress" role="progressbar" aria-label="3 stars" aria-valuenow="getRatingPercentage(3)" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" :style="`width: ${getRatingPercentage(3)}%`"></div>
+                <span class="ms-2">3 نجوم</span>
               </div>
-              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 75%"></div>
+              <div class="progress" role="progressbar" aria-label="2 stars" aria-valuenow="getRatingPercentage(2)" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" :style="`width: ${getRatingPercentage(2)}%`"></div>
+                <span class="ms-2">2 نجوم</span>
               </div>
-              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width: 100%"></div>
+              <div class="progress" role="progressbar" aria-label="1 star" aria-valuenow="getRatingPercentage(1)" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" :style="`width: ${getRatingPercentage(1)}%`"></div>
+                <span class="ms-2">1 نجم</span>
               </div>
             </div>
             <div class="col-lg-6">
               <div class="form-container mt-3">
-                <p>كن أول من يقيم “1-مجموعه فرش الشعر من سوناتا | Sonata Hair Brush Set-1”
+                <p v-if="totalReviewsCount === 0">كن أول من يقيم "{{ product?.name || product?.product_name || 'هذا المنتج' }}"
+                </p>
+                <p v-else>
+                  شاركنا رأيك في "{{ product?.name || product?.product_name || 'هذا المنتج' }}"
                 </p>
                 <p>
                   لن يتم نشر عنوان بريدك الإلكتروني. الحقول الإلزامية مشار إليها بـ <span class="text-danger">*</span>
                 </p>
+                <div v-if="guestReviewError" class="alert alert-danger" role="alert">
+                  {{ guestReviewError }}
+                </div>
                 <div class="rating d-flex align-items-center gap-2">
                   <strong>التقييم:</strong>
                   <div class="rating-box d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-star open"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
+                    <i 
+                      v-for="star in 5" 
+                      :key="star"
+                      class="fa-solid fa-star"
+                      :class="{ open: star <= guestReviewForm.rating }"
+                      @click="guestReviewForm.rating = star"
+                      style="cursor: pointer;"
+                    ></i>
                   </div>
                 </div>
-                <form>
+                <form @submit="submitGuestReview">
                   <div class="mb-3">
-                    <label for="exampleInputEmail1" class="form-label">مراجعتك <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="exampleFormControlTextarea1" rows="3"></textarea>
+                    <label for="reviewComment" class="form-label">مراجعتك <span class="text-danger">*</span></label>
+                    <textarea 
+                      v-model="guestReviewForm.comment" 
+                      class="form-control" 
+                      id="reviewComment" 
+                      rows="3"
+                      required
+                    ></textarea>
                   </div>
                   <div class="mb-3">
-                    <label for="exampleInputPassword1" class="form-label">الاسم <span class="text-danger">*</span> </label>
-                    <input type="password" class="form-control" id="exampleInputPassword1">
+                    <label for="reviewName" class="form-label">الاسم <span class="text-danger">*</span></label>
+                    <input 
+                      v-model="guestReviewForm.name" 
+                      type="text" 
+                      class="form-control" 
+                      id="reviewName"
+                      required
+                    >
                   </div>
                   <div class="mb-3">
-                    <label for="exampleInputEmail1" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                    <label for="reviewEmail" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
+                    <input 
+                      v-model="guestReviewForm.email" 
+                      type="email" 
+                      class="form-control" 
+                      id="reviewEmail" 
+                      aria-describedby="emailHelp"
+                      required
+                    >
                   </div>
                   <div class="mb-3 form-check d-flex align-items-center gap-2">
                     <input type="checkbox" class="form-check-input" id="exampleCheck1">
                     <label class="form-check-label" for="exampleCheck1">احفظ اسمي، بريدي الإلكتروني، والموقع الإلكتروني في هذا المتصفح لاستخدامها المرة المقبلة في تعليقي.</label>
                   </div>
-                  <button type="submit" class="main-btn border-0">إرسال</button>
+                  <button type="submit" class="main-btn border-0" :disabled="guestReviewLoading">
+                    <span v-if="guestReviewLoading">جاري الإرسال...</span>
+                    <span v-else>إرسال</span>
+                  </button>
               </form>
               </div>
             </div>
+          </div>
+          
+          <!-- Reviews List -->
+          <div v-if="reviews.length > 0" class="reviews-list mt-5">
+            <h5 class="mb-4">المراجعات ({{ totalReviewsCount }})</h5>
+            <div v-if="reviewsLoading" class="text-center py-4">
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">جاري التحميل...</span>
+              </div>
+            </div>
+            <div v-else class="reviews-container">
+              <div 
+                v-for="(review, index) in reviews" 
+                :key="review?.id || review?.review_id || index"
+                class="review-item mb-4 p-3 border rounded"
+              >
+                <div class="review-header d-flex justify-content-between align-items-start mb-2">
+                  <div class="review-author">
+                    <strong class="d-block">{{ review?.name || review?.user?.name || review?.customer?.name || 'مستخدم' }}</strong>
+                    <small class="text-muted">
+                      {{ formatDate(review?.created_at || review?.date || review?.created_date) }}
+                    </small>
+                  </div>
+                  <div class="review-rating d-flex align-items-center gap-1">
+                    <span v-for="star in 5" :key="star" class="star-rating">
+                      <i 
+                        class="fa-solid fa-star"
+                        :class="{ 'open': star <= (review?.rating || review?.stars || 0) }"
+                      ></i>
+                    </span>
+                  </div>
+                </div>
+                <div class="review-content mt-3">
+                  <p>{{ review?.comment || review?.review || review?.text || 'لا يوجد تعليق' }}</p>
+                </div>
+                <div v-if="review?.reply || review?.response" class="review-reply mt-3 p-3 bg-light rounded">
+                  <div class="reply-header mb-2">
+                    <strong class="text-primary">رد البائع:</strong>
+                  </div>
+                  <p class="mb-0">{{ review?.reply || review?.response }}</p>
+                </div>
+                <div class="review-actions mt-3 d-flex align-items-center gap-3">
+                  <button 
+                    class="btn btn-sm btn-outline-primary"
+                    @click="likeReview(review?.id || review?.review_id)"
+                    :disabled="reviewLoading"
+                  >
+                    <i class="fa-solid fa-thumbs-up"></i>
+                    <span class="ms-1">{{ review?.likes_count || review?.likes || 0 }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="!reviewsLoading" class="text-center py-5 text-muted">
+            <p>لا توجد مراجعات حتى الآن. كن أول من يقيم هذا المنتج!</p>
           </div>
         </div>
      </div>
