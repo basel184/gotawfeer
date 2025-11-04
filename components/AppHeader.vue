@@ -3793,6 +3793,7 @@ body {
   position: fixed;
   top: 0;
   left: 0;
+  right: auto;
   height: 100vh;
   width: 340px;
   background: white;
@@ -3811,7 +3812,7 @@ body {
 
 .slide-cart-enter-from,
 .slide-cart-leave-to {
-  transform: translateX(-100%);
+  transform: translateX(100%);
 }
 
 .slide-cart-enter-to,
@@ -3821,14 +3822,14 @@ body {
 
 /* RTL Support */
 [dir="rtl"] .cart-dropdown {
-  left: auto;
-  right: 0;
+  right: auto;
+  left: 0;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
 }
 
 [dir="rtl"] .slide-cart-enter-from,
 [dir="rtl"] .slide-cart-leave-to {
-  transform: translateX(100%);
+  transform: translateX(-100%);
 }
 
 /* Header */
