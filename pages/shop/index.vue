@@ -33,6 +33,11 @@ const price_max = ref<number | null>(null)
 const category = ref<number[]>([]) // store selected ids (any level)
 const brand = ref<number[]>([])
 
+// Computed for best selling banner
+const isBestSelling = computed(() => {
+  return sort_by.value === 'best_selling' || route.query.sort === 'best_selling'
+})
+
 // Options data
 const cats = ref<any[]>([])
 const brandsResp = ref<any>({ total_size: 0, brands: [] })
@@ -892,6 +897,11 @@ const handleProductDetails = () => {
         <p v-if="items.length > 0">{{ items.length }} {{ t('shop.search_results.products_count') }}</p>
       </div>
       
+      <!-- Best Selling Banner -->
+      <div v-if="isBestSelling" class="best-selling-banner">
+        <img src="/images/الافضل-مبيعا-جو-توفير.png" alt="الأفضل مبيعاً" class="banner-image" />
+      </div>
+      
       <!-- Offers Header -->
       <div v-if="route.query.has_discount === 'true'" class="offers-header">
         <h2>
@@ -1655,6 +1665,21 @@ const handleProductDetails = () => {
 .search-results-header { margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb }
 .search-results-header h2 { margin: 0 0 8px 0; color: #111827; font-size: 1.25rem; font-weight: 600 }
 .search-results-header p { margin: 0; color: #6b7280; font-size: 0.875rem }
+
+.best-selling-banner {
+  margin-bottom: 20px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.best-selling-banner .banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
 
 .offers-header { 
   margin-bottom: 20px; 
