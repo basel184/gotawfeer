@@ -183,6 +183,10 @@ html[dir="rtl"] .whatsapp {
     margin-top: 4rem;
     margin-inline: auto;
 }
+.modal-products .pic-img {
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+}
 @media (max-width: 991.98px) {
     .modal-products {
     max-width: 90%;

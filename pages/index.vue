@@ -696,7 +696,7 @@ const onImgErr = (e: any) => {
             <div v-if="selectedProductForModal" class="row">
               <div class="col-lg-6 mb-3">
                 <picture>
-                  <img class="mw-100" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
+                  <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
                 </picture>
               </div>
               <div class="col-lg-6">

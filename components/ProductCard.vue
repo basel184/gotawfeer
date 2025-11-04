@@ -683,6 +683,14 @@ const openProductModal = (e: Event) => {
         </div>
 
       </div>
+      <div class="color-pallete-container d-flex align-items-center justify-content-between ">
+        <div class="color-pallete"></div>
+        <div class="color-pallete"></div>
+        <div class="color-pallete"></div>
+        <div class="color-pallete-num">
+          <span>23+</span>
+        </div>
+      </div>
       <div class="brand" v-if="brandName">{{ brandName }}</div>
       <div class="meta">
 
