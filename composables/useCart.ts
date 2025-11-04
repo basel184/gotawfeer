@@ -13,32 +13,49 @@ export function useCart() {
   const { $get, $post, $put, $del } = useApi()
 
   const list = async (force = false) => {
-    // Check cache first
+    // Check cache first (only if not forcing and we have items)
     const now = Date.now()
     if (!force && now - lastFetch.value < CACHE_DURATION && items.value.length > 0) {
+      console.log('[Cart:list] Using cached data, items count:', items.value.length)
       return items.value
     }
     
-    // Prevent multiple simultaneous requests
-    if (loading.value) {
+    // Prevent multiple simultaneous requests (but allow if forcing)
+    if (loading.value && !force) {
+      console.log('[Cart:list] Already loading, returning current items')
       return items.value
     }
     
     loading.value = true
     error.value = null
     try {
+      console.log('[Cart:list] Fetching cart from API, force:', force)
       const res: any = await $get('v1/cart/')
-      // try {
-      //   const plain = JSON.parse(JSON.stringify(res))
-      //   console.log('[Cart:list] length:', Array.isArray(plain) ? plain.length : 'not-array')
-      //   console.log('[Cart:list] first:', plain?.[0])
-      // } catch {}
-      // API returns an array of cart rows
-      items.value = Array.isArray(res) ? res : []
+      
+      // Handle different response structures
+      let cartItems: any[] = []
+      if (Array.isArray(res)) {
+        cartItems = res
+      } else if (res?.data && Array.isArray(res.data)) {
+        cartItems = res.data
+      } else if (res?.items && Array.isArray(res.items)) {
+        cartItems = res.items
+      } else if (res?.cart && Array.isArray(res.cart)) {
+        cartItems = res.cart
+      }
+      
+      items.value = cartItems
       lastFetch.value = now
+      
+      console.log('[Cart:list] Cart loaded successfully, items count:', items.value.length)
+      if (items.value.length > 0) {
+        console.log('[Cart:list] First item:', items.value[0])
+      }
+      
       return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to load cart'
+      console.error('[Cart:list] Error loading cart:', e)
       throw e
     } finally {
       loading.value = false
@@ -61,8 +78,18 @@ export function useCart() {
   const qtyOf = (product: any): number => {
     const pid = product?.id || product?.product_id || product?.product?.id
     if (!pid) return 0
-    const it = items.value.find((x: any) => String(x?.product_id || x?.product?.id) === String(pid))
-    return Number(it?.quantity || it?.qty || 0)
+    
+    // Search for item in cart by product_id
+    const it = items.value.find((x: any) => {
+      const xPid = x?.product_id || x?.product?.id || x?.id
+      return String(xPid) === String(pid)
+    })
+    
+    if (it) {
+      return Number(it?.quantity || it?.qty || 0)
+    }
+    
+    return 0
   }
 
   const add = async (payload: any) => {

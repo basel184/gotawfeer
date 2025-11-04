@@ -26,7 +26,7 @@ onMounted(async () => {
   try {
     await Promise.all([
       wishlist.list(),
-      cart.list()
+      cart.list(true) // Force refresh to ensure cart is loaded
     ])
   } catch (error) {
     console.error('Failed to load wishlist or cart:', error)

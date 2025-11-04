@@ -249,7 +249,7 @@ const compare = useCompare()
 onMounted(async () => {
   try {
     await Promise.all([
-      cart.list(),
+      cart.list(true), // Force refresh to ensure cart is loaded
       wishlist.list()
     ])
     compare.init()
