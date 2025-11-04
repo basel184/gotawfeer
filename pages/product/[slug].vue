@@ -1386,6 +1386,17 @@ watch(mainIndex, (newIndex) => {
             <img :src="img" :alt="'img-'+i" />
           </SwiperSlideComponent>
         </SwiperComponent>
+          <div class="product-description">
+            <h3>{{ title }}</h3>
+            <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
+          </div>
+                    <div class="specifications">
+            <div v-if="description" class="description-text" v-html="description"></div>
+            <div v-if="Object.keys(metaDescription).length === 0" class="no-content">
+              لا توجد مواصفات متاحة
+            </div>
+          </div>
+
       </div>
 
       <!-- Info -->
@@ -1627,135 +1638,7 @@ watch(mainIndex, (newIndex) => {
     </div>
 
     <!-- Product Details Tabs -->
-    <div v-if="product" class="product-details">
-      <div class="tabs">
-        <button 
-          class="tab" 
-          :class="{ active: activeTab === 'description' }" 
-          @click="activeTab = 'description'"
-        >
-          الوصف
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: activeTab === 'specifications' }" 
-          @click="activeTab = 'specifications'"
-        >
-          مواصفات
-        </button>
-        <button 
-          class="tab" 
-          :class="{ active: activeTab === 'reviews' }" 
-          @click="activeTab = 'reviews'"
-        >
-          ({{ reviewsCount }}) التقييمات
-        </button>
-      </div>
 
-      <div class="tab-content">
-        <!-- Description Tab -->
-        <div v-if="activeTab === 'description'" class="tab-panel">
-          <div class="product-description">
-            <h3>{{ title }}</h3>
-            <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
-          </div>
-        </div>
-
-        <!-- Specifications Tab -->
-        <div v-if="activeTab === 'specifications'" class="tab-panel">
-          <div class="specifications">
-            <div v-if="description" class="description-text" v-html="description"></div>
-            <div v-if="Object.keys(metaDescription).length === 0" class="no-content">
-              لا توجد مواصفات متاحة
-            </div>
-          </div>
-        </div>
-
-        <!-- Reviews Tab -->
-        <div v-if="activeTab === 'reviews'" class="tab-panel">
-          <!-- Reviews Header -->
-          <div class="reviews-header">
-            <div class="reviews-summary">
-              <div class="rating-display">
-                <div class="rating-number">{{ rating.toFixed(1) }}</div>
-                <div class="rating-stars">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(rating) }">★</span>
-                </div>
-                <div class="rating-text">بناء على {{ reviewsCount }} تقييم</div>
-              </div>
-            </div>
-            <div class="reviews-actions">
-              <template v-if="auth?.user?.value">
-                <button class="write-review-btn" @click="handleWriteReview">
-                  اكتب تقييمك
-                </button>
-              </template>
-              <template v-else>
-                <button class="write-review-btn" @click="handleWriteReview" type="button">
-                  تسجيل الدخول للتقيم
-                </button>
-              </template>
-              <select class="sort-select">
-                <option value="newest">الأحدث أولاً</option>
-                <option value="oldest">الأقدم أولاً</option>
-                <option value="highest">الأعلى تقييماً</option>
-                <option value="lowest">الأقل تقييماً</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Reviews List -->
-          <div v-if="reviewsLoading" class="reviews-loading">جارٍ تحميل التقييمات...</div>
-          <div v-else-if="reviewsError" class="reviews-error">{{ reviewsError }}</div>
-          <div v-else-if="reviews.length === 0" class="no-reviews">
-            <div class="no-reviews-content">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <h3>لا توجد تقييمات متاحة</h3>
-              <p>كن أول من يقيم هذا المنتج</p>
-            </div>
-          </div>
-          <div v-else class="reviews">
-            <div v-for="review in reviews" :key="review.id" class="review-item">
-              <div class="review-header">
-                <div class="review-stars">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
-                </div>
-                <div class="review-author">{{ maskCustomerName(review.customer?.f_name || review.customer?.name || 'مجهول') }}</div>
-                <div class="review-date">{{ formatDate(review.created_at) }}</div>
-              </div>
-              <div class="review-text">{{ review.comment || 'لا يوجد تعليق' }}</div>
-              
-              <!-- Replies Section -->
-              <div v-if="review.replies && review.replies.length > 0" class="replies-section">
-                <div class="replies-header">
-                  <h4>الردود ({{ review.replies_count || 0 }})</h4>
-                </div>
-                <div class="replies-list">
-                  <div v-for="reply in review.replies" :key="reply.id" class="reply-item">
-                    <div class="reply-header">
-                      <span class="reply-author">{{ maskCustomerName(reply.customer?.f_name || reply.customer?.name || 'مجهول') }}</span>
-                      <span class="reply-date">{{ formatDate(reply.created_at) }}</span>
-                    </div>
-                    <div class="reply-text">{{ reply.reply_text }}</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="review-actions">
-                <button class="action-btn" @click="openReplyModal(review.id)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21.99 4c0-1.1-.89-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/>
-                  </svg>
-                  رد ({{ review.replies_count || 0 }})
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Recommended -->
     <div class="rec">
@@ -1799,6 +1682,75 @@ watch(mainIndex, (newIndex) => {
         </Swiper>
       </div>
     </div>
+
+    <!-- Revision -->
+     <div class="revision-section mt-5">
+        <div class="container">
+          <h4 class="text-center">
+            مراجعة العملاء
+          </h4>
+          <div class="row">
+            <div class="col-lg-6 mb-4 d-flex flex-column gap-4 ">
+              <strong class="text-center mt-3">
+                المراجعات (0)
+              </strong>
+              <div class="progress mt-2" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 0%"></div>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 25%"></div>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 50%"></div>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 75%"></div>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 100%"></div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="form-container mt-3">
+                <p>كن أول من يقيم “1-مجموعه فرش الشعر من سوناتا | Sonata Hair Brush Set-1”
+                </p>
+                <p>
+                  لن يتم نشر عنوان بريدك الإلكتروني. الحقول الإلزامية مشار إليها بـ <span class="text-danger">*</span>
+                </p>
+                <div class="rating d-flex align-items-center gap-2">
+                  <strong>التقييم:</strong>
+                  <div class="rating-box d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-star open"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                  </div>
+                </div>
+                <form>
+                  <div class="mb-3">
+                    <label for="exampleInputEmail1" class="form-label">مراجعتك <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="exampleFormControlTextarea1" rows="3"></textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label for="exampleInputPassword1" class="form-label">الاسم <span class="text-danger">*</span> </label>
+                    <input type="password" class="form-control" id="exampleInputPassword1">
+                  </div>
+                  <div class="mb-3">
+                    <label for="exampleInputEmail1" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                  </div>
+                  <div class="mb-3 form-check d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                    <label class="form-check-label" for="exampleCheck1">احفظ اسمي، بريدي الإلكتروني، والموقع الإلكتروني في هذا المتصفح لاستخدامها المرة المقبلة في تعليقي.</label>
+                  </div>
+                  <button type="submit" class="main-btn border-0">إرسال</button>
+              </form>
+              </div>
+            </div>
+          </div>
+        </div>
+     </div>
 
     <!-- Login Modal -->
     <teleport to="body">

@@ -215,3 +215,10 @@ html[dir="rtl"] .whatsapp {
     height: auto;
     object-fit: cover;
 }
+.form-check .form-check-input {
+    margin: 0;
+}
+.rating .open,
+.rating i:hover {
+    color: gold;
+}
