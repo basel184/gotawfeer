@@ -655,6 +655,14 @@ const inStock = computed<boolean>(() => {
         </div>
 
       </div>
+      <div class="color-pallete-container d-flex align-items-center-gap-2 justify-content-between ">
+        <div class="color-pallete"></div>
+        <div class="color-pallete"></div>
+        <div class="color-pallete"></div>
+        <div class="color-pallete-num"><span>
+          23+
+        </span></div>
+      </div>
       <div class="brand" v-if="brandName">{{ brandName }}</div>
       <div class="meta">
 

@@ -231,3 +231,25 @@ html[dir="rtl"] .whatsapp {
 .payment-option picture img {
     width: 100%;
 }
+.color-pallete-container {
+    gap: 5px;
+    margin-block: 12px;
+}
+.color-pallete-container .color-pallete,
+.color-pallete-container .color-pallete-num {
+    height: 25px;
+    width: 25px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+.color-pallete-container .color-pallete {
+    background-color: var(--secondary-color);
+}
+.color-pallete-container .color-pallete-num {
+    background-color: #eee;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
