@@ -261,3 +261,11 @@ html[dir="rtl"] .whatsapp {
     margin-right: auto !important;
     margin-left: unset;
 }
+.swiper-slide {
+    display: flex !important;
+    height: auto !important;
+}
+.slide-inner {
+  display: flex;
+  height: 100%;
+}

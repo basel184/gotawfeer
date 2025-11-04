@@ -1608,6 +1608,9 @@ watch(mainIndex, (newIndex) => {
     <div v-else class="product">
       <!-- Gallery -->
       <div class="gallery">
+        <div class="gallery-container">
+
+        </div>
         <!-- Main Swiper Gallery -->
         <div v-if="!shouldShowSwiper" class="no-images">
           <div class="no-images-content">
@@ -1641,7 +1644,6 @@ watch(mainIndex, (newIndex) => {
             </div>
           </SwiperSlideComponent>
         </SwiperComponent>
-        
         <!-- Thumbnails Swiper Gallery -->
         <SwiperComponent
           v-if="swiperReady && images.length > 1"
@@ -1662,7 +1664,7 @@ watch(mainIndex, (newIndex) => {
             <h3>{{ title }}</h3>
             <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
           </div>
-                    <div class="specifications">
+          <div class="specifications">
             <div v-if="description" class="description-text" v-html="description"></div>
             <div v-if="Object.keys(metaDescription).length === 0" class="no-content">
               لا توجد مواصفات متاحة
@@ -1897,7 +1899,7 @@ watch(mainIndex, (newIndex) => {
                   <img :src="getProductImage(offerProduct) || placeholderImage" :alt="getProductTitle(offerProduct)" @error="onImgErr">
                 </picture>
                 <div class="offer-product-card-content">
-                  <h6>{{ getProductTitle(offerProduct) }}</h6>
+                  <h6 class="text-black">{{ getProductTitle(offerProduct) }}</h6>
                   <div class="offer-product-card-price d-flex align-items-center gap-3">
                     <span class="price final">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
                     <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
@@ -2791,7 +2793,7 @@ watch(mainIndex, (newIndex) => {
     box-shadow:0 0 0 2px rgba(37, 99, 235, 0.1);
   }
   .mySwiper .swiper-slide{ 
-    width:60px; 
+    width:60px !important; 
     height:60px; 
     cursor:pointer;
   }

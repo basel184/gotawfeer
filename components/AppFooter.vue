@@ -7,9 +7,21 @@
 
         <!-- Brand Section -->
         <div class="footer-brand">
+          <h5>عن جو توفير
+          </h5>
           <p class="brand-description">
-            {{ t('footer.brand.description1') }}
+            نسعى لتقديم تجربة تسوق شاملة وموثوقة ، من خلال توفير منتجات أصلية ومتنوعة بأسعار تنافسية، مع دعم العلامات التجارية المحلية والعالمية.
           </p>
+          <div class="info-contact d-flex flex-column gap-3">
+            <div class="info-cont d-flex align-items-center gap-2">
+              <i class="fa-solid fa-phone"></i>
+              <a href="tel:+966537030838" dir="ltr" class="text-white text-decoration-none ">+966 53 703 0838</a>
+            </div>
+            <div class="info-cont d-flex align-items-center gap-2">
+              <i class="fa-solid fa-envelope"></i>
+              <a href="mailto:gotawfeer@gmail.com" dir="ltr" class="text-white text-decoration-none ">gotawfeer@gmail.com</a>
+            </div>
+          </div>
           <p class="brand-description">
             {{ t('footer.brand.description2') }}
           </p>
@@ -34,8 +46,8 @@
           <!-- Main Links -->
             <div class="link-section">
               <ul class="link-list">
-                <li><NuxtLink to="/intellectual-property" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
-                <li><NuxtLink to="/blog" class="footer-link">{{ t('footer.links.company.blog') }}</NuxtLink></li>
+                              <li><NuxtLink to="/blog" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
+                <li><NuxtLink to="/intellectual-property-rights" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
               </ul>
             </div>
 
@@ -45,7 +57,7 @@
           <div class="link-section">
             <ul class="link-list">
               <li><NuxtLink to="/about" class="footer-link">{{ t('footer.links.company.about') }}</NuxtLink></li>
-              <li><span @click="handleOrdersClick" class="footer-link" style="cursor: pointer;">{{ t('footer.links.account.orders') }}</span></li>
+              <li><NuxtLink to="/blog" class="footer-link">{{ t('footer.links.company.blog') }}</NuxtLink></li>
             </ul>
           </div>
         </div>
