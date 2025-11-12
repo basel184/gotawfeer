@@ -46,33 +46,28 @@ const { data } = await useAsyncData('categories-list', async () => {
   loading.value = true
   loadingProgress.value = 0
   
-  // Much faster progress simulation
-  const progressInterval = setInterval(() => {
-    if (loadingProgress.value < 70) {
-      loadingProgress.value += Math.random() * 50
-    }
-  }, 50)
-  
   try {
     const result = await $get('v1/categories')
     loadingProgress.value = 100
-    clearInterval(progressInterval)
     
-    // Preload images for better performance
+    // Preload images for better performance - only first 12 for faster initial load
     const categories = result?.data || result || []
     if (Array.isArray(categories)) {
-      preloadImages(categories)
+      // Preload only visible categories first
+      const visibleCategories = categories.slice(0, 12)
+      setTimeout(() => preloadImages(visibleCategories), 0)
+      // Preload rest in background after a delay
+      if (categories.length > 12) {
+        setTimeout(() => preloadImages(categories.slice(12)), 500)
+      }
     }
     
-    // Complete loading much faster
-    setTimeout(() => {
-      loading.value = false
-      loadingProgress.value = 0
-    }, 100)
+    // Complete loading immediately
+    loading.value = false
+    loadingProgress.value = 0
     
     return result
   } catch (error) {
-    clearInterval(progressInterval)
     loading.value = false
     loadingProgress.value = 0
     throw error
@@ -144,7 +139,6 @@ const handleImageLoad = (event: Event) => {
             </svg>
             {{ t('categories') || 'التصنيفات' }}
           </h1>
-          <p class="page-subtitle">{{ t('browse_categories') || 'تصفح جميع التصنيفات المتاحة' }}</p>
         </div>
       </div>
     </div>
@@ -159,7 +153,7 @@ const handleImageLoad = (event: Event) => {
       <div class="loading-progress">
         <div class="progress-bar" :style="{ width: loadingProgress + '%' }"></div>
       </div>
-      <span class="loading-text">{{ t('loading_categories') || 'جاري تحميل التصنيفات...' }}</span>
+      <span class="loading-text">{{ t('shop.loading_categories') || 'جاري تحميل التصنيفات...' }}</span>
       
       <!-- Skeleton Loading -->
       <div class="skeleton-categories">

@@ -807,10 +807,6 @@ onMounted(async () => {
             
             <!-- Order Totals -->
             <div class="order-totals">
-              <div class="total-row">
-                <span>{{ t('checkout.subtotal') || 'المجموع الفرعي' }}</span>
-                <span>{{ money(subtotalAfterDiscount) }}</span>
-              </div>
               <div v-if="taxExcluded > 0" class="total-row">
                 <span>{{ t('checkout.tax') || 'الضريبة' }}</span>
                 <span>{{ money(taxExcluded) }}</span>

@@ -52,23 +52,20 @@ const { data } = await useAsyncData('brands-list', async () => {
   loading.value = true
   loadingProgress.value = 0
   
-  // Ultra-fast progress simulation
-  const progressInterval = setInterval(() => {
-    if (loadingProgress.value < 80) {
-      loadingProgress.value += Math.random() * 60
-    }
-  }, 30) // Faster interval
-  
   try {
     const result = await $get('v1/brands')
     loadingProgress.value = 100
-    clearInterval(progressInterval)
     
-    // Preload images in background (non-blocking)
+    // Preload images in background (non-blocking) - only first 12 for faster initial load
     const brands = result?.data || result || []
     if (Array.isArray(brands)) {
-      // Don't wait for preload, do it in background
-      setTimeout(() => preloadImages(brands), 0)
+      // Preload only visible brands first
+      const visibleBrands = brands.slice(0, 12)
+      setTimeout(() => preloadImages(visibleBrands), 0)
+      // Preload rest in background after a delay
+      if (brands.length > 12) {
+        setTimeout(() => preloadImages(brands.slice(12)), 500)
+      }
     }
     
     // Complete loading immediately
@@ -77,7 +74,6 @@ const { data } = await useAsyncData('brands-list', async () => {
     
     return result
   } catch (error) {
-    clearInterval(progressInterval)
     loading.value = false
     loadingProgress.value = 0
     throw error
@@ -149,18 +145,8 @@ const handleImageLoad = (event: Event) => {
 <template>
   <div class="brands-page" dir="rtl">
     <!-- Header Section -->
-    <div class="brands-header">
-      <div class="container">
-        <div class="header-content">
-          <h1 class="page-title">
-            <svg width="32" height="32" viewBox="0 0 24 24" class="title-icon">
-              <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            {{ t('brands') || 'العلامات التجارية' }}
-          </h1>
-          <p class="page-subtitle">{{ t('browse_brands') || 'تصفح جميع العلامات التجارية المتاحة' }}</p>
-        </div>
-      </div>
+    <div>
+      <img src="/images/براندات-جوتوفير (2).png" width="100%" height="auto" alt="العروض" class="banner-image" />
     </div>
 
     <!-- Loading State -->

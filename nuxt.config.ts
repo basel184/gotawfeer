@@ -26,6 +26,13 @@ export default defineNuxtConfig({
       isCustomElement: (tag) => tag.startsWith('swiper-')
     }
   },
+  app: {
+    pageTransition: {
+      name: 'page',
+      mode: 'out-in',
+      duration: 150
+    }
+  },
   modules: [
     '@nuxtjs/i18n'
   ],

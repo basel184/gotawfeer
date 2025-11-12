@@ -2,7 +2,11 @@
 <template>
   <div>
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :transition="{
+        name: 'page',
+        mode: 'out-in',
+        duration: 150
+      }" />
     </NuxtLayout>
   </div>
 </template>
@@ -23,5 +27,42 @@ if (process.client) {
 @import '/assets/css/custom.css';
 body {
   margin: 0;
+}
+
+/* Page Transitions - Fast */
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.15s ease-out;
+  position: relative;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.page-enter-to,
+.page-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* RTL Support for transitions */
+html[dir="rtl"] .page-enter-from {
+  transform: translateY(10px);
+}
+
+html[dir="rtl"] .page-leave-to {
+  transform: translateY(-10px);
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
 }
 </style>

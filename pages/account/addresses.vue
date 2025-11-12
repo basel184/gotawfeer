@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 // Interfaces
@@ -36,7 +36,7 @@ const addressForm = ref({
   phone: '', // Required field
   address: '',
   city: '',
-  zip: '',
+  zip: '55555',
   country: 'Saudi Arabia',
   latitude: '24.7136', // Default Riyadh coordinates
   longitude: '46.6753',
@@ -45,6 +45,16 @@ const addressForm = ref({
 
 const formLoading = ref(false)
 const formError = ref('')
+
+// Map state
+const mapContainer = ref<HTMLElement | null>(null)
+const map = ref<any>(null)
+const marker = ref<any>(null)
+const mapInitialized = ref(false)
+const searchQuery = ref('')
+const searching = ref(false)
+const searchResults = ref<any[]>([])
+const showSearchResults = ref(false)
 
 // Load addresses
 const loadAddresses = async () => {
@@ -107,6 +117,223 @@ const closeForm = () => {
   showAddressForm.value = false
   editingAddress.value = null
   formError.value = ''
+  // Cleanup map
+  if (map.value) {
+    map.value.remove()
+    map.value = null
+    marker.value = null
+    mapInitialized.value = false
+  }
+}
+
+// Initialize map
+const initMap = async () => {
+  if (!process.client || mapInitialized.value || !mapContainer.value) return
+  
+  try {
+    // Dynamically import Leaflet - use client-side only
+    // Use $fetch or dynamic import with proper handling
+    const leafletModule = await import('leaflet')
+    const L = (leafletModule as any).default || leafletModule
+    
+    // Fix Leaflet icon paths
+    delete (L.Icon.Default.prototype as any)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    })
+    
+    // Import CSS dynamically
+    if (process.client && !document.querySelector('link[href*="leaflet.css"]')) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+      link.crossOrigin = ''
+      document.head.appendChild(link)
+    }
+    
+    // Get coordinates from form or use default
+    const lat = parseFloat(addressForm.value.latitude) || 24.7136
+    const lng = parseFloat(addressForm.value.longitude) || 46.6753
+    
+    // Initialize map
+    map.value = L.map(mapContainer.value, {
+      center: [lat, lng],
+      zoom: 13
+    })
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map.value)
+    
+    // Add marker
+    marker.value = L.marker([lat, lng], {
+      draggable: true
+    }).addTo(map.value)
+    
+    // Update coordinates when marker is dragged
+    marker.value.on('dragend', (e: any) => {
+      const position = e.target.getLatLng()
+      addressForm.value.latitude = position.lat.toFixed(6)
+      addressForm.value.longitude = position.lng.toFixed(6)
+    })
+    
+    // Update marker when map is clicked
+    map.value.on('click', (e: any) => {
+      const { lat, lng } = e.latlng
+      addressForm.value.latitude = lat.toFixed(6)
+      addressForm.value.longitude = lng.toFixed(6)
+      
+      if (marker.value) {
+        marker.value.setLatLng([lat, lng])
+      } else {
+        marker.value = L.marker([lat, lng], {
+          draggable: true
+        }).addTo(map.value)
+        marker.value.on('dragend', (e: any) => {
+          const position = e.target.getLatLng()
+          addressForm.value.latitude = position.lat.toFixed(6)
+          addressForm.value.longitude = position.lng.toFixed(6)
+        })
+      }
+    })
+    
+    mapInitialized.value = true
+    
+    // Invalidate size after a short delay to ensure container is visible
+    setTimeout(() => {
+      if (map.value) {
+        map.value.invalidateSize()
+      }
+    }, 300)
+  } catch (error) {
+    console.error('Error initializing map:', error)
+  }
+}
+
+// Watch for form opening to initialize map
+watch(showAddressForm, async (isOpen) => {
+  if (isOpen) {
+    await nextTick()
+    setTimeout(() => {
+      initMap()
+    }, 100)
+  }
+})
+
+// Update marker position when coordinates change manually
+watch([() => addressForm.value.latitude, () => addressForm.value.longitude], ([lat, lng]) => {
+  if (map.value && marker.value && mapInitialized.value) {
+    const latNum = parseFloat(lat) || 24.7136
+    const lngNum = parseFloat(lng) || 46.6753
+    marker.value.setLatLng([latNum, lngNum])
+    map.value.setView([latNum, lngNum], map.value.getZoom())
+  }
+})
+
+// Search for location on map
+const searchLocation = async () => {
+  if (!searchQuery.value.trim() || !map.value) return
+  
+  searching.value = true
+  searchResults.value = []
+  showSearchResults.value = false
+  
+  try {
+    // Use Nominatim (OpenStreetMap) geocoding API
+    const query = encodeURIComponent(searchQuery.value.trim())
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5&addressdetails=1&accept-language=ar,en`
+    )
+    
+    const data = await response.json()
+    
+    if (Array.isArray(data) && data.length > 0) {
+      searchResults.value = data
+      showSearchResults.value = true
+    } else {
+      formError.value = 'لم يتم العثور على نتائج'
+    }
+  } catch (error) {
+    console.error('Error searching location:', error)
+    formError.value = 'حدث خطأ أثناء البحث'
+  } finally {
+    searching.value = false
+  }
+}
+
+// Select search result
+const selectSearchResult = (result: any) => {
+  const lat = parseFloat(result.lat)
+  const lng = parseFloat(result.lon)
+  
+  if (!isNaN(lat) && !isNaN(lng)) {
+    // Update form coordinates
+    addressForm.value.latitude = lat.toFixed(6)
+    addressForm.value.longitude = lng.toFixed(6)
+    
+    // Update map view
+    if (map.value) {
+      map.value.setView([lat, lng], 15)
+      
+      // Update marker
+      if (marker.value) {
+        marker.value.setLatLng([lat, lng])
+      }
+    }
+    
+    // Update address fields if available
+    const address = result.address || {}
+    if (address.road || address.street) {
+      addressForm.value.address = (address.road || address.street || '') + 
+        (address.house_number ? ` ${address.house_number}` : '')
+    }
+    if (address.city || address.town || address.village) {
+      addressForm.value.city = address.city || address.town || address.village || ''
+    }
+    
+    // Clear search
+    searchQuery.value = ''
+    searchResults.value = []
+    showSearchResults.value = false
+  }
+}
+
+// Get current location
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    formError.value = 'المتصفح لا يدعم تحديد الموقع'
+    return
+  }
+  
+  searching.value = true
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+      
+      addressForm.value.latitude = lat.toFixed(6)
+      addressForm.value.longitude = lng.toFixed(6)
+      
+      if (map.value) {
+        map.value.setView([lat, lng], 15)
+        if (marker.value) {
+          marker.value.setLatLng([lat, lng])
+        }
+      }
+      
+      searching.value = false
+    },
+    (error) => {
+      console.error('Geolocation error:', error)
+      formError.value = 'فشل في تحديد موقعك الحالي'
+      searching.value = false
+    }
+  )
 }
 
 // Submit address form
@@ -183,6 +410,15 @@ const getAddressTypeName = (type: string) => {
 // Load data on mount
 onMounted(() => {
   loadAddresses()
+})
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (map.value) {
+    map.value.remove()
+    map.value = null
+    marker.value = null
+  }
 })
 </script>
 
@@ -285,7 +521,7 @@ onMounted(() => {
           </div>
 
           <form @submit.prevent="submitAddress" class="address-form">
-            <div class="form-group">
+            <div class="form-group d-none">
               <label for="address_type">نوع العنوان</label>
               <select id="address_type" v-model="addressForm.address_type" required>
                 <option value="home">المنزل</option>
@@ -308,18 +544,6 @@ onMounted(() => {
               <div class="form-group">
                 <label for="contact_person_number">رقم الهاتف</label>
                 <input
-                  id="contact_person_number"
-                  v-model="addressForm.contact_person_number"
-                  type="tel"
-                  required
-                  :disabled="formLoading"
-                />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="phone">رقم الهاتف (مطلوب)</label>
-              <input
                 id="phone"
                 v-model="addressForm.phone"
                 type="tel"
@@ -327,20 +551,20 @@ onMounted(() => {
                 placeholder="مثال: +966501234567"
                 :disabled="formLoading"
               />
+              </div>
             </div>
 
             <div class="form-group">
               <label for="address">العنوان التفصيلي</label>
-              <textarea
+              <input
                 id="address"
                 v-model="addressForm.address"
-                rows="3"
                 required
                 :disabled="formLoading"
-              ></textarea>
+              />
             </div>
 
-            <div class="form-row">
+            <div class="">
               <div class="form-group">
                 <label for="city">المدينة</label>
                 <input
@@ -351,7 +575,7 @@ onMounted(() => {
                   :disabled="formLoading"
                 />
               </div>
-              <div class="form-group">
+              <div class="form-group d-none">
                 <label for="zip">الرمز البريدي</label>
                 <input
                   id="zip"
@@ -362,7 +586,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group d-none">
               <label for="country">البلد</label>
               <input
                 id="country"
@@ -373,32 +597,97 @@ onMounted(() => {
               />
             </div>
 
+            <!-- Map Section -->
+            <ClientOnly>
+              <div class="form-group">
+                <label>تحديد الموقع على الخريطة</label>
+                <p class="map-instructions">ابحث عن موقعك أو انقر على الخريطة لتحديد الموقع أو اسحب العلامة</p>
+                
+                <!-- Search Box -->
+                <div class="map-search-container">
+                  <div class="search-input-wrapper">
+                    <input
+                      v-model="searchQuery"
+                      type="text"
+                      class="map-search-input"
+                      placeholder="ابحث عن عنوان أو مكان..."
+                      @keyup.enter="searchLocation"
+                      @input="showSearchResults = false"
+                      :disabled="formLoading || searching"
+                    />
+                    <button
+                      type="button"
+                      @click="searchLocation"
+                      class="search-btn"
+                      :disabled="formLoading || searching || !searchQuery.trim()"
+                    >
+                      <svg v-if="!searching" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                      </svg>
+                      <div v-else class="search-spinner"></div>
+                    </button>
+                    <button
+                      type="button"
+                      @click="getCurrentLocation"
+                      class="location-btn"
+                      :disabled="formLoading || searching"
+                      title="تحديد موقعي الحالي"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <!-- Search Results -->
+                  <div v-if="showSearchResults && searchResults.length > 0" class="search-results">
+                    <div
+                      v-for="(result, index) in searchResults"
+                      :key="index"
+                      class="search-result-item"
+                      @click="selectSearchResult(result)"
+                    >
+                      <div class="result-icon">📍</div>
+                      <div class="result-content">
+                        <div class="result-name">{{ result.display_name }}</div>
+                        <div class="result-type">{{ result.type }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div ref="mapContainer" class="map-container"></div>
+              </div>
+            </ClientOnly>
+
             <div class="form-row">
               <div class="form-group">
                 <label for="latitude">خط العرض</label>
                 <input
                   id="latitude"
-                  v-model.number="addressForm.latitude"
-                  type="number"
+                  v-model="addressForm.latitude"
+                  type="text"
                   step="any"
                   placeholder="24.7136"
                   :disabled="formLoading"
+                  readonly
                 />
               </div>
               <div class="form-group">
                 <label for="longitude">خط الطول</label>
                 <input
                   id="longitude"
-                  v-model.number="addressForm.longitude"
-                  type="number"
+                  v-model="addressForm.longitude"
+                  type="text"
                   step="any"
                   placeholder="46.6753"
                   :disabled="formLoading"
+                  readonly
                 />
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group d-none">
               <label for="is_billing">نوع العنوان</label>
               <select id="is_billing" v-model.number="addressForm.is_billing" :disabled="formLoading">
                 <option :value="1">عنوان الفواتير</option>
@@ -847,6 +1136,151 @@ onMounted(() => {
 .submit-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+/* Map Styles */
+.map-container {
+  width: 100%;
+  height: 400px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.map-instructions {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+}
+
+.form-group input[readonly] {
+  background: #f9fafb;
+  cursor: not-allowed;
+}
+
+/* Map Search Styles */
+.map-search-container {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.map-search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.map-search-input:focus {
+  outline: none;
+  border-color: #6b46c1;
+  box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.1);
+}
+
+.search-btn,
+.location-btn {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #6b46c1;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-btn:hover:not(:disabled),
+.location-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #6b46c1;
+}
+
+.search-btn:disabled,
+.location-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #6b46c1;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-result-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: #f9fafb;
+}
+
+.result-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.result-type {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: capitalize;
 }
 
 /* Responsive */

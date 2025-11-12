@@ -119,31 +119,19 @@ onMounted(async () => {
     if (!isNaN(n)) brand.value = [n]
   }
   
-  const searchParam = route.query.q
-  if (typeof searchParam === 'string' && searchParam) {
-    q.value = searchParam
-    console.log('[shop] onMounted - معامل البحث:', searchParam)
-    console.log('[shop] onMounted - q.value تم تعيينه إلى:', q.value)
-  }
+    const searchParam = route.query.q
+    if (typeof searchParam === 'string' && searchParam) {
+      q.value = searchParam
+    }
   
-  // Fetch filter data
+  // Fetch filter data - load in parallel for faster loading
   try { 
-    cats.value = await categories() 
-  } catch (e) { 
-    console.warn(t('shop.errors.categories_failed'), e)
-    cats.value = []
-  }
-  try { 
-    const brandsData = await brands({ limit: 200, offset: 1 })
-    console.log('[shop] Brands API response:', brandsData)
-    console.log('[shop] Brands structure:', {
-      isArray: Array.isArray(brandsData),
-      hasBrands: !!brandsData?.brands,
-      hasData: !!brandsData?.data,
-      keys: brandsData ? Object.keys(brandsData) : [],
-      total: brandsData?.total_size || brandsData?.total
-    })
-    
+    const [categoriesData, brandsDataResult] = await Promise.all([
+      categories().catch(() => []),
+      brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))
+    ])
+    cats.value = categoriesData
+    const brandsData = brandsDataResult
     // Handle different response structures
     if (Array.isArray(brandsData)) {
       brandsResp.value = { total_size: brandsData.length, brands: brandsData }
@@ -157,30 +145,17 @@ onMounted(async () => {
     } else {
       brandsResp.value = { total_size: 0, brands: [] }
     }
-    
-    console.log('[shop] Final brandsResp:', brandsResp.value)
-    console.log('[shop] Number of brands:', brandsResp.value.brands?.length || 0)
   } catch (e) { 
-    console.error('[shop] Error loading brands:', e)
     console.warn(t('shop.errors.brands_failed'), e)
     brandsResp.value = { total_size: 0, brands: [] }
   }
-  try { 
-    await cart.list() 
-  } catch (e) { 
-    console.warn(t('shop.errors.cart_load_failed'), e)
-  }
-  try { 
-    await wishlist.list() 
-  } catch (e) { 
-    console.warn(t('shop.errors.wishlist_load_failed'), e)
-  }
+  // Load cart and wishlist in parallel (non-blocking)
+  Promise.all([
+    cart.list().catch(() => {}),
+    wishlist.list().catch(() => {})
+  ])
   
   // Load initial page of products
-  console.log('[shop] onMounted - استدعاء loadPage')
-  console.log('[shop] onMounted - q.value:', q.value)
-  console.log('[shop] onMounted - route.query:', route.query)
-  
   await loadPage()
   
   // Setup infinite scroll after initial load
@@ -266,40 +241,28 @@ const loadPage = async () => {
     } else {
       // Otherwise use filter endpoint with minimal data
       const body = buildBody()
-      console.log('[shop] جسم الفلتر:', body)
       
       // Ensure we have valid data before sending
       if (body.limit && body.offset !== undefined) {
       res = await filter(body)
       } else {
-        console.warn('[shop] بيانات غير صحيحة، استخدام البيانات الافتراضية')
         res = { products: [], total_size: 0, offset: 1 }
       }
     }
     
-    console.log('[shop] الاستجابة:', res)
     const list = Array.isArray(res?.products) ? res.products : []
-    console.log('[shop] قائمة المنتجات:', list)
     
     // On first page, reset items
     if (offset.value === 1) {
       items.value = []
-      console.log('[shop] بدء تحميل الصفحة الأولى')
     }
     
     // Add new items to existing ones
     items.value = items.value.concat(list)
     total.value = Number(res?.total_size || res?.total || 0)
     
-    console.log('[shop] تم تحميل:', list.length, 'منتج')
-    console.log('[shop] إجمالي المنتجات المحملة:', items.value.length)
-    console.log('[shop] إجمالي المنتجات المتاحة:', total.value)
-    console.log('[shop] الصفحة الحالية:', offset.value)
-    
     // Increment offset for next page
     offset.value = offset.value + 1
-    
-    console.log('[shop] الصفحة التالية:', offset.value)
     
     // Complete progress
     loadingProgress.value = 100
@@ -903,14 +866,8 @@ const handleProductDetails = () => {
       </div>
       
       <!-- Offers Header -->
-      <div v-if="route.query.has_discount === 'true'" class="offers-header">
-        <h2>
-          <svg width="24" height="24" viewBox="0 0 24 24" style="margin-left: 8px; vertical-align: middle;">
-            <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
-          {{ t('shop.offers') || 'العروض' }}
-        </h2>
-        <p v-if="items.length > 0">{{ items.length }} {{ t('shop.offers_count') || 'منتج مخفض' }}</p>
+      <div v-if="route.query.has_discount === 'true' ">
+        <img src="/images/خصومات2-جوتوفير.png" width="100%" height="auto" alt="العروض" class="banner-image" />
       </div>
 
       <div class="grid">

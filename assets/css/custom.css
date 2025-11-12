@@ -280,3 +280,14 @@ html[dir="rtl"] .whatsapp {
 .slide {
     flex: 1;
 }
+
+/* Smooth Page Transitions */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Ensure smooth transitions for all page navigations */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

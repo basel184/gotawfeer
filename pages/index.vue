@@ -727,7 +727,7 @@ const onImgErr = (e: any) => {
                       <h3 class="banner-title">الخصومات</h3>
                       <p class="banner-subtitle">من جو توفير</p>
                       <div class="percentage-symbol">
-                        <img src="../images/53a3.png" width="100" alt="">
+                        <img src="../images/53a3.png" width="100" alt="" loading="lazy">
                       </div>
                     </div>
                   </div>
@@ -794,7 +794,7 @@ const onImgErr = (e: any) => {
                         </div>
                         <div class="testimonial-content">
                           <div v-if="testimonial.image" class="testimonial-image">
-                            <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" />
+                            <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
                           </div>
                           <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
                         </div>
@@ -806,7 +806,7 @@ const onImgErr = (e: any) => {
                   <div v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-card">
                     <div class="testimonial-content">
                       <div v-if="testimonial.image" class="testimonial-image">
-                        <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" />
+                        <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
                       </div>
                       <div class="testimonial-info">
                         <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
@@ -876,7 +876,7 @@ const onImgErr = (e: any) => {
             <div v-if="selectedProductForModal" class="row">
               <div class="col-lg-6 mb-3">
                 <picture>
-                  <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
+                  <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr" loading="lazy">
                 </picture>
               </div>
               <div class="col-lg-6">
@@ -886,14 +886,14 @@ const onImgErr = (e: any) => {
                     <strong class="me-2">البراند:</strong>
                     <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                       <picture>
-                        <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
+                        <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }" loading="lazy">
                       </picture>
                       <span class="brand-name">{{ modalProductBrand.name }}</span>
                     </NuxtLink>
                   </div>
                   <h5 class="price final mt-3">
                     {{ formatPrice(modalProductPrice.final) }} 
-                    <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" />
+                    <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" loading="lazy" />
                   </h5>
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">

@@ -5,11 +5,9 @@ import { useI18n } from 'vue-i18n'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 // Import Swiper styles
 import 'swiper/css'
-import 'swiper/css/free-mode'
 import 'swiper/css/navigation'
-import 'swiper/css/thumbs'
 // Import required modules
-import { FreeMode, Navigation, Thumbs } from 'swiper/modules'
+import { Navigation } from 'swiper/modules'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
 
@@ -244,19 +242,13 @@ const onImgErr = (e: Event) => {
 }
 
 // Swiper configuration
-const thumbsSwiper = ref(null)
 const mainSwiper = ref(null)
-const setThumbsSwiper = (swiper: any) => {
-  if (swiper && swiper.el) {
-    thumbsSwiper.value = swiper
-  }
-}
 const setMainSwiper = (swiper: any) => {
   if (swiper && swiper.el) {
     mainSwiper.value = swiper
   }
 }
-const modules = [FreeMode, Navigation, Thumbs]
+const modules = [Navigation]
 
 // Ensure Swiper is only initialized when images are available and product is loaded
 const shouldShowSwiper = computed(() => {
@@ -494,7 +486,7 @@ const submitReview = async () => {
       // Reload reviews
       await loadReviews()
       // Show success message
-      console.log('تم إرسال التقييم بنجاح')
+      // Review submitted successfully
     }
   } catch (error: any) {
     console.error('Review submission error:', error)
@@ -754,52 +746,23 @@ const filteredVariants = computed(() => {
 })
 
 const currentVariantPrice = computed(() => {
-  console.log('حساب السعر:', {
-    hasSelectedVariant: !!selectedVariant.value,
-    selectedVariant: selectedVariant.value,
-    variantPrice: selectedVariant.value?.price,
-    finalPrice: finalPrice.value,
-    basePrice: basePrice.value,
-    discountValue: discountValue.value,
-    discountType: discountType.value
-  })
-
   if (selectedVariant.value && selectedVariant.value.price) {
     // استخدم سعر المتغير مباشرة
     const variantBasePrice = selectedVariant.value.price
     const variantDiscount = discountValue.value
     const variantDiscountType = discountType.value
 
-    console.log('حساب سعر المتغير:', {
-      selectedVariantPrice: selectedVariant.value.price,
-      basePrice: basePrice.value,
-      usingVariantPrice: variantBasePrice,
-      variantDiscount,
-      variantDiscountType
-    })
-
     // إذا كان هناك خصم، احسبه
     if (variantDiscount && variantDiscount > 0) {
       const isPercent = String(variantDiscountType).toLowerCase().startsWith('per')
       const discountAmount = isPercent ? (variantBasePrice * variantDiscount) / 100 : variantDiscount
       const finalVariantPrice = Math.max(0, variantBasePrice - discountAmount)
-      console.log('سعر المتغير بعد الخصم:', {
-        basePrice: variantBasePrice,
-        discount: variantDiscount,
-        discountType: variantDiscountType,
-        isPercent,
-        discountAmount,
-        finalPrice: finalVariantPrice
-      })
       return finalVariantPrice
     }
 
     // إذا لم يكن هناك خصم، استخدم السعر الأساسي للمتغير
-    console.log('سعر المتغير بدون خصم:', variantBasePrice)
     return variantBasePrice
   }
-
-  console.log('استخدام السعر النهائي:', finalPrice.value)
   return finalPrice.value
 })
 
@@ -836,7 +799,6 @@ const initializeVariants = () => {
         imageName: colorImage?.image_name?.key || color.image || ''
       }
       
-      console.log(`تم تهيئة اللون: ${color.name}`, colorData)
       return colorData
     })
   } else if (product.value.colors && Array.isArray(product.value.colors)) {
@@ -854,17 +816,9 @@ const initializeVariants = () => {
         imageName: colorImage?.image_name?.key || ''
       }
       
-      console.log(`تم تهيئة اللون: ${colorData.name}`, colorData)
       return colorData
     })
   }
-  
-  // Debug: Print available images
-  console.log('الصور المتاحة:', images.value.map((img, index) => ({
-    index,
-    url: img,
-    filename: img.split('/').pop()
-  })))
   
   // Initialize sizes from choice_options
   if (product.value.choice_options && Array.isArray(product.value.choice_options)) {
@@ -882,37 +836,19 @@ const initializeVariants = () => {
   // Set initial selections
   if (availableColors.value.length > 0) {
     selectedColor.value = availableColors.value[0].name
-    console.log('تم تعيين اللون الأولي:', selectedColor.value)
   }
   if (availableSizes.value.length > 0) {
     selectedSize.value = availableSizes.value[0].value
-    console.log('تم تعيين الحجم الأولي:', selectedSize.value)
   }
   
   // Update selected variant
-  console.log('قبل تحديث المتغير الأولي:', {
-    selectedColor: selectedColor.value,
-    selectedSize: selectedSize.value,
-    variations: product.value.variation
-  })
   updateSelectedVariant()
-  console.log('بعد تحديث المتغير الأولي:', {
-    selectedVariant: selectedVariant.value,
-    currentPrice: currentVariantPrice.value
-  })
 }
 
 // Update selected variant based on current selections
 const updateSelectedVariant = () => {
   if (!product.value?.variation) return
   
-  console.log('البحث عن المتغير:', {
-    selectedColor: selectedColor.value,
-    selectedSize: selectedSize.value,
-    hasColors: availableColors.value.length > 0,
-    searchPattern: `${selectedColor.value}-${selectedSize.value}`,
-    availableVariations: product.value.variation
-  })
   
   let variant = null
   
@@ -948,28 +884,12 @@ const updateSelectedVariant = () => {
   }
   
   selectedVariant.value = variant || null
-  
-  console.log('النتيجة:', {
-    found: !!variant,
-    variant: variant,
-    selectedVariant: selectedVariant.value
-  })
 }
 
 // Handle color selection
 const selectColor = (color: any) => {
-  console.log('اختيار اللون:', color)
   selectedColor.value = color.name
-  console.log('تم تعيين اللون المختار:', selectedColor.value)
-  
   updateSelectedVariant()
-  
-  console.log('بعد تحديث المتغير:', {
-    selectedColor: selectedColor.value,
-    selectedSize: selectedSize.value,
-    selectedVariant: selectedVariant.value,
-    currentPrice: currentVariantPrice.value
-  })
   
   // Update main image if color has specific image
   if (color.imageName || color.originalImage) {
@@ -978,37 +898,18 @@ const selectColor = (color: any) => {
     
     if (imageIndex !== -1) {
       imageChanging.value = true
-      
-      // Update mainIndex - watch will handle Swiper update
       mainIndex.value = imageIndex
-      
-      // Hide loading after transition
       setTimeout(() => {
         imageChanging.value = false
       }, 300)
-      
-      console.log(`تم تغيير الصورة إلى: ${color.name} - ${targetImageName}`)
-    } else {
-      console.log(`لم يتم العثور على صورة للون: ${color.name} - ${targetImageName}`)
-      console.log('الصور المتاحة:', images.value.map(img => img.split('/').pop()))
     }
   }
 }
 
 // Handle size selection
 const selectSize = (size: any) => {
-  console.log('اختيار الحجم:', size)
   selectedSize.value = size.value
-  console.log('تم تعيين الحجم المختار:', selectedSize.value)
-  
   updateSelectedVariant()
-  
-  console.log('بعد تحديث المتغير:', {
-    selectedColor: selectedColor.value,
-    selectedSize: selectedSize.value,
-    selectedVariant: selectedVariant.value,
-    currentPrice: currentVariantPrice.value
-  })
 }
 
 // Check if size is available
@@ -1554,9 +1455,6 @@ watch(mainIndex, (newIndex) => {
     if (mainSwiper.value && (mainSwiper.value as any).slideTo) {
       (mainSwiper.value as any).slideTo(newIndex, 300)
     }
-    if (thumbsSwiper.value && (thumbsSwiper.value as any).slideTo) {
-      (thumbsSwiper.value as any).slideTo(newIndex, 300)
-    }
   })
 })
 
@@ -1841,7 +1739,6 @@ const handleProductDetails = () => {
           }"
           :space-between="10"
           :navigation="images.length > 1"
-          :thumbs="{ swiper: thumbsSwiper }"
           :modules="modules"
           @swiper="setMainSwiper"
           class="mySwiper2"
@@ -1856,22 +1753,6 @@ const handleProductDetails = () => {
             </div>
           </SwiperSlideComponent>
         </SwiperComponent>
-        <!-- Thumbnails Swiper Gallery -->
-        <SwiperComponent
-          v-if="swiperReady && images.length > 1"
-          :key="`thumbs-swiper-${images.length}`"
-          @swiper="setThumbsSwiper"
-          :space-between="10"
-          :slides-per-view="4"
-          :free-mode="true"
-          :watch-slides-progress="true"
-          :modules="modules"
-          class="mySwiper"
-        >
-          <SwiperSlideComponent v-for="(img, i) in images" :key="`thumb-${i}-${img}`">
-            <img :src="img" :alt="'img-'+i" />
-          </SwiperSlideComponent>
-        </SwiperComponent>
           <div class="product-description">
             <h3>{{ title }}</h3>
             <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
@@ -1884,7 +1765,6 @@ const handleProductDetails = () => {
           </div>
 
       </div>
-
       <!-- Info -->
       <div class="info">
         <!-- Brand & Wishlist -->
