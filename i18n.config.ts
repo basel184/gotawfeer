@@ -5,5 +5,6 @@ export default defineI18nConfig(() => ({
   globalInjection: true,
   warnHtmlMessage: false,
   silentTranslationWarn: true,
-  silentFallbackWarn: true
+  silentFallbackWarn: true,
+  escapeParameterHtml: false
 }))

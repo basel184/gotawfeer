@@ -1,68 +1,61 @@
-<script></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+</script>
+
 <template>
-    <main class="container py-5">
-<div class="row">
-<div class="col-12">
-<article class="card p-4 mb-4">
-<h2 class="section-title">الشروط والأحكام</h2>
-<hr>
+  <main class="container py-5">
+    <div class="row">
+      <div class="col-12">
+        <article class="card p-4 mb-4">
+          <h2 class="section-title">{{ t('terms.title') }}</h2>
+          <hr>
 
+          <section class="mb-3">
+            <h5 class="fw-bold">{{ t('terms.disclaimer.title') }}</h5>
+            <p class="mb-0">{{ t('terms.disclaimer.content') }}</p>
+          </section>
 
-<section class="mb-3">
-<h5 class="fw-bold">إبراء لذمة</h5>
-<p class="mb-0">إبراء لذمة بعض المنتجات التي يتم بيعها ممنوع استخدامها إلا امام المحارم وذلك لقول الله تعالى ( وَإِذَا قِيلَ لَهُمْ ٱتَّبِعُواْ مَآ أَنزَلَ ٱللَّهُ قَالُواْ بَلْ نَتَّبِعُ مَآ أَلْفَيْنَا عَلَيْهِ ءَابَآءَنَآ ۚ أَوَلَوْ كَانَ ءَابَآؤُهُمْ لَا يَعْقِلُونَ شَيْـًٔا وَلَا يَهْتَدُونَ ) سورة البقرة (١٧٠ الى اخر الايه )</p>
-</section>
+          <section class="mb-3">
+            <h5 class="fw-bold">{{ t('terms.exchange_return.title') }}</h5>
+            <ul>
+              <li v-html="t('terms.exchange_return.items.time_limit', { days: '7' })"></li>
+              <li>{{ t('terms.exchange_return.items.packaging_difference') }}</li>
+              <li v-html="t('terms.exchange_return.items.refund_time', { days: '15' })"></li>
+              <li v-html="t('terms.exchange_return.items.damaged_product', { days: '3' })"></li>
+              <li>{{ t('terms.exchange_return.items.devices') }}</li>
+              <li>{{ t('terms.exchange_return.items.proof') }}</li>
+              <li>{{ t('terms.exchange_return.items.processing') }}</li>
+              <li>{{ t('terms.exchange_return.items.verify') }}</li>
+              <li>{{ t('terms.exchange_return.items.no_defect') }}</li>
+              <li>{{ t('terms.exchange_return.items.shipping_fees') }}</li>
+            </ul>
+          </section>
 
+          <section class="mb-3">
+            <h5 class="fw-bold">{{ t('terms.faq.title') }}</h5>
+            <p class="mb-0"><strong>{{ t('terms.faq.question') }}</strong></p>
+            <p class="mb-0"><strong>{{ t('terms.faq.answer') }}</strong></p>
+          </section>
 
-<section class="mb-3">
-<h5 class="fw-bold">سياسة الاستبدال والاسترجاع</h5>
-<ul>
-<li>لن يُقبل استبدال البضاعة بعد مرور <strong>7 أيام</strong> من تاريخ الطلب.</li>
-<li>قد يختلف لون المنتج أو بعض التفاصيل في التغليف (العبوة - الكرتون) عن المعروض في الموقع بسبب تحديثات من الشركة المصنّعة. هذا لا يُعد عيبًا في المنتج.</li>
-<li>في حالة الدفع الإلكتروني، سيتم استرداد قيمة المنتجات المُسترجعة إلى حساب البطاقة المستخدمة وقد تستغرق المدة حتى <strong>15 يوم عمل</strong>.</li>
-<li>في حال استلمت منتجًا تالفًا، أو منتجًا مختلفًا عن الطلب، يُرجى إبلاغ فريق خدمة العملاء لاسترجاع المنتج خلال <strong>3 أيام</strong> من استلام الطلب. يجب أن تكون المنتجات في حالة جيدة وغير مستخدمة.</li>
-<li>يمكن استرجاع الأجهزة بشرط <strong>عدم فتحها أو استخدامها</strong> وأن تكون بحالتها الأصلية مع العلبات والمرفقات والتغليف الأصلي.
-</li>
-<li>يُشترط وجود إثبات الشراء (تأكيد الطلب أو الإيصال) لإتمام عملية الإرجاع.</li>
-<li>بمجرد استلام المنتجات وفحصها سيتم معالجة طلب استرداد المبلغ.</li>
-<li>تأكد من المنتجات قبل شحنها. لن نتحمل المسؤولية عن منتجات غير صحيحة أو مفقودة.</li>
-<li>إذا تمت إرجاع سلعة لا تعاني من عيب مُصنعي وبعد الفحص تبين أنها سليمة، فلا تُرد رسوم الشحن والاسترجاع.</li>
-<li>رسوم الشحن والاسترجاع غير مستردة إلا إذا كان سبب الاسترداد خللًا أو عيبًا في المنتج.</li>
-</ul>
-</section>
+          <section class="mb-3">
+            <h5 class="fw-bold">{{ t('terms.cancellation.title') }}</h5>
+            <p v-html="t('terms.cancellation.content_1', { hours: '24' })"></p>
+            <p>{{ t('terms.cancellation.content_2') }}</p>
+          </section>
 
+          <section class="mb-3">
+            <h5 class="fw-bold">{{ t('terms.bulk_orders.title') }}</h5>
+            <p>{{ t('terms.bulk_orders.content') }}</p>
+          </section>
+        </article>
 
-<section class="mb-3">
-<h5 class="fw-bold">الأسئلة المتكررة</h5>
-<p class="mb-0"><strong>س:</strong> هل يمكنني استرجاع منتجات التجميل وهي بحالتها الأصلية؟</p>
-<p class="mb-0"><strong>ج:</strong> نضمن استرجاع منتجات التجميل حتى وإن كانت بحالتها الأصلية.</p>
-</section>
-
-
-<section class="mb-3">
-<h5 class="fw-bold">سياسة الإلغاء</h5>
-<p>تعتمد عمليات الإلغاء على ما إذا كان قد تم شحن طلبك أم لا. إذا كان طلبك لم يتم معالجته، يمكنك إلغاء الطلب مجانًا عبر التواصل مع خدمة العملاء عبر WhatsApp، ولن يُقبل أي طلب إلغاء بعد <strong>24 ساعة</strong> من رفع الطلب على الموقع.</p>
-<p>إذا تم شحن الطلب، فلن نتمكن من إلغائه وسيُعامل على أنه مرتجع — راجع سياسة الاسترجاع للمزيد من التفاصيل.</p>
-</section>
-
-
-<section class="mb-3">
-<h5 class="fw-bold">الطلبات الخاصة والجملة</h5>
-<p>إذا كنت بحاجة إلى طلبات بالجملة من منتجاتنا في السوق السعودي، يمكننا تلبية احتياجاتك بأفضل الأسعار والتغليف المناسب. تواصل معنا لمناقشة المتطلبات.</p>
-</section>
-
-
-
-</article>
-
-
-<article class="card p-4">
-<h5 class="section-title">ملاحظات هامة</h5>
-<p class="mb-0">نوصي بمراجعة الشروط قبل إتمام عملية الشراء. تحتفظ الشركة بحق تعديل الشروط في أي وقت مع إعلام العملاء بالطريقة المناسبة.</p>
-</article>
-</div>
-
-
-</div>
-</main>
+        <article class="card p-4">
+          <h5 class="section-title">{{ t('terms.important_notes.title') }}</h5>
+          <p class="mb-0">{{ t('terms.important_notes.content') }}</p>
+        </article>
+      </div>
+    </div>
+  </main>
 </template>

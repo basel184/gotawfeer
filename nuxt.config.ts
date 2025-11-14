@@ -49,6 +49,10 @@ export default defineNuxtConfig({
       { code: 'ar', language: 'ar', name: 'العربية', dir: 'rtl', file: 'ar.json' },
       { code: 'en', language: 'en', name: 'English', dir: 'ltr', file: 'en.json' }
     ],
-    vueI18n: './i18n.config.ts'
+    vueI18n: './i18n.config.ts',
+    compilation: {
+      strictMessage: false,
+      escapeHtml: false
+    }
   }
 })

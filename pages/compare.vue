@@ -1,9 +1,9 @@
 <template>
-  <main class="compare-page" dir="rtl">
+  <main class="compare-page p-3" dir="rtl">
     <div class="container">
       <!-- Header Section -->
       <section class="section card">
-        <div class="section-header">
+        <div class="section-header p-3">
           <h1>{{ t('compare.title') || 'مقارنة المنتجات' }}</h1>
           <div class="compare-summary" v-if="!compare.isEmpty.value">
             <span class="items-count">{{ compare.compareCount.value }} {{ t('compare.items_count') || 'منتج للمقارنة' }}</span>
@@ -155,7 +155,6 @@ useHead({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
 }
 
 .compare-summary {

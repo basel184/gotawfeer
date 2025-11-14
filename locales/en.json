@@ -230,6 +230,454 @@
          "add_reply": "Add Reply",
          "your_reply": "Your Reply",
          "write_reply_placeholder": "Write your reply...",
-         "submit_reply": "Submit Reply"
-       }
+         "submit_reply": "Submit Reply",
+         "home": "Home",
+         "shop": "Shop",
+         "no_images": "No images available",
+         "original": "100% Original",
+         "reviews": "Reviews",
+         "select_color": "Select Color",
+         "select_size": "Select Size",
+         "unavailable": "Unavailable",
+         "promo_1_plus_1": "1+1 Free",
+         "disclaimer_title": "This product is non-refundable and non-exchangeable for your safety, unless the return policy applies.",
+         "disclaimer_original": "All products are original and imported from authorized agents",
+         "disclaimer_availability": "Product Availability Policy",
+         "disclaimer_availability_1": "All displayed products are subject to availability in stock at the time of order execution. After confirming the order through the website, you will be notified in case any of the requested products are unavailable. In this case, you can choose to refund only the unavailable product.",
+         "disclaimer_availability_2": "The external packaging of the product may differ from the image displayed on the website due to design updates from the manufacturer, but the product content remains the same",
+         "payment_installments": "Split your bill into 4 installments with no interest",
+         "expected_delivery": "Expected Delivery",
+         "delivery_jeddah_makkah": "Delivery time for Jeddah and Makkah: 3 business days.",
+         "delivery_all_kingdom": "Delivery time for all of the Kingdom: 5 business days",
+         "add_to_cart": "Add to Cart",
+         "adding": "Adding...",
+         "payment_methods": "Payment Methods",
+         "in_stock": "In Stock",
+         "out_of_stock": "Currently Out of Stock",
+         "pieces": "pieces",
+         "offer_products": "Products on Sale",
+         "no_products_available": "No products available at the moment",
+         "customer_reviews": "Customer Reviews",
+         "reviews_count": "Reviews",
+         "stars_5": "5 Stars",
+         "stars_4": "4 Stars",
+         "stars_3": "3 Stars",
+         "stars_2": "2 Stars",
+         "stars_1": "1 Star",
+         "be_first_review": "Be the first to rate",
+         "share_review": "Share your opinion about",
+         "email_not_published": "Your email address will not be published. Required fields are marked with",
+         "rating": "Rating",
+         "your_review": "Your Review",
+         "name": "Name",
+         "email": "Email",
+         "save_info": "Save my name, email, and website in this browser for the next time I comment.",
+         "submit": "Submit",
+         "sending_review": "Sending...",
+         "no_reviews_yet": "No reviews yet. Be the first to rate this product!",
+         "vendor_reply": "Vendor Reply",
+         "select_options": "Select Options",
+         "product_details": "Product Details",
+         "brand": "Brand",
+         "categories": "Categories",
+         "share": "Share",
+         "changing_image": "Changing image..."
+       },
+       "account": {
+         "title": "My Account",
+         "subtitle": "Manage your personal information and orders",
+         "member_since": "Member since",
+         "logout": "Logout",
+         "tabs": {
+           "profile": "Profile Information",
+           "orders": "My Orders",
+           "restock": "Restock Requests",
+           "wishlist": "Wishlist",
+           "addresses": "My Addresses",
+           "support": "Support Tickets",
+           "coupons": "Discount Coupons",
+           "tracking": "Order Tracking"
+         },
+         "profile": {
+           "title": "Profile Information",
+           "subtitle": "Manage your personal information",
+           "first_name": "First Name",
+           "last_name": "Last Name",
+           "email": "Email",
+           "phone": "Phone Number",
+           "profile_image": "Profile Image",
+           "saving": "Saving...",
+           "save_changes": "Save Changes"
+         },
+         "orders": {
+           "title": "My Orders",
+           "subtitle": "View and manage your orders",
+           "loading": "Loading orders...",
+           "error_title": "Error loading orders",
+           "empty_title": "No orders",
+           "empty_description": "You haven't created any orders yet",
+           "shop_now": "Shop Now",
+           "retry": "Retry",
+           "order_number": "Order #",
+           "quantity": "Quantity",
+           "total": "Total",
+           "view_details": "View Details",
+           "reorder": "Reorder",
+           "status": {
+             "pending": "Pending",
+             "confirmed": "Confirmed",
+             "processing": "Processing",
+             "out_for_delivery": "Out for Delivery",
+             "delivered": "Delivered",
+             "canceled": "Canceled",
+             "failed": "Failed",
+             "returned": "Returned"
+           },
+           "details_title": "Order Details",
+           "order_date": "Order Date"
+         },
+         "restock": {
+           "title": "Restock Requests",
+           "subtitle": "Manage restock requests",
+           "loading": "Loading restock requests...",
+           "error_title": "Error loading restock requests",
+           "empty_title": "No restock requests",
+           "empty_description": "You haven't created any restock requests yet",
+           "your_message": "Your Message",
+           "cancel_request": "Cancel Request",
+           "status": {
+             "pending": "Pending",
+             "approved": "Approved",
+             "rejected": "Rejected",
+             "completed": "Completed"
+           }
+         },
+         "wishlist": {
+           "title": "Wishlist",
+           "subtitle": "Products you love",
+           "loading": "Loading wishlist...",
+           "error_title": "Error loading wishlist",
+           "empty_title": "Wishlist is empty",
+           "empty_description": "You haven't added any products to your wishlist yet",
+           "in_stock": "In Stock",
+           "out_of_stock": "Out of Stock",
+           "pieces": "pieces",
+           "add_to_cart": "Add to Cart",
+           "view_product": "View Product"
+         },
+         "addresses": {
+           "title": "My Addresses",
+           "subtitle": "Manage your addresses",
+           "add_new": "Add New Address",
+           "loading": "Loading addresses...",
+           "error_title": "Error loading addresses",
+           "empty_title": "No addresses",
+           "empty_description": "You haven't added any addresses yet",
+           "edit": "Edit",
+           "delete": "Delete",
+           "edit_address": "Edit Address",
+           "add_address": "Add New Address",
+           "recipient_name": "Recipient Name",
+           "phone_required": "Phone Number (Required)",
+           "phone_placeholder": "Example: +966501234567",
+           "address": "Detailed Address",
+           "city": "City",
+           "saving": "Saving...",
+           "update": "Update",
+           "add": "Add",
+           "cancel": "Cancel",
+           "type": {
+             "home": "Home",
+             "work": "Work",
+             "other": "Other"
+           }
+         },
+         "support": {
+           "title": "Support Tickets",
+           "subtitle": "Manage support tickets",
+           "create_ticket": "Create New Ticket",
+           "loading": "Loading support tickets...",
+           "error_title": "Error loading support tickets",
+           "empty_title": "No support tickets",
+           "empty_description": "You haven't created any support tickets yet",
+           "view_details": "View Details",
+           "close_ticket": "Close Ticket",
+           "type_label": "Type",
+           "create_title": "Create New Support Ticket",
+           "subject": "Ticket Subject",
+           "subject_placeholder": "Enter ticket subject",
+           "type": "Ticket Type",
+           "priority": "Priority",
+           "description": "Problem Description",
+           "description_placeholder": "Write a detailed description of the problem or inquiry",
+           "attachments": "Attachments (Optional)",
+           "attachments_help": "You can attach images or documents (PDF, DOC, DOCX)",
+           "sending": "Sending...",
+           "send_ticket": "Send Ticket",
+           "type_options": {
+             "general": "General Inquiry",
+             "technical": "Technical Issue",
+             "order": "Order Problem",
+             "refund": "Refund",
+             "other": "Other"
+           },
+           "priority_options": {
+             "low": "Low",
+             "medium": "Medium",
+             "high": "High",
+             "urgent": "Urgent"
+           },
+           "status": {
+             "open": "Open",
+             "closed": "Closed",
+             "pending": "Pending",
+             "resolved": "Resolved"
+           }
+         },
+         "coupons": {
+           "title": "Discount Coupons",
+           "subtitle": "Your available coupons",
+           "apply_coupon": "Apply Coupon",
+           "loading": "Loading coupons...",
+           "error_title": "Error loading coupons",
+           "empty_title": "No coupons",
+           "empty_description": "No coupons available at the moment",
+           "my_coupons": "My Coupons",
+           "available_coupons": "Available Coupons",
+           "discount": "Discount",
+           "free_delivery": "Free Delivery",
+           "min_purchase": "Minimum Purchase",
+           "max_discount": "Maximum Discount",
+           "expires_at": "Expires at",
+           "active": "Active",
+           "apply": "Apply",
+           "applying": "Applying...",
+           "apply_coupon_title": "Apply Coupon",
+           "coupon_code": "Coupon Code",
+           "coupon_code_placeholder": "Enter coupon code",
+           "type": {
+             "discount_on_purchase": "Discount on Purchase",
+             "free_delivery": "Free Delivery",
+             "flat_discount": "Flat Discount"
+           }
+         },
+         "tracking": {
+           "title": "Order Tracking",
+           "subtitle": "Track your order status",
+           "order_id": "Order Number",
+           "phone": "Phone Number",
+           "enter_order_id": "Enter order number",
+           "enter_phone": "Enter phone number",
+           "track": "Track",
+           "searching": "Searching...",
+           "loading": "Searching for order...",
+           "error_title": "Order not found",
+           "new_search": "New Search",
+           "order_number": "Order #",
+           "order_date": "Order Date",
+           "total_amount": "Total Amount",
+           "delivery_man": "Delivery Man",
+           "delivery_phone": "Delivery Phone",
+           "tracking_path": "Tracking Path",
+           "order_items": "Order Items",
+           "empty_title": "Track Your Order",
+           "empty_description": "Enter order number or phone number to track your order status"
+         }
+       },
+       "intellectual_property": {
+         "title": "Intellectual Property Rights",
+         "content_1": "All copyrights, trademarks, trade names, trade dress, designs, website features, and any other forms of intellectual property and materials and other rights related to the website, including software, HTML code, and other codes used on the website or page titles, images, texts, illustrations, formats, logos, designs, icons, images, software, music clips, downloads, or videos (collectively, \"Intellectual Property\"), remain at all times the property and original right of us and/or their owners, and are protected by the Kingdom of Saudi Arabia and international trademark and copyright laws.",
+         "content_2": "You may not provide or make available the Intellectual Property to any third party as a form of trade, and you will not acquire any copyright, trademark, or other property rights whatsoever with respect to the Intellectual Property, and no license, right, or interest in any materials or software shall accrue to you as a result of your use of this website or your access to, display, download, or print the Intellectual Property.",
+         "content_3": "There may be a slight difference in the design of the external form \"package - carton\" of the product received by the customer and its display image on the website due to the release of a newer design of the package or external carton of the product by the manufacturer, but this does not mean a difference in the product content. The website guarantees this to you and always seeks to update and renew product display images periodically."
+       },
+       "privacy_policy": {
+         "title": "Privacy Policy",
+         "intro": "The Go Tawfeer website recognizes the importance of privacy and protection of your data, and we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all website visitors. This page explains the privacy policy applied to the platform and its affiliated applications.",
+         "intro_html": "The <strong>Go Tawfeer</strong> website recognizes the importance of privacy and protection of your data, and we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all website visitors. This page explains the privacy policy applied to the platform and its affiliated applications.",
+         "sections": {
+           "consent": {
+             "title": "Consent to Privacy Policy",
+             "content": "By using the Go Tawfeer website or its applications, you agree to the provisions of this privacy policy. If you do not agree, please do not use any of the services provided through the platform."
+           },
+           "who_collects": {
+             "title": "Who Collects User Data?",
+             "content": "When you visit the platform, our server automatically records your Internet Protocol (IP) address, in addition to technical information such as browser type, search engine, date and time of visit, and the URL of the website that referred you to Go Tawfeer. This data is collected in general and does not reveal your personal identity."
+           },
+           "external_links": {
+             "title": "Links to Other Websites and Third Parties",
+             "content": "This privacy policy applies only to the Go Tawfeer platform. If you move to an external website, please review that website's privacy policy to learn about its data protection practices."
+           },
+           "data_collected": {
+             "title": "What Data is Collected?",
+             "cookies": {
+               "title": "Cookies:",
+               "content": "The website may store cookies on your device to improve your experience and analyze platform usage. You can change your browser settings to reject or accept cookies, noting that some website functions may be affected when disabled."
+             },
+             "personal_info": {
+               "title": "Personal Information:",
+               "content": "The Go Tawfeer website collects only authorized and licensed information and does not retain unnecessary information. We adhere to general data protection principles and data sharing according to applicable regulations."
+             },
+             "location": {
+               "title": "Geographic Location:",
+               "content": "We may request your permission to access geographic location to benefit from customized services, and you can refuse this at any time."
+             }
+           },
+           "purpose": {
+             "title": "What is the Purpose of Data Collection?",
+             "content": "We use your data to improve server performance, diagnose technical problems, conduct usage statistics (such as number of visitors and system language), and provide better services. We do not share your IP address with any party outside the website's technical team."
+           },
+           "secure_transfer": {
+             "title": "Secure Information Transfer",
+             "content": "We apply the highest security standards to protect sensitive information (such as credit card data) through encryption and protection systems compatible with legal requirements."
+           },
+           "protection": {
+             "title": "Personal Information Protection",
+             "content": "Your personal information is only available to authorized employees within the platform who are necessary to perform their duties. We do not share or sell this information to third parties without your prior consent, and access is only allowed to qualified persons."
+           },
+           "user_rights": {
+             "title": "User Rights",
+             "intro": "Users have the right to:",
+             "access": "Access their personal information.",
+             "copy": "Obtain a copy of the information.",
+             "review": "Review and modify information.",
+             "withdraw": "Withdraw consent and delete information.",
+             "contact_note": "Please send your request via email or the contact methods listed below."
+           },
+           "contact": {
+             "title": "Contact Us",
+             "intro": "For any questions or complaints regarding the privacy policy, please contact us via:",
+             "phone": "Phone and SMS:",
+             "email": "Email:",
+             "response_time": "Expected response time:",
+             "work_hours": "working hours"
+           },
+           "changes": {
+             "title": "Changes to Privacy Policy",
+             "content": "We reserve the right to update this privacy policy at any time. Please review the last update date at the bottom of the page to see the latest modifications."
+           },
+           "principles": {
+             "title": "More Information — General Data Protection Principles",
+             "intro": "The following paragraphs list the main principles adopted in our platform to ensure personal data protection:",
+             "responsibility": "Responsibility: Documenting, adopting, and publishing privacy policies to relevant parties.",
+             "transparency": "Transparency: Clearly explaining the purposes of data processing.",
+             "choice": "Choice and Consent: Providing options to users and obtaining their consent when needed.",
+             "limit_collection": "Limit Data Collection: Collecting the minimum necessary amount of data to achieve specified purposes.",
+             "retention": "Retention and Disposal: Maintaining data as long as necessary and then disposing of it securely.",
+             "access": "Data Access: Providing means to review and update personal data.",
+             "limit_disclosure": "Limit Disclosure: Restricting data sharing with external parties for authorized purposes only.",
+             "security": "Data Security: Protecting data from leakage, loss, or unauthorized access.",
+             "quality": "Data Quality: Maintaining accuracy and completeness of data.",
+             "monitoring": "Monitoring and Compliance: Monitoring compliance with policies and handling complaints."
+           },
+           "sharing": {
+             "title": "General Principles and Rules for Data Sharing",
+             "content": "We apply security controls for shared data, document the purpose, means, storage methods, and disposal mechanisms, and apply necessary agreements and controls in accordance with regulations."
+           }
+         }
+       },
+       "shipping_return": {
+         "shipping": {
+           "title": "Shipping Policy",
+           "intro_1": "At our company, we recognize the importance of timely delivery. Our dedicated team works hard to process and ship your orders quickly, aiming to deliver them to your doorstep within the expected timeframe.",
+           "intro_2": "We strive to provide fast and reliable shipping for our customers. Here's everything you need to know about our shipping process:",
+           "processing": "Order processing: within 24 hours.",
+           "delivery": "Delivery time for all parts of the Kingdom: 5 business days.",
+           "free_shipping": "Free shipping on all products when purchasing a value of no less than 299 Saudi Riyals.",
+           "note": "Please note that delivery times are estimates and may vary based on factors such as product availability, destination, and shipping company delays."
+         },
+         "return": {
+           "title": "Return Policy",
+           "question": "What is our return policy for electronics products?",
+           "contact": "Customers can submit a return or refund request only by contacting the customer support team via WhatsApp.",
+           "refund_period": "Products purchased can be refunded within 7 days if the following conditions are met:",
+           "conditions": {
+             "clarification": "If you need any clarification, please contact a customer service representative for assistance.",
+             "damaged": "Products damaged due to misuse or showing signs of wear, even if still under warranty.",
+             "used": "Products that have been used, modified, assembled, or installed, unless defective."
+           },
+           "non_returnable_title": "To ensure your safety, the following products cannot be returned or exchanged:",
+           "non_returnable": {
+             "care": "Care products",
+             "cosmetics": "Cosmetics",
+             "perfumes": "Perfumes",
+             "oud_wood": "Oud wood",
+             "oud_oil": "Oud oil",
+             "musk": "Musk and mixtures",
+             "scented_creams": "Scented creams",
+             "scented_powder": "Scented powder",
+             "food": "Food items"
+           }
+         }
+       },
+       "terms": {
+         "title": "Terms and Conditions",
+         "disclaimer": {
+           "title": "Disclaimer",
+           "content": "Disclaimer: Some products sold are prohibited from use except in front of mahrams, as Allah Almighty said ( وَإِذَا قِيلَ لَهُمْ ٱتَّبِعُواْ مَآ أَنزَلَ ٱللَّهُ قَالُواْ بَلْ نَتَّبِعُ مَآ أَلْفَيْنَا عَلَيْهِ ءَابَآءَنَآ ۚ أَوَلَوْ كَانَ ءَابَآؤُهُمْ لَا يَعْقِلُونَ شَيْـًٔا وَلَا يَهْتَدُونَ ) Surat Al-Baqarah (170 to the end of the verse)"
+         },
+         "exchange_return": {
+           "title": "Exchange and Return Policy",
+           "items": {
+             "time_limit": "Goods exchange will not be accepted after {days} days from the order date.",
+             "packaging_difference": "The product color or some packaging details (package - carton) may differ from what is shown on the website due to updates from the manufacturer. This is not considered a product defect.",
+             "refund_time": "In case of electronic payment, the value of returned products will be refunded to the card account used and may take up to {days} business days.",
+             "damaged_product": "If you received a damaged product or a product different from the order, please notify the customer service team to return the product within {days} days of receiving the order. Products must be in good condition and unused.",
+             "devices": "Devices can be returned provided they are not opened or used and are in their original condition with boxes, accessories, and original packaging.",
+             "proof": "Proof of purchase (order confirmation or receipt) is required to complete the return process.",
+             "processing": "Once products are received and inspected, the refund request will be processed.",
+             "verify": "Verify products before shipping. We will not be responsible for incorrect or missing products.",
+             "no_defect": "If a product is returned that does not have a manufacturing defect and after inspection it is found to be sound, shipping and return fees will not be refunded.",
+             "shipping_fees": "Shipping and return fees are non-refundable unless the reason for return is a defect or fault in the product."
+           }
+         },
+         "faq": {
+           "title": "Frequently Asked Questions",
+           "question": "Q: Can I return cosmetic products in their original condition?",
+           "answer": "A: We guarantee the return of cosmetic products even if they are in their original condition."
+         },
+         "cancellation": {
+           "title": "Cancellation Policy",
+           "content_1": "Cancellation operations depend on whether your order has been shipped or not. If your order has not been processed, you can cancel the order for free by contacting customer service via WhatsApp, and no cancellation request will be accepted after {hours} hours from placing the order on the website.",
+           "content_2": "If the order has been shipped, we will not be able to cancel it and it will be treated as a return — see the return policy for more details."
+         },
+         "bulk_orders": {
+           "title": "Special and Bulk Orders",
+           "content": "If you need bulk orders of our products in the Saudi market, we can meet your needs with the best prices and appropriate packaging. Contact us to discuss requirements."
+         },
+    "important_notes": {
+      "title": "Important Notes",
+      "content": "We recommend reviewing the terms before completing the purchase. The company reserves the right to modify the terms at any time with appropriate notification to customers."
+    }
+  },
+  "about": {
+    "lead": "Welcome to Go Tawfeer, your premier destination for online shopping in Saudi Arabia.",
+    "description": "We are an online store specializing in providing a wide range of high-quality products at competitive prices. We strive to provide an enjoyable and easy shopping experience for our valued customers.",
+    "mission": "Our Mission",
+    "mission_content": "Our mission is to provide the best products at the best prices while ensuring high quality and excellent customer service. We believe that every customer deserves the best possible shopping experience.",
+    "vision": "Our Vision",
+    "vision_content": "We strive to be the leading online store in Saudi Arabia by offering diverse products, high quality, and excellent customer service.",
+    "values": "Our Values",
+    "values_content": "We believe in transparency, quality, and commitment to customer service. We are committed to providing the best products at the best prices while ensuring our valued customers' satisfaction."
+  },
+  "taqnyat": {
+    "email_login": "Email",
+    "otp_login": "OTP Code",
+    "phone": "Phone Number",
+    "phone_placeholder": "05xxxxxxxx",
+    "phone_required": "Phone number is required",
+    "otp_code": "OTP Code",
+    "otp_placeholder": "Enter OTP code",
+    "otp_required": "OTP code is required",
+    "send_otp": "Send OTP",
+    "verify": "Verify and Login",
+    "resend_otp": "Resend OTP",
+    "resend_in": "Resend in",
+    "seconds": "seconds",
+    "otp_sent": "OTP code sent successfully",
+    "otp_resent": "OTP code resent successfully",
+    "login_success": "Login successful",
+    "request_failed": "Failed to send OTP code",
+    "verify_failed": "Failed to verify OTP code",
+    "resend_failed": "Failed to resend OTP code"
+  }
 }

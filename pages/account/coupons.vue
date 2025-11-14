@@ -312,7 +312,7 @@ onMounted(() => {
             </button>
           </div>
 
-          <form @submit.prevent="applyCoupon" class="coupon-form">
+          <form @submit.prevent="applyCoupon" class="coupon-form p-5">
             <div class="form-group">
               <label for="code">كود القسيمة</label>
               <input

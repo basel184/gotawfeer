@@ -1,99 +1,104 @@
-<script></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+</script>
+
 <template>
     <main class="container py-5">
       <div class="row">
         <div class="col-12">
           <article class="card p-4 mb-4">
-            <h2 class="section-title">سياسة الخصوصية</h2>
+            <h2 class="section-title">{{ t('privacy_policy.title') }}</h2>
             <hr>
-            <p>يدرك موقع <strong>جو توفير</strong> أهمية خصوصية وحماية بياناتك، ونلتزم بالحفاظ على سرية المعلومات الحساسة وحماية حقوق جميع زوار الموقع. توضّح هذه الصفحة سياسة الخصوصية المطبقة على المنصة والتطبيقات التابعة لها.</p>
+            <p v-html="t('privacy_policy.intro_html')"></p>
 
             <section class="mb-3">
-              <h5 class="fw-bold">الموافقة على سياسة الخصوصية</h5>
-              <p>باستخدامك موقع جو توفير أو تطبيقاته فإنك توافق على أحكام سياسة الخصوصية هذه. إذا لم تكن موافقًا، يُرجى عدم استخدام أي من الخدمات المقدمة عبر المنصة.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.consent.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.consent.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">من يقوم بجمع بيانات المستخدمين؟</h5>
-              <p>عند زيارتك للمنصة، يقوم الخادم الخاص بنا تلقائيًا بتسجيل عنوان بروتوكول الإنترنت (IP) الخاص بك، بالإضافة إلى معلومات تقنية مثل نوع المتصفح، محرك البحث، تاريخ ووقت الزيارة، وURL الموقع الذي أحالك إلى جو توفير. هذه البيانات تجمع على نحو عام ولا تكشف عن هويتك الشخصية.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.who_collects.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.who_collects.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">الروابط بالمواقع الأخرى والأطراف الثالثة</h5>
-              <p>تنطبق سياسة الخصوصية هذه على منصة جو توفير فقط. في حال انتقلت إلى موقع خارجي، يرجى الاطلاع على سياسة الخصوصية الخاصة بذلك الموقع لمعرفة ممارساته في حماية البيانات.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.external_links.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.external_links.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">ما هي البيانات التي يتم جمعها؟</h5>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.data_collected.title') }}</h5>
               <ol>
-                <li><strong>ملفات تعريف الارتباط (Cookies):</strong> قد يخزن الموقع ملفات تعريف الارتباط على جهازك لتحسين تجربتك، وتحليل استخدام المنصة. يمكنك تغيير إعدادات متصفحك لرفض أو قبول ملفات الكوكيز، مع ملاحظة أن بعض وظائف الموقع قد تتأثر عند تعطيلها.</li>
-                <li><strong>المعلومات الشخصية:</strong> يجمع موقع جو توفير المعلومات المعتمدة والمرخص لها فقط ولا يحتفظ بالمعلومات غير الضرورية. نلتزم بمبادئ حماية البيانات العامة ومشاركة البيانات حسب الضوابط المطبقة.</li>
-                <li><strong>الموقع الجغرافي:</strong> قد نطلب إذنك للوصول إلى الموقع الجغرافي للاستفادة من خدمات مخصصة، ويمكنك رفض ذلك في أي وقت.</li>
+                <li><strong>{{ t('privacy_policy.sections.data_collected.cookies.title') }}</strong> {{ t('privacy_policy.sections.data_collected.cookies.content') }}</li>
+                <li><strong>{{ t('privacy_policy.sections.data_collected.personal_info.title') }}</strong> {{ t('privacy_policy.sections.data_collected.personal_info.content') }}</li>
+                <li><strong>{{ t('privacy_policy.sections.data_collected.location.title') }}</strong> {{ t('privacy_policy.sections.data_collected.location.content') }}</li>
               </ol>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">ما هو الغرض من جمع البيانات؟</h5>
-              <p>نستخدم بياناتك لتحسين أداء الخوادم، تشخيص المشاكل الفنية، إجراء إحصاءات الاستخدام (مثل عدد الزوار ولغة النظام)، وتقديم خدمات أفضل. لا نشارك عنوان IP الخاص بك مع أي جهة خارج الفريق الفني للموقع.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.purpose.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.purpose.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">انتقال آمن للمعلومات</h5>
-              <p>نطبق أعلى معايير الأمن لحماية المعلومات الحساسة (مثل بيانات بطاقات الائتمان) عبر تشفير ونظم حماية متوافقة مع المتطلبات القانونية.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.secure_transfer.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.secure_transfer.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">حماية المعلومات الشخصية</h5>
-              <p>لا تتاح معلوماتك الشخصية إلا للموظفين المخولين داخل المنصة واللازمين لأداء مهامهم. لا نشارك أو نبيع هذه المعلومات لأطراف ثالثة دون موافقة مسبقة منك، ويُسمح بالوصول فقط للأشخاص المؤهلين.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.protection.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.protection.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">حقوق المستخدم</h5>
-              <p>للمستخدمين الحق في:</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.user_rights.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.user_rights.intro') }}</p>
               <ul>
-                <li>الوصول إلى المعلومات الشخصية الخاصة بهم.</li>
-                <li>الحصول على نسخة من المعلومات.</li>
-                <li>مراجعة وتعديل المعلومات.</li>
-                <li>سحب الموافقة وحذف المعلومات.</li>
+                <li>{{ t('privacy_policy.sections.user_rights.access') }}</li>
+                <li>{{ t('privacy_policy.sections.user_rights.copy') }}</li>
+                <li>{{ t('privacy_policy.sections.user_rights.review') }}</li>
+                <li>{{ t('privacy_policy.sections.user_rights.withdraw') }}</li>
               </ul>
-              <p>يُرجى إرسال طلبك عبر البريد الإلكتروني أو طرق التواصل الموضحة أدناه.</p>
+              <p>{{ t('privacy_policy.sections.user_rights.contact_note') }}</p>
             </section>
 
             <section class="mb-3" id="contact">
-              <h5 class="fw-bold">التواصل معنا</h5>
-              <p>لأي أسئلة أو شكوى بخصوص سياسة الخصوصية يرجى الاتصال بنا عبر:</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.contact.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.contact.intro') }}</p>
               <ul>
-                <li>الهاتف و الرسائل النصية: <strong>+966537030838</strong></li>
-                <li>البريد الإلكتروني: <strong>gotawfeer@gmail.com</strong></li>
-                <li>الوقت المتوقع للاستجابة: <strong>48 ساعة عمل</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.phone') }} <strong>+966537030838</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.email') }} <strong>gotawfeer@gmail.com</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.response_time') }} <strong>48 {{ t('privacy_policy.sections.contact.work_hours') }}</strong></li>
               </ul>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">التغييرات على سياسة الخصوصية</h5>
-              <p>نحتفظ بالحق في تحديث سياسة الخصوصية هذه في أي وقت. يرجى مراجعة تاريخ آخر تحديث أسفل الصفحة لمعرفة آخر التعديلات.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.changes.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.changes.content') }}</p>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">مزيد من المعلومات — المبادئ العامة لحماية البيانات</h5>
-              <p>تسرد الفقرات التالية المبادئ الرئيسية المعتمدة في منصتنا لضمان حماية البيانات الشخصية:</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.principles.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.principles.intro') }}</p>
               <ol>
-                <li><strong>المسؤولية:</strong> توثيق سياسات الخصوصية واعتمادها ونشرها على الأطراف المعنية.</li>
-                <li><strong>الشفافية:</strong> توضيح الأغراض من معالجة البيانات بصورة واضحة.</li>
-                <li><strong>الاختيار والموافقة:</strong> تهيئة الخيارات للمستخدم والحصول على موافقته عند الحاجة.</li>
-                <li><strong>الحد من جمع البيانات:</strong> جمع أقل قدر ضروري من البيانات لتحقيق الأغراض المحددة.</li>
-                <li><strong>الاحتفاظ والتخلص:</strong> الحفاظ على البيانات طالما كانت ضرورية ثم التخلص منها بشكل آمن.</li>
-                <li><strong>الوصول إلى البيانات:</strong> توفير وسائل لمراجعة وتحديث البيانات الشخصية.</li>
-                <li><strong>الحد من الإفصاح:</strong> تقييد مشاركة البيانات مع الأطراف الخارجية للأغراض المصرح بها فقط.</li>
-                <li><strong>أمن البيانات:</strong> حماية البيانات من التسرب أو الفقدان أو الوصول غير المصرح به.</li>
-                <li><strong>جودة البيانات:</strong> المحافظة على دقة واكتمال البيانات.</li>
-                <li><strong>المراقبة والامتثال:</strong> مراقبة الالتزام بالسياسات ومعالجة الشكاوى.</li>
+                <li><strong>{{ t('privacy_policy.sections.principles.responsibility') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.transparency') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.choice') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.limit_collection') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.retention') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.access') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.limit_disclosure') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.security') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.quality') }}</strong></li>
+                <li><strong>{{ t('privacy_policy.sections.principles.monitoring') }}</strong></li>
               </ol>
             </section>
 
             <section class="mb-3">
-              <h5 class="fw-bold">المبادئ والقواعد العامة لمشاركة البيانات</h5>
-              <p>ننطبق ضوابط أمنية للبيانات المشتركة، ونوثق الغرض والوسائل وطرق الحفظ وآليات التخلص، مع تطبيق الاتفاقيات والضوابط اللازمة وفق الأنظمة.</p>
+              <h5 class="fw-bold">{{ t('privacy_policy.sections.sharing.title') }}</h5>
+              <p>{{ t('privacy_policy.sections.sharing.content') }}</p>
             </section>
 
           </article>

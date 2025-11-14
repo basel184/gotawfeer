@@ -492,6 +492,17 @@ const loginError = ref('')
 const loginSuccess = ref(false)
 const logoutSuccess = ref(false)
 
+// Taqnyat OTP state
+const loginMethod = ref<'email' | 'otp'>('email')
+const taqnyatAuth = useTaqnyatAuth()
+const otpForm = ref({
+  phone: '',
+  otp: ''
+})
+const otpSent = ref(false)
+const otpCountdown = ref(0)
+let otpTimer: any = null
+
 // Register modal state
 const showRegisterModal = ref(false)
 const registerForm = ref({
@@ -852,6 +863,93 @@ function closeLoginModal() {
   loginError.value = ''
   loginSuccess.value = false
   loginForm.value = { email: '', password: '' }
+  // Reset OTP form
+  loginMethod.value = 'email'
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
+  taqnyatAuth.clearMessages()
+}
+
+function clearLoginMessages() {
+  loginError.value = ''
+  loginSuccess.value = false
+  taqnyatAuth.clearMessages()
+}
+
+// OTP Login Functions
+async function handleRequestOtp() {
+  if (!otpForm.value.phone || otpForm.value.phone.trim() === '') {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.requestOtp(otpForm.value.phone)
+  if (success) {
+    otpSent.value = true
+    // Start countdown (60 seconds)
+    otpCountdown.value = 60
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
+      }
+    }, 1000)
+  }
+}
+
+async function handleOtpLogin() {
+  if (!otpForm.value.phone || !otpForm.value.otp) {
+    taqnyatAuth.error.value = t('taqnyat.otp_required') || 'رمز التحقق مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.verifyOtp(otpForm.value.phone, otpForm.value.otp)
+  if (success) {
+    loginModalOpen.value = false
+    otpForm.value = { phone: '', otp: '' }
+    otpSent.value = false
+    otpCountdown.value = 0
+    if (otpTimer) {
+      clearInterval(otpTimer)
+      otpTimer = null
+    }
+    // Show success message
+    loginSuccess.value = true
+    setTimeout(() => {
+      loginSuccess.value = false
+      // Refresh the page after showing success message
+      window.location.reload()
+    }, 2000)
+  }
+}
+
+async function handleResendOtp() {
+  if (!otpForm.value.phone) {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.resendOtp(otpForm.value.phone)
+  if (success) {
+    // Reset countdown
+    otpCountdown.value = 60
+    if (otpTimer) {
+      clearInterval(otpTimer)
+    }
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
+      }
+    }, 1000)
+  }
 }
 
 // Register functions
@@ -1560,7 +1658,28 @@ async function handleRegisterSubmit() {
             </button>
           </div>
           
-          <form @submit.prevent="handleLogin" class="login-form">
+          <!-- Login Method Toggle -->
+          <div class="login-method-toggle">
+            <button 
+              type="button"
+              class="method-btn" 
+              :class="{ active: loginMethod === 'email' }"
+              @click="loginMethod = 'email'; clearLoginMessages()"
+            >
+              {{ t('taqnyat.email_login') || 'البريد الإلكتروني' }}
+            </button>
+            <button 
+              type="button"
+              class="method-btn" 
+              :class="{ active: loginMethod === 'otp' }"
+              @click="loginMethod = 'otp'; clearLoginMessages()"
+            >
+              {{ t('taqnyat.otp_login') || 'رمز التحقق' }}
+            </button>
+          </div>
+
+          <!-- Email/Password Login -->
+          <form v-if="loginMethod === 'email'" @submit.prevent="handleLogin" class="login-form">
             <div class="form-group">
               <label for="email">{{ t('email') || 'البريد الإلكتروني' }}</label>
               <input 
@@ -1600,6 +1719,82 @@ async function handleRegisterSubmit() {
               <span v-if="loginLoading">{{ t('loading') || 'جاري التحميل...' }}</span>
               <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
             </button>
+          </form>
+
+          <!-- OTP Login -->
+          <form v-else @submit.prevent="handleOtpLogin" class="login-form">
+            <div class="form-group">
+              <label for="phone">{{ t('taqnyat.phone') || 'رقم الهاتف' }}</label>
+              <input 
+                id="phone"
+                v-model="otpForm.phone" 
+                type="tel" 
+                :placeholder="t('taqnyat.phone_placeholder') || '05xxxxxxxx'"
+                required
+                :disabled="taqnyatAuth.requestingOtp.value || taqnyatAuth.verifyingOtp.value || otpSent"
+              />
+            </div>
+
+            <div v-if="otpSent" class="form-group">
+              <label for="otp">{{ t('taqnyat.otp_code') || 'رمز التحقق' }}</label>
+              <input 
+                id="otp"
+                v-model="otpForm.otp" 
+                type="text" 
+                :placeholder="t('taqnyat.otp_placeholder') || 'أدخل رمز التحقق'"
+                required
+                maxlength="6"
+                :disabled="taqnyatAuth.verifyingOtp.value"
+              />
+            </div>
+            
+            <div v-if="taqnyatAuth.error.value" class="error-message">
+              {{ taqnyatAuth.error.value }}
+            </div>
+            
+            <div v-if="taqnyatAuth.success.value" class="success-message">
+              <svg width="16" height="16" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+              {{ taqnyatAuth.success.value }}
+            </div>
+
+            <div v-if="!otpSent">
+              <button 
+                type="button" 
+                class="login-btn2" 
+                style="width: 100%;background: #232323;color: #fff;padding: 10px;border-radius: 10px;" 
+                :disabled="taqnyatAuth.requestingOtp.value || !otpForm.phone"
+                @click="handleRequestOtp"
+              >
+                <span v-if="taqnyatAuth.requestingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else>{{ t('taqnyat.send_otp') || 'إرسال رمز التحقق' }}</span>
+              </button>
+            </div>
+
+            <div v-else>
+              <button 
+                type="submit" 
+                class="login-btn2" 
+                style="width: 100%;background: #232323;color: #fff;padding: 10px;border-radius: 10px;margin-bottom: 10px;" 
+                :disabled="taqnyatAuth.verifyingOtp.value || !otpForm.otp"
+              >
+                <span v-if="taqnyatAuth.verifyingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else>{{ t('taqnyat.verify') || 'التحقق وتسجيل الدخول' }}</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="resend-btn" 
+                style="width: 100%;background: transparent;color: #232323;padding: 10px;border-radius: 10px;border: 1px solid #232323;" 
+                :disabled="taqnyatAuth.resendingOtp.value || otpCountdown > 0"
+                @click="handleResendOtp"
+              >
+                <span v-if="taqnyatAuth.resendingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else-if="otpCountdown > 0">{{ t('taqnyat.resend_in') || 'إعادة الإرسال خلال' }} {{ otpCountdown }} {{ t('taqnyat.seconds') || 'ثانية' }}</span>
+                <span v-else>{{ t('taqnyat.resend_otp') || 'إعادة إرسال رمز التحقق' }}</span>
+              </button>
+            </div>
           </form>
           
           <div class="login-footer">
@@ -2827,6 +3022,37 @@ body {
 .close-btn:hover {
   background: #f5f5f5;
   color: #333;
+}
+
+.login-method-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding: 0 24px;
+  padding-top: 10px;
+}
+
+.method-btn {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.method-btn:hover {
+  color: #232323;
+}
+
+.method-btn.active {
+  color: #232323;
+  border-bottom-color: #232323;
+  font-weight: 600;
 }
 
 .login-form {

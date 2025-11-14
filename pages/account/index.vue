@@ -363,19 +363,18 @@ const loadOrders = async () => {
 }
 
 // Order status mapping
-const orderStatuses = {
-  pending: { name: 'في الانتظار', color: '#f59e0b' },
-  confirmed: { name: 'مؤكد', color: '#3b82f6' },
-  processing: { name: 'قيد المعالجة', color: '#8b5cf6' },
-  out_for_delivery: { name: 'خارج للتوصيل', color: '#06b6d4' },
-  delivered: { name: 'تم التسليم', color: '#10b981' },
-  canceled: { name: 'ملغي', color: '#ef4444' },
-  failed: { name: 'فشل', color: '#ef4444' },
-  returned: { name: 'مرتجع', color: '#6b7280' }
-}
-
 const getOrderStatus = (status: string) => {
-  return orderStatuses[status as keyof typeof orderStatuses] || { name: status, color: '#6b7280' }
+  const statusMap: Record<string, { name: string; color: string }> = {
+    pending: { name: t('account.orders.status.pending'), color: '#f59e0b' },
+    confirmed: { name: t('account.orders.status.confirmed'), color: '#3b82f6' },
+    processing: { name: t('account.orders.status.processing'), color: '#8b5cf6' },
+    out_for_delivery: { name: t('account.orders.status.out_for_delivery'), color: '#06b6d4' },
+    delivered: { name: t('account.orders.status.delivered'), color: '#10b981' },
+    canceled: { name: t('account.orders.status.canceled'), color: '#ef4444' },
+    failed: { name: t('account.orders.status.failed'), color: '#ef4444' },
+    returned: { name: t('account.orders.status.returned'), color: '#6b7280' }
+  }
+  return statusMap[status] || { name: status, color: '#6b7280' }
 }
 
 // Format date
@@ -620,12 +619,12 @@ const deleteAddress = async (addressId: string) => {
 
 // Get address type name
 const getAddressTypeName = (type: string) => {
-  const types = {
-    home: 'منزل',
-    work: 'عمل',
-    other: 'أخرى'
+  const types: Record<string, string> = {
+    home: t('account.addresses.type.home'),
+    work: t('account.addresses.type.work'),
+    other: t('account.addresses.type.other')
   }
-  return types[type as keyof typeof types] || type
+  return types[type] || type
 }
 
 // Load support tickets
@@ -716,35 +715,36 @@ const closeTicket = async (ticketId: string) => {
 
 // Get ticket status name
 const getTicketStatusName = (status: string) => {
-  const statuses = {
-    open: 'مفتوح',
-    closed: 'مغلق',
-    pending: 'في الانتظار'
+  const statuses: Record<string, string> = {
+    open: t('account.support.status.open'),
+    closed: t('account.support.status.closed'),
+    pending: t('account.support.status.pending'),
+    resolved: t('account.support.status.resolved')
   }
-  return statuses[status as keyof typeof statuses] || status
+  return statuses[status] || status
 }
 
 // Get ticket type name
 const getTicketTypeName = (type: string) => {
-  const types = {
-    general: 'استفسار عام',
-    technical: 'مشكلة تقنية',
-    order: 'مشكلة في الطلب',
-    refund: 'استرداد',
-    other: 'أخرى'
+  const types: Record<string, string> = {
+    general: t('account.support.type_options.general'),
+    technical: t('account.support.type_options.technical'),
+    order: t('account.support.type_options.order'),
+    refund: t('account.support.type_options.refund'),
+    other: t('account.support.type_options.other')
   }
-  return types[type as keyof typeof types] || type
+  return types[type] || type
 }
 
 // Get priority name
 const getPriorityName = (priority: string) => {
-  const priorities = {
-    low: 'منخفض',
-    medium: 'متوسط',
-    high: 'عالي',
-    urgent: 'عاجل'
+  const priorities: Record<string, string> = {
+    low: t('account.support.priority_options.low'),
+    medium: t('account.support.priority_options.medium'),
+    high: t('account.support.priority_options.high'),
+    urgent: t('account.support.priority_options.urgent')
   }
-  return priorities[priority as keyof typeof priorities] || priority
+  return priorities[priority] || priority
 }
 
 // Load coupons
@@ -826,12 +826,12 @@ const applyCoupon = async (code: string) => {
 
 // Get coupon type name
 const getCouponTypeName = (type: string) => {
-  const types = {
-    discount_on_purchase: 'خصم على المشتريات',
-    free_delivery: 'توصيل مجاني',
-    first_order: 'خصم الطلب الأول'
+  const types: Record<string, string> = {
+    discount_on_purchase: t('account.coupons.type.discount_on_purchase'),
+    free_delivery: t('account.coupons.type.free_delivery'),
+    flat_discount: t('account.coupons.type.flat_discount')
   }
-  return types[type as keyof typeof types] || type
+  return types[type] || type
 }
 
 // Load restock requests
@@ -868,13 +868,13 @@ const deleteRestockRequest = async (requestId: string) => {
 
 // Get restock status name
 const getRestockStatusName = (status: string) => {
-  const statuses = {
-    pending: 'في الانتظار',
-    approved: 'موافق عليه',
-    rejected: 'مرفوض',
-    completed: 'مكتمل'
+  const statuses: Record<string, string> = {
+    pending: t('account.restock.status.pending'),
+    approved: t('account.restock.status.approved'),
+    rejected: t('account.restock.status.rejected'),
+    completed: t('account.restock.status.completed')
   }
-  return statuses[status as keyof typeof statuses] || status
+  return statuses[status] || status
 }
 
 // Track order
@@ -989,16 +989,15 @@ onMounted(() => {
 })
 
 // Tab navigation
-const tabs = [
-  { id: 'profile', name: 'معلومات الملف الشخصي', icon: '👤' },
-  { id: 'orders', name: 'طلباتي', icon: '📦' },
-  { id: 'restock', name: 'طلبات إعادة التخزين', icon: '🔄' },
-  { id: 'wishlist', name: 'قائمة الرغبات', icon: '❤️' },
-  { id: 'addresses', name: 'عنواني', icon: '📍' },
-  { id: 'support', name: 'بطاقة الدعم', icon: '🎫' },
-  { id: 'coupons', name: 'قسائم التخفيض', icon: '🎟️' },
-  { id: 'tracking', name: 'تتبع الطلب', icon: '🚚' }
-]
+const tabs = computed(() => [
+  { id: 'profile', name: t('account.tabs.profile'), icon: '👤' },
+  { id: 'orders', name: t('account.tabs.orders'), icon: '📦' },
+  { id: 'wishlist', name: t('account.tabs.wishlist'), icon: '❤️' },
+  { id: 'addresses', name: t('account.tabs.addresses'), icon: '📍' },
+  { id: 'support', name: t('account.tabs.support'), icon: '🎫' },
+  { id: 'coupons', name: t('account.tabs.coupons'), icon: '🎟️' },
+  { id: 'tracking', name: t('account.tabs.tracking'), icon: '🚚' }
+])
 </script>
 
 <template>
@@ -1017,8 +1016,8 @@ const tabs = [
 
     <div class="container">
       <div class="account-header">
-        <h1>حسابي</h1>
-        <p>إدارة معلوماتك الشخصية وطلباتك</p>
+        <h1>{{ t('account.title') }}</h1>
+        <p>{{ t('account.subtitle') }}</p>
       </div>
 
       <div class="account-content">
@@ -1048,7 +1047,7 @@ const tabs = [
               <div class="user-details">
                 <h3>{{ user.f_name }} {{ user.l_name }}</h3>
                 <p>{{ user.email }}</p>
-                <span class="member-since">عضو منذ {{ formatDate(user.created_at) }}</span>
+                <span class="member-since">{{ t('account.member_since') }} {{ formatDate(user.created_at) }}</span>
               </div>
             </div>
 
@@ -1066,7 +1065,7 @@ const tabs = [
             
             <button class="nav-item logout-btn" @click="logout">
               <span class="nav-icon">🚪</span>
-              <span class="nav-text">تسجيل الخروج</span>
+              <span class="nav-text">{{ t('account.logout') }}</span>
             </button>
           </nav>
         </div>
@@ -1076,14 +1075,14 @@ const tabs = [
           <!-- Profile Tab -->
           <div v-if="activeTab === 'profile'" class="tab-content">
             <div class="tab-header">
-              <h2>معلومات الملف الشخصي</h2>
-              <p>إدارة معلوماتك الشخصية</p>
+              <h2>{{ t('account.profile.title') }}</h2>
+              <p class="mb-3">{{ t('account.profile.subtitle') }}</p>
             </div>
 
             <form @submit.prevent="updateProfile" class="profile-form">
               <div class="form-row">
                 <div class="form-group">
-                  <label for="f_name">الاسم الأول</label>
+                  <label for="f_name">{{ t('account.profile.first_name') }}</label>
                   <input
                     id="f_name"
                     v-model="profileForm.f_name"
@@ -1093,7 +1092,7 @@ const tabs = [
                   />
                 </div>
                 <div class="form-group">
-                  <label for="l_name">الاسم الأخير</label>
+                  <label for="l_name">{{ t('account.profile.last_name') }}</label>
                   <input
                     id="l_name"
                     v-model="profileForm.l_name"
@@ -1106,7 +1105,7 @@ const tabs = [
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="email">البريد الإلكتروني</label>
+                  <label for="email">{{ t('account.profile.email') }}</label>
                   <input
                     id="email"
                     v-model="profileForm.email"
@@ -1116,7 +1115,7 @@ const tabs = [
                   />
                 </div>
                 <div class="form-group">
-                  <label for="phone">رقم الهاتف</label>
+                  <label for="phone">{{ t('account.profile.phone') }}</label>
                   <input
                     id="phone"
                     v-model="profileForm.phone"
@@ -1126,8 +1125,8 @@ const tabs = [
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="image">صورة الملف الشخصي</label>
+              <div class="form-group mb-3">
+                <label for="image">{{ t('account.profile.profile_image') }}</label>
                 <input
                   id="image"
                   type="file"
@@ -1146,8 +1145,8 @@ const tabs = [
               </div>
 
               <button type="submit" class="submit-btn" :disabled="profileLoading">
-                <span v-if="profileLoading">جاري الحفظ...</span>
-                <span v-else>حفظ التغييرات</span>
+                <span v-if="profileLoading">{{ t('account.profile.saving') }}</span>
+                <span v-else>{{ t('account.profile.save_changes') }}</span>
               </button>
             </form>
           </div>
@@ -1155,30 +1154,30 @@ const tabs = [
           <!-- Orders Tab -->
           <div v-if="activeTab === 'orders'" class="tab-content">
             <div class="tab-header">
-              <h2>طلباتي</h2>
-              <p>عرض وإدارة طلباتك</p>
+              <h2>{{ t('account.orders.title') }}</h2>
+              <p class="mb-3">{{ t('account.orders.subtitle') }}</p>
             </div>
 
             <!-- Loading State -->
             <div v-if="ordersLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل الطلبات...</p>
+              <p>{{ t('account.orders.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="ordersError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل الطلبات</h3>
+              <h3>{{ t('account.orders.error_title') }}</h3>
               <p>{{ ordersError }}</p>
-              <button @click="loadOrders" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadOrders" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="orders.length === 0" class="empty-state">
               <div class="empty-icon">📦</div>
-              <h3>لا توجد طلبات</h3>
-              <p>لم تقم بإنشاء أي طلبات بعد</p>
-              <NuxtLink to="/shop" class="shop-btn">تسوق الآن</NuxtLink>
+              <h3>{{ t('account.orders.empty_title') }}</h3>
+              <p>{{ t('account.orders.empty_description') }}</p>
+              <NuxtLink to="/shop" class="shop-btn">{{ t('account.orders.shop_now') }}</NuxtLink>
             </div>
 
             <!-- Orders List -->
@@ -1186,7 +1185,7 @@ const tabs = [
               <div v-for="order in orders" :key="order.id" class="order-card">
                 <div class="order-header">
                   <div class="order-info">
-                    <h3>طلب رقم #{{ order.id }}</h3>
+                    <h3>{{ t('account.orders.order_number') }} #{{ order.id }}</h3>
                     <p class="order-date">{{ formatDate(order.created_at) }}</p>
                   </div>
                   <div class="order-status">
@@ -1210,7 +1209,7 @@ const tabs = [
                     </div>
                     <div class="item-details">
                       <h4>{{ item.product?.name || 'منتج' }}</h4>
-                      <p>الكمية: {{ item.qty }}</p>
+                      <p>{{ t('account.orders.quantity') }}: {{ item.qty }}</p>
                       <p class="item-price">{{ formatCurrency(item.price) }}</p>
                     </div>
                   </div>
@@ -1218,18 +1217,18 @@ const tabs = [
 
                 <div class="order-footer">
                   <div class="order-total">
-                    <span>المجموع: {{ formatCurrency(order.order_amount) }}</span>
+                    <span>{{ t('account.orders.total') }}: {{ formatCurrency(order.order_amount) }}</span>
                   </div>
                   <div class="order-actions">
                     <button class="action-btn secondary" @click="viewOrderDetails(order.id)">
-                      عرض التفاصيل
+                      {{ t('account.orders.view_details') }}
                     </button>
                     <button 
                       v-if="canReorder(order)" 
                       class="action-btn primary" 
                       @click="reorderItems(order)"
                     >
-                      إعادة الطلب
+                      {{ t('account.orders.reorder') }}
                     </button>
                   </div>
                 </div>
@@ -1240,29 +1239,29 @@ const tabs = [
           <!-- Restock Tab -->
           <div v-if="activeTab === 'restock'" class="tab-content">
             <div class="tab-header">
-              <h2>طلبات إعادة التخزين</h2>
-              <p>إدارة طلبات إعادة التخزين</p>
+              <h2>{{ t('account.restock.title') }}</h2>
+              <p class="mb-3">{{ t('account.restock.subtitle') }}</p>
             </div>
 
             <!-- Loading State -->
             <div v-if="restockLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل طلبات إعادة التخزين...</p>
+              <p>{{ t('account.restock.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="restockError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل طلبات إعادة التخزين</h3>
+              <h3>{{ t('account.restock.error_title') }}</h3>
               <p>{{ restockError }}</p>
-              <button @click="loadRestockRequests" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadRestockRequests" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="restockRequests.length === 0" class="empty-state">
               <div class="empty-icon">🔄</div>
-              <h3>لا توجد طلبات إعادة تخزين</h3>
-              <p>لم تقم بإنشاء أي طلبات إعادة تخزين بعد</p>
+              <h3>{{ t('account.restock.empty_title') }}</h3>
+              <p>{{ t('account.restock.empty_description') }}</p>
             </div>
 
             <!-- Restock Requests List -->
@@ -1301,7 +1300,7 @@ const tabs = [
                   </div>
                   
                   <div class="restock-message" v-if="request.message">
-                    <p><strong>رسالتك:</strong> {{ request.message }}</p>
+                    <p><strong>{{ t('account.restock.your_message') }}:</strong> {{ request.message }}</p>
                   </div>
                 </div>
 
@@ -1314,7 +1313,7 @@ const tabs = [
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                     </svg>
-                    إلغاء الطلب
+                    {{ t('account.restock.cancel_request') }}
                   </button>
                 </div>
               </div>
@@ -1324,30 +1323,30 @@ const tabs = [
           <!-- Wishlist Tab -->
           <div v-if="activeTab === 'wishlist'" class="tab-content">
             <div class="tab-header">
-              <h2>قائمة الرغبات</h2>
-              <p>المنتجات التي تحبها</p>
+              <h2>{{ t('account.wishlist.title') }}</h2>
+              <p class="mb-3">{{ t('account.wishlist.subtitle') }}</p>
             </div>
 
             <!-- Loading State -->
             <div v-if="wishlistLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل قائمة الرغبات...</p>
+              <p>{{ t('account.wishlist.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="wishlistError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل قائمة الرغبات</h3>
+              <h3>{{ t('account.wishlist.error_title') }}</h3>
               <p>{{ wishlistError }}</p>
-              <button @click="loadWishlist" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadWishlist" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="wishlist.length === 0" class="empty-state">
               <div class="empty-icon">❤️</div>
-              <h3>قائمة الرغبات فارغة</h3>
-              <p>لم تقم بإضافة أي منتجات إلى قائمة الرغبات بعد</p>
-              <NuxtLink to="/shop" class="shop-btn">تسوق الآن</NuxtLink>
+              <h3>{{ t('account.wishlist.empty_title') }}</h3>
+              <p>{{ t('account.wishlist.empty_description') }}</p>
+              <NuxtLink to="/shop" class="shop-btn">{{ t('account.orders.shop_now') }}</NuxtLink>
             </div>
 
             <!-- Wishlist Grid -->
@@ -1400,9 +1399,9 @@ const tabs = [
 
                   <div class="item-stock" :class="{ 'out-of-stock': !item.productFullInfo?.current_stock }">
                     <span v-if="item.productFullInfo?.current_stock">
-                      متوفر ({{ item.productFullInfo.current_stock }} قطعة)
+                      {{ t('account.wishlist.in_stock') }} ({{ item.productFullInfo.current_stock }} {{ t('account.wishlist.pieces') }})
                     </span>
-                    <span v-else>غير متوفر</span>
+                    <span v-else>{{ t('account.wishlist.out_of_stock') }}</span>
                   </div>
                 </div>
 
@@ -1415,13 +1414,13 @@ const tabs = [
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18M7.16 14h9.53c.75 0 1.4-.42 1.73-1.05L22 7H6.21L5.27 5H2v2h2l3.6 7.59l-1.35 2.44A2 2 0 0 0 8 20h12v-2H8l1.1-2h8.59l-1.45 2H7.16Z"/>
                     </svg>
-                    أضف للسلة
+                    {{ t('account.wishlist.add_to_cart') }}
                   </button>
                   <NuxtLink 
                     :to="`/product/${item.productFullInfo?.slug || item.productFullInfo?.id || item.product_id}`" 
                     class="action-btn secondary"
                   >
-                    عرض المنتج
+                    {{ t('account.wishlist.view_product') }}
                   </NuxtLink>
                 </div>
               </div>
@@ -1431,36 +1430,36 @@ const tabs = [
           <!-- Addresses Tab -->
           <div v-if="activeTab === 'addresses'" class="tab-content">
             <div class="tab-header">
-              <h2>عنواني</h2>
-              <p>إدارة عناوينك</p>
+              <h2>{{ t('account.addresses.title') }}</h2>
+              <p class="mb-3">{{ t('account.addresses.subtitle') }}</p>
               <button class="add-address-btn" @click="openAddressForm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                إضافة عنوان جديد
+                {{ t('account.addresses.add_new') }}
               </button>
             </div>
 
             <!-- Loading State -->
             <div v-if="addressesLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل العناوين...</p>
+              <p>{{ t('account.addresses.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="addressesError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل العناوين</h3>
+              <h3>{{ t('account.addresses.error_title') }}</h3>
               <p>{{ addressesError }}</p>
-              <button @click="loadAddresses" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadAddresses" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="addresses.length === 0" class="empty-state">
               <div class="empty-icon">📍</div>
-              <h3>لا توجد عناوين</h3>
-              <p>لم تقم بإضافة أي عناوين بعد</p>
-              <button @click="openAddressForm" class="add-address-btn">إضافة عنوان جديد</button>
+              <h3>{{ t('account.addresses.empty_title') }}</h3>
+              <p>{{ t('account.addresses.empty_description') }}</p>
+              <button @click="openAddressForm" class="add-address-btn">{{ t('account.addresses.add_new') }}</button>
             </div>
 
             <!-- Addresses List -->
@@ -1477,13 +1476,13 @@ const tabs = [
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                       </svg>
-                      تعديل
+                      {{ t('account.addresses.edit') }}
                     </button>
                     <button class="action-btn danger" @click="deleteAddress(address.id)">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                       </svg>
-                      حذف
+                      {{ t('account.addresses.delete') }}
                     </button>
                   </div>
                 </div>
@@ -1507,36 +1506,36 @@ const tabs = [
           <!-- Support Tab -->
           <div v-if="activeTab === 'support'" class="tab-content">
             <div class="tab-header">
-              <h2>تذاكر الدعم</h2>
-              <p>إدارة تذاكر الدعم</p>
+              <h2>{{ t('account.support.title') }}</h2>
+              <p class="mb-3">{{ t('account.support.subtitle') }}</p>
               <button class="create-ticket-btn" @click="openSupportForm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                إنشاء تذكرة جديدة
+                {{ t('account.support.create_ticket') }}
               </button>
             </div>
 
             <!-- Loading State -->
             <div v-if="supportLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل تذاكر الدعم...</p>
+              <p>{{ t('account.support.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="supportError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل تذاكر الدعم</h3>
+              <h3>{{ t('account.support.error_title') }}</h3>
               <p>{{ supportError }}</p>
-              <button @click="loadSupportTickets" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadSupportTickets" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="supportTickets.length === 0" class="empty-state">
               <div class="empty-icon">🎫</div>
-              <h3>لا توجد تذاكر دعم</h3>
-              <p>لم تقم بإنشاء أي تذاكر دعم بعد</p>
-              <button @click="openSupportForm" class="create-ticket-btn">إنشاء تذكرة جديدة</button>
+              <h3>{{ t('account.support.empty_title') }}</h3>
+              <p>{{ t('account.support.empty_description') }}</p>
+              <button @click="openSupportForm" class="create-ticket-btn">{{ t('account.support.create_ticket') }}</button>
             </div>
 
             <!-- Support Tickets List -->
@@ -1565,7 +1564,7 @@ const tabs = [
 
                 <div class="ticket-details">
                   <div class="ticket-type">
-                    <span class="type-label">النوع:</span>
+                    <span class="type-label">{{ t('account.support.type_label') }}:</span>
                     <span class="type-value">{{ getTicketTypeName(ticket.type) }}</span>
                   </div>
                   
@@ -1579,7 +1578,7 @@ const tabs = [
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                     </svg>
-                    عرض التفاصيل
+                    {{ t('account.support.view_details') }}
                   </button>
                   <button 
                     v-if="ticket.status === 'open'" 
@@ -1589,7 +1588,7 @@ const tabs = [
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
                     </svg>
-                    إغلاق التذكرة
+                    {{ t('account.support.close_ticket') }}
                   </button>
                 </div>
               </div>
@@ -1599,42 +1598,42 @@ const tabs = [
           <!-- Coupons Tab -->
           <div v-if="activeTab === 'coupons'" class="tab-content">
             <div class="tab-header">
-              <h2>قسائم التخفيض</h2>
-              <p>قسائمك المتاحة</p>
+              <h2>{{ t('account.coupons.title') }}</h2>
+              <p class="mb-3">{{ t('account.coupons.subtitle') }}</p>
               <button class="apply-coupon-btn" @click="openCouponForm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                تطبيق قسيمة
+                {{ t('account.coupons.apply_coupon') }}
               </button>
             </div>
 
             <!-- Loading State -->
             <div v-if="couponsLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري تحميل القسائم...</p>
+              <p>{{ t('account.coupons.loading') }}</p>
             </div>
 
             <!-- Error State -->
             <div v-else-if="couponsError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>خطأ في تحميل القسائم</h3>
+              <h3>{{ t('account.coupons.error_title') }}</h3>
               <p>{{ couponsError }}</p>
-              <button @click="loadCoupons" class="retry-btn">إعادة المحاولة</button>
+              <button @click="loadCoupons" class="retry-btn">{{ t('account.orders.retry') }}</button>
             </div>
 
             <!-- Empty State -->
             <div v-else-if="myCoupons.length === 0 && availableCoupons.length === 0" class="empty-state">
               <div class="empty-icon">🎟️</div>
-              <h3>لا توجد قسائم</h3>
-              <p>لا توجد قسائم متاحة حالياً</p>
+              <h3>{{ t('account.coupons.empty_title') }}</h3>
+              <p>{{ t('account.coupons.empty_description') }}</p>
             </div>
 
             <!-- Coupons Content -->
             <div v-else class="coupons-content">
               <!-- My Coupons -->
               <div v-if="myCoupons.length > 0" class="coupons-section">
-                <h3 class="section-title">قسائمي</h3>
+                <h3 class="section-title">{{ t('account.coupons.my_coupons') }}</h3>
                 <div class="coupons-grid">
                   <div v-for="coupon in myCoupons" :key="coupon.id" class="coupon-card my-coupon">
                     <div class="coupon-header">
@@ -1645,33 +1644,33 @@ const tabs = [
                     <div class="coupon-details">
                       <div class="coupon-discount">
                         <span v-if="coupon.coupon_type === 'discount_on_purchase'">
-                          خصم {{ coupon.discount }}%
+                          {{ t('account.coupons.discount') }} {{ coupon.discount }}%
                         </span>
                         <span v-else-if="coupon.coupon_type === 'free_delivery'">
-                          توصيل مجاني
+                          {{ t('account.coupons.free_delivery') }}
                         </span>
                         <span v-else>
-                          خصم {{ coupon.discount }} ر.س
+                          {{ t('account.coupons.discount') }} {{ coupon.discount }} ر.س
                         </span>
                       </div>
                       
                       <div class="coupon-conditions">
                         <p v-if="coupon.min_purchase > 0">
-                          الحد الأدنى للشراء: {{ formatCurrency(coupon.min_purchase) }}
+                          {{ t('account.coupons.min_purchase') }}: {{ formatCurrency(coupon.min_purchase) }}
                         </p>
                         <p v-if="coupon.max_discount > 0">
-                          الحد الأقصى للخصم: {{ formatCurrency(coupon.max_discount) }}
+                          {{ t('account.coupons.max_discount') }}: {{ formatCurrency(coupon.max_discount) }}
                         </p>
                       </div>
                     </div>
 
                     <div class="coupon-footer">
                       <div class="coupon-expiry">
-                        <span class="expiry-label">ينتهي في:</span>
+                        <span class="expiry-label">{{ t('account.coupons.expires_at') }}:</span>
                         <span class="expiry-date">{{ formatDate(coupon.expire_date) }}</span>
                       </div>
                       <div class="coupon-status">
-                        <span class="status-badge active">نشط</span>
+                        <span class="status-badge active">{{ t('account.coupons.active') }}</span>
                       </div>
                     </div>
                   </div>
@@ -1680,7 +1679,7 @@ const tabs = [
 
               <!-- Available Coupons -->
               <div v-if="availableCoupons.length > 0" class="coupons-section">
-                <h3 class="section-title">قسائم متاحة</h3>
+                <h3 class="section-title">{{ t('account.coupons.available_coupons') }}</h3>
                 <div class="coupons-grid">
                   <div v-for="coupon in availableCoupons" :key="coupon.id" class="coupon-card available-coupon">
                     <div class="coupon-header">
@@ -1691,33 +1690,33 @@ const tabs = [
                     <div class="coupon-details">
                       <div class="coupon-discount">
                         <span v-if="coupon.coupon_type === 'discount_on_purchase'">
-                          خصم {{ coupon.discount }}%
+                          {{ t('account.coupons.discount') }} {{ coupon.discount }}%
                         </span>
                         <span v-else-if="coupon.coupon_type === 'free_delivery'">
-                          توصيل مجاني
+                          {{ t('account.coupons.free_delivery') }}
                         </span>
                         <span v-else>
-                          خصم {{ coupon.discount }} ر.س
+                          {{ t('account.coupons.discount') }} {{ coupon.discount }} ر.س
                         </span>
                       </div>
                       
                       <div class="coupon-conditions">
                         <p v-if="coupon.min_purchase > 0">
-                          الحد الأدنى للشراء: {{ formatCurrency(coupon.min_purchase) }}
+                          {{ t('account.coupons.min_purchase') }}: {{ formatCurrency(coupon.min_purchase) }}
                         </p>
                         <p v-if="coupon.max_discount > 0">
-                          الحد الأقصى للخصم: {{ formatCurrency(coupon.max_discount) }}
+                          {{ t('account.coupons.max_discount') }}: {{ formatCurrency(coupon.max_discount) }}
                         </p>
                       </div>
                     </div>
 
                     <div class="coupon-footer">
                       <div class="coupon-expiry">
-                        <span class="expiry-label">ينتهي في:</span>
+                        <span class="expiry-label">{{ t('account.coupons.expires_at') }}:</span>
                         <span class="expiry-date">{{ formatDate(coupon.expire_date) }}</span>
                       </div>
                       <button class="apply-btn" @click="applyCoupon(coupon.code)">
-                        تطبيق
+                        {{ t('account.coupons.apply') }}
                       </button>
                     </div>
                   </div>
@@ -1729,8 +1728,8 @@ const tabs = [
           <!-- Tracking Tab -->
           <div v-if="activeTab === 'tracking'" class="tab-content">
             <div class="tab-header">
-              <h2>تتبع الطلب</h2>
-              <p>تتبع حالة طلبك</p>
+              <h2>{{ t('account.tracking.title') }}</h2>
+              <p class="mb-3">{{ t('account.tracking.subtitle') }}</p>
             </div>
 
             <!-- Search Form -->
@@ -1740,18 +1739,18 @@ const tabs = [
                   <input
                     v-model="trackingForm.searchTerm"
                     type="text"
-                    :placeholder="trackingForm.searchType === 'order_id' ? 'أدخل رقم الطلب' : 'أدخل رقم الهاتف'"
+                    :placeholder="trackingForm.searchType === 'order_id' ? t('account.tracking.enter_order_id') : t('account.tracking.enter_phone')"
                     required
                     :disabled="trackingLoading"
                     class="search-input"
                   />
                   <select v-model="trackingForm.searchType" class="search-type-select" :disabled="trackingLoading">
-                    <option value="order_id">رقم الطلب</option>
-                    <option value="phone">رقم الهاتف</option>
+                    <option value="order_id">{{ t('account.tracking.order_id') }}</option>
+                    <option value="phone">{{ t('account.tracking.phone') }}</option>
                   </select>
                   <button type="submit" class="search-btn" :disabled="trackingLoading">
-                    <span v-if="trackingLoading">جاري البحث...</span>
-                    <span v-else>تتبع</span>
+                    <span v-if="trackingLoading">{{ t('account.tracking.searching') }}</span>
+                    <span v-else>{{ t('account.tracking.track') }}</span>
                   </button>
             </div>
               </form>
@@ -1760,22 +1759,22 @@ const tabs = [
             <!-- Loading State -->
             <div v-if="trackingLoading" class="loading-state">
               <div class="spinner"></div>
-              <p>جاري البحث عن الطلب...</p>
+              <p>{{ t('account.tracking.loading') }}</p>
         </div>
 
             <!-- Error State -->
             <div v-else-if="trackingError" class="error-state">
               <div class="error-icon">⚠️</div>
-              <h3>لم يتم العثور على الطلب</h3>
+              <h3>{{ t('account.tracking.error_title') }}</h3>
               <p>{{ trackingError }}</p>
-              <button @click="clearTracking" class="retry-btn">بحث جديد</button>
+              <button @click="clearTracking" class="retry-btn">{{ t('account.tracking.new_search') }}</button>
       </div>
 
             <!-- Tracking Results -->
             <div v-else-if="trackingResult" class="tracking-result">
               <div class="order-summary">
                 <div class="order-header">
-                  <h3>طلب رقم: {{ trackingResult.order_id }}</h3>
+                  <h3>{{ t('account.tracking.order_number') }}: {{ trackingResult.order_id }}</h3>
                   <span class="order-status" :class="trackingResult.status">
                     {{ getOrderStatusName(trackingResult.status) }}
                   </span>
@@ -1783,19 +1782,19 @@ const tabs = [
                 
                 <div class="order-details">
                   <div class="detail-row">
-                    <span class="label">تاريخ الطلب:</span>
+                    <span class="label">{{ t('account.tracking.order_date') }}:</span>
                     <span class="value">{{ formatDate(trackingResult.created_at) }}</span>
                   </div>
                   <div class="detail-row">
-                    <span class="label">المبلغ الإجمالي:</span>
+                    <span class="label">{{ t('account.tracking.total_amount') }}:</span>
                     <span class="value">{{ formatCurrency(trackingResult.order_amount) }}</span>
                   </div>
                   <div class="detail-row" v-if="trackingResult.delivery_man">
-                    <span class="label">مندوب التوصيل:</span>
+                    <span class="label">{{ t('account.tracking.delivery_man') }}:</span>
                     <span class="value">{{ trackingResult.delivery_man.name }}</span>
                   </div>
                   <div class="detail-row" v-if="trackingResult.delivery_man?.phone">
-                    <span class="label">رقم المندوب:</span>
+                    <span class="label">{{ t('account.tracking.delivery_phone') }}:</span>
                     <span class="value">{{ trackingResult.delivery_man.phone }}</span>
                   </div>
                 </div>
@@ -1803,7 +1802,7 @@ const tabs = [
 
               <!-- Tracking Timeline -->
               <div class="tracking-timeline">
-                <h4>مسار التتبع</h4>
+                <h4>{{ t('account.tracking.tracking_path') }}</h4>
                 <div class="timeline">
                   <div 
                     v-for="(step, index) in trackingResult.tracking_history" 
@@ -1825,7 +1824,7 @@ const tabs = [
 
               <!-- Order Items -->
               <div class="order-items" v-if="trackingResult.order_items">
-                <h4>عناصر الطلب</h4>
+                <h4>{{ t('account.tracking.order_items') }}</h4>
                 <div class="items-list">
                   <div v-for="item in trackingResult.order_items" :key="item.id" class="order-item">
                     <div class="item-image">
@@ -1837,8 +1836,8 @@ const tabs = [
                     </div>
                     <div class="item-details">
                       <h5>{{ item.product_name }}</h5>
-                      <p>الكمية: {{ item.quantity }}</p>
-                      <p>السعر: {{ formatCurrency(item.price) }}</p>
+                      <p>{{ t('account.orders.quantity') }}: {{ item.quantity }}</p>
+                      <p>{{ t('shop.price') }}: {{ formatCurrency(item.price) }}</p>
                     </div>
                   </div>
                 </div>
@@ -1848,8 +1847,8 @@ const tabs = [
             <!-- Empty State -->
             <div v-else class="empty-state">
               <div class="empty-icon">🚚</div>
-              <h3>تتبع طلبك</h3>
-              <p>أدخل رقم الطلب أو رقم الهاتف لتتبع حالة طلبك</p>
+              <h3>{{ t('account.tracking.empty_title') }}</h3>
+              <p>{{ t('account.tracking.empty_description') }}</p>
             </div>
           </div>
         </div>
@@ -1861,7 +1860,7 @@ const tabs = [
       <div v-if="showAddressForm" class="modal-overlay" @click.self="closeAddressForm">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>{{ editingAddress ? 'تعديل العنوان' : 'إضافة عنوان جديد' }}</h2>
+            <h2>{{ editingAddress ? t('account.addresses.edit_address') : t('account.addresses.add_address') }}</h2>
             <button class="close-btn" @click="closeAddressForm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
@@ -1872,7 +1871,7 @@ const tabs = [
           <form @submit.prevent="saveAddress" class="address-form">
             <div class="form-row">
               <div class="form-group">
-                <label for="contact_person_name">اسم المستلم</label>
+                <label for="contact_person_name">{{ t('account.addresses.recipient_name') }}</label>
                 <input
                   id="contact_person_name"
                   v-model="addressForm.contact_person_name"
@@ -1882,20 +1881,20 @@ const tabs = [
                 />
               </div>
               <div class="form-group">
-                <label for="phone">رقم الهاتف (مطلوب)</label>
+                <label for="phone">{{ t('account.addresses.phone_required') }}</label>
                 <input
                   id="phone"
                   v-model="addressForm.phone"
                   type="tel"
                   required
-                  placeholder="مثال: +966501234567"
+                  :placeholder="t('account.addresses.phone_placeholder')"
                   :disabled="addressFormLoading"
                 />
               </div>
             </div>
 
             <div class="form-group">
-              <label for="address">العنوان التفصيلي</label>
+              <label for="address">{{ t('account.addresses.address') }}</label>
               <textarea
                 id="address"
                 v-model="addressForm.address"
@@ -1906,7 +1905,7 @@ const tabs = [
             </div>
 
             <div class="form-group">
-              <label for="city">المدينة</label>
+              <label for="city">{{ t('account.addresses.city') }}</label>
               <input
                 id="city"
                 v-model="addressForm.city"
@@ -1922,11 +1921,11 @@ const tabs = [
 
             <div class="form-actions">
               <button type="button" class="action-btn secondary" @click="closeAddressForm" :disabled="addressFormLoading">
-                إلغاء
+                {{ t('account.addresses.cancel') }}
               </button>
               <button type="submit" class="action-btn primary" :disabled="addressFormLoading">
-                <span v-if="addressFormLoading">جاري الحفظ...</span>
-                <span v-else>{{ editingAddress ? 'تحديث' : 'إضافة' }}</span>
+                <span v-if="addressFormLoading">{{ t('account.addresses.saving') }}</span>
+                <span v-else>{{ editingAddress ? t('account.addresses.update') : t('account.addresses.add') }}</span>
               </button>
             </div>
           </form>
@@ -1939,7 +1938,7 @@ const tabs = [
       <div v-if="showSupportForm" class="modal-overlay" @click.self="closeSupportForm">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>إنشاء تذكرة دعم جديدة</h2>
+            <h2>{{ t('account.support.create_title') }}</h2>
             <button class="close-btn" @click="closeSupportForm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
@@ -1949,53 +1948,53 @@ const tabs = [
 
           <form @submit.prevent="createSupportTicket" class="support-form">
             <div class="form-group">
-              <label for="subject">موضوع التذكرة</label>
+              <label for="subject">{{ t('account.support.subject') }}</label>
               <input
                 id="subject"
                 v-model="supportForm.subject"
                 type="text"
                 required
                 :disabled="supportFormLoading"
-                placeholder="اكتب موضوع التذكرة"
+                :placeholder="t('account.support.subject_placeholder')"
               />
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label for="type">نوع التذكرة</label>
+                <label for="type">{{ t('account.support.type') }}</label>
                 <select id="type" v-model="supportForm.type" required>
-                  <option value="general">استفسار عام</option>
-                  <option value="technical">مشكلة تقنية</option>
-                  <option value="order">مشكلة في الطلب</option>
-                  <option value="refund">استرداد</option>
-                  <option value="other">أخرى</option>
+                  <option value="general">{{ t('account.support.type_options.general') }}</option>
+                  <option value="technical">{{ t('account.support.type_options.technical') }}</option>
+                  <option value="order">{{ t('account.support.type_options.order') }}</option>
+                  <option value="refund">{{ t('account.support.type_options.refund') }}</option>
+                  <option value="other">{{ t('account.support.type_options.other') }}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="priority">الأولوية</label>
+                <label for="priority">{{ t('account.support.priority') }}</label>
                 <select id="priority" v-model="supportForm.priority" required>
-                  <option value="low">منخفض</option>
-                  <option value="medium">متوسط</option>
-                  <option value="high">عالي</option>
-                  <option value="urgent">عاجل</option>
+                  <option value="low">{{ t('account.support.priority_options.low') }}</option>
+                  <option value="medium">{{ t('account.support.priority_options.medium') }}</option>
+                  <option value="high">{{ t('account.support.priority_options.high') }}</option>
+                  <option value="urgent">{{ t('account.support.priority_options.urgent') }}</option>
                 </select>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="description">وصف المشكلة</label>
+              <label for="description">{{ t('account.support.description') }}</label>
               <textarea
                 id="description"
                 v-model="supportForm.description"
                 required
                 rows="5"
                 :disabled="supportFormLoading"
-                placeholder="اكتب وصفاً مفصلاً للمشكلة أو الاستفسار"
+                :placeholder="t('account.support.description_placeholder')"
               ></textarea>
             </div>
 
             <div class="form-group">
-              <label for="attachments">مرفقات (اختياري)</label>
+              <label for="attachments">{{ t('account.support.attachments') }}</label>
               <input
                 id="attachments"
                 type="file"
@@ -2004,7 +2003,7 @@ const tabs = [
                 @change="supportForm.attachments = ($event.target as HTMLInputElement)?.files"
                 :disabled="supportFormLoading"
               />
-              <p class="form-help">يمكنك إرفاق الصور أو المستندات (PDF, DOC, DOCX)</p>
+              <p class="form-help">{{ t('account.support.attachments_help') }}</p>
             </div>
 
             <div v-if="supportFormError" class="error-message">
@@ -2013,11 +2012,11 @@ const tabs = [
 
             <div class="form-actions">
               <button type="button" class="action-btn secondary" @click="closeSupportForm" :disabled="supportFormLoading">
-                إلغاء
+                {{ t('account.addresses.cancel') }}
               </button>
               <button type="submit" class="action-btn primary" :disabled="supportFormLoading">
-                <span v-if="supportFormLoading">جاري الإرسال...</span>
-                <span v-else>إرسال التذكرة</span>
+                <span v-if="supportFormLoading">{{ t('account.support.sending') }}</span>
+                <span v-else>{{ t('account.support.send_ticket') }}</span>
               </button>
             </div>
           </form>
@@ -2030,7 +2029,7 @@ const tabs = [
       <div v-if="showCouponForm" class="modal-overlay" @click.self="closeCouponForm">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>تطبيق قسيمة</h2>
+            <h2>{{ t('account.coupons.apply_coupon_title') }}</h2>
             <button class="close-btn" @click="closeCouponForm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
@@ -2038,16 +2037,16 @@ const tabs = [
             </button>
           </div>
 
-          <form @submit.prevent="applyCouponCode" class="coupon-form">
+          <form @submit.prevent="applyCouponCode" class="coupon-form p-3">
             <div class="form-group">
-              <label for="coupon_code">كود القسيمة</label>
+              <label for="coupon_code">{{ t('account.coupons.coupon_code') }}</label>
               <input
                 id="coupon_code"
                 v-model="couponForm.code"
                 type="text"
                 required
                 :disabled="couponFormLoading"
-                placeholder="أدخل كود القسيمة"
+                :placeholder="t('account.coupons.coupon_code_placeholder')"
               />
             </div>
 
@@ -2061,11 +2060,11 @@ const tabs = [
 
             <div class="form-actions">
               <button type="button" class="action-btn secondary" @click="closeCouponForm" :disabled="couponFormLoading">
-                إلغاء
+                {{ t('account.addresses.cancel') }}
               </button>
               <button type="submit" class="action-btn primary" :disabled="couponFormLoading">
-                <span v-if="couponFormLoading">جاري التطبيق...</span>
-                <span v-else>تطبيق القسيمة</span>
+                <span v-if="couponFormLoading">{{ t('account.coupons.applying') }}</span>
+                <span v-else>{{ t('account.coupons.apply_coupon') }}</span>
               </button>
             </div>
           </form>
@@ -2077,7 +2076,7 @@ const tabs = [
     <div v-if="selectedOrder" class="modal-overlay" @click="selectedOrderId = null">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>تفاصيل الطلب #{{ selectedOrder.id }}</h3>
+          <h3>{{ t('account.orders.details_title') }} #{{ selectedOrder.id }}</h3>
           <button class="close-btn" @click="selectedOrderId = null">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
@@ -2088,23 +2087,23 @@ const tabs = [
         <div class="modal-body">
           <div class="order-info">
             <div class="info-row">
-              <span class="label">حالة الطلب:</span>
+              <span class="label">{{ t('account.orders.status.pending') }}:</span>
               <span class="value status" :class="selectedOrder.order_status">
                 {{ getOrderStatusName(selectedOrder.order_status) }}
               </span>
             </div>
             <div class="info-row">
-              <span class="label">تاريخ الطلب:</span>
+              <span class="label">{{ t('account.orders.order_date') }}:</span>
               <span class="value">{{ formatDate(selectedOrder.created_at) }}</span>
             </div>
             <div class="info-row">
-              <span class="label">المجموع:</span>
+              <span class="label">{{ t('account.orders.total') }}:</span>
               <span class="value">{{ formatCurrency(selectedOrder.order_amount) }}</span>
             </div>
           </div>
           
           <div class="order-items-details">
-            <h4>عناصر الطلب</h4>
+            <h4>{{ t('account.tracking.order_items') }}</h4>
             <div class="items-list">
               <div v-for="item in selectedOrder.details" :key="item.id" class="order-item-detail">
                 <div class="item-image">
@@ -2116,7 +2115,7 @@ const tabs = [
                 </div>
                 <div class="item-info">
                   <h5>{{ item.product?.name || 'منتج' }}</h5>
-                  <p>الكمية: {{ item.qty }}</p>
+                  <p>{{ t('account.orders.quantity') }}: {{ item.qty }}</p>
                   <p class="price">{{ formatCurrency(item.price) }}</p>
                 </div>
               </div>
@@ -2129,3023 +2128,3022 @@ const tabs = [
 </template>
 
 <style scoped>
-.account-page {
-  min-height: 100vh;
-  background: #f8fafc;
-  padding: 20px 0;
-}
+  .account-page {
+    min-height: 100vh;
+    background: #f8fafc;
+    padding: 20px 0;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .account-header {
+    margin-bottom: 40px;
+  }
+
+  .account-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 8px;
+  }
+
+  .account-header p {
+    font-size: 16px;
+    color: #6b7280;
+    margin: 0;
+  }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.account-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.account-header h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px;
-}
-
-.account-header p {
-  font-size: 16px;
-  color: #6b7280;
-  margin: 0;
-}
-
-.account-content {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 30px;
-}
-
-/* Sidebar */
-.account-sidebar {
-  background: white;
-  border-radius: 20px;
-  padding: 0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  height: fit-content;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(20px);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 16px;
-  color: white;
-  position: relative;
-  overflow: hidden;
-}
-
-.user-info::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  opacity: 0.3;
-}
-
-.user-avatar {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-}
-
-.user-avatar:hover {
-  transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.6);
-}
-
-.user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-placeholder {
-  font-size: 28px;
-  font-weight: 700;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.avatar-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.3s ease;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.user-avatar:hover .avatar-overlay {
-  opacity: 1;
-}
-
-.avatar-upload-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #667eea;
-}
-
-.avatar-upload-btn:hover {
-  background: white;
-  transform: scale(1.1);
-}
-
-.user-details {
-  flex: 1;
-  position: relative;
-  z-index: 1;
-}
-
-.user-details h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 6px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.user-details p {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0 0 4px;
-}
-
-.member-since {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-}
-
-.account-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 20px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border: none;
-  background: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: right;
-  width: 100%;
-  position: relative;
-  font-weight: 500;
-  color: #6b7280;
-}
-
-.nav-item::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 0;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 2px;
-  transition: height 0.3s ease;
-}
-
-.nav-item:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  color: #374151;
-  transform: translateX(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.nav-item.active {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  transform: translateX(-4px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.nav-item.active::before {
-  height: 24px;
-}
-
-.nav-icon {
-  font-size: 20px;
-  transition: transform 0.2s ease;
-}
-
-.nav-item:hover .nav-icon {
-  transform: scale(1.1);
-}
-
-.nav-text {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.logout-btn {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #f1f5f9;
-  color: #ef4444;
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  border: 1px solid #fecaca;
-}
-
-.logout-btn:hover {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #dc2626;
-  transform: translateX(-4px);
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
-}
-
-.logout-btn.active {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #dc2626;
-}
-
-.logout-btn::before {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-/* Main Content */
-.account-main {
-  background: white;
-  border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(20px);
-  position: relative;
-  overflow: hidden;
-}
-
-.account-main::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.tab-header {
-  margin-bottom: 40px;
-  padding-bottom: 24px;
-  border-bottom: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.tab-header::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-.tab-header h2 {
-  font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0 0 12px;
-  letter-spacing: -0.5px;
-}
-
-.tab-header p {
-  font-size: 16px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 500;
-}
-
-/* Profile Form */
-.profile-form {
-  max-width: 600px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.form-group input {
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  background: #fafbfc;
-  font-weight: 500;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-}
-
-.form-group input:disabled {
-  background: #f9fafb;
-  color: #6b7280;
-  cursor: not-allowed;
-}
-
-.form-group input:hover:not(:disabled) {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.submit-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
-}
-
-.submit-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.submit-btn:hover:not(:disabled)::before {
-  left: 100%;
-}
-
-.submit-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.error-message {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  color: #dc2626;
-  padding: 16px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  border: 2px solid #fecaca;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.error-message::before {
-  content: '⚠️';
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-}
-
-.success-message {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  color: #166534;
-  padding: 16px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  border: 2px solid #bbf7d0;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.success-message::before {
-  content: '✅';
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-}
-
-/* Loading State */
-.loading-state {
-  text-align: center;
-  padding: 80px 20px;
-  color: #6b7280;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 16px;
-  border: 2px solid #e2e8f0;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e2e8f0;
-  border-top: 4px solid #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 24px;
-  position: relative;
-}
-
-.spinner::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid #764ba2;
-  border-radius: 50%;
-  animation: spin 0.5s linear infinite reverse;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Error State */
-.error-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6b7280;
-}
-
-.error-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.error-state h3 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 12px;
-}
-
-.retry-btn {
-  background: #6b46c1;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 16px;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  color: #6b7280;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 16px;
-  border: 2px dashed #cbd5e1;
-  position: relative;
-  overflow: hidden;
-}
-
-.empty-state::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="%23cbd5e1" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
-  opacity: 0.5;
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 24px;
-  position: relative;
-  z-index: 1;
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-.empty-state h3 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #374151;
-  margin: 0 0 16px;
-  position: relative;
-  z-index: 1;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0 0 24px;
-  position: relative;
-  z-index: 1;
-  font-weight: 500;
-}
-
-.shop-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  text-decoration: none;
-  padding: 16px 32px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  display: inline-block;
-  margin-top: 16px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: relative;
-  z-index: 1;
-}
-
-.shop-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-/* Orders List */
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.order-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.order-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.order-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.order-info h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 4px;
-}
-
-.order-date {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-}
-
-.status-badge {
-  padding: 8px 16px;
-  border-radius: 20px;
-  color: white;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.status-badge::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.status-badge:hover::before {
-  left: 100%;
-}
-
-.order-items {
-  margin-bottom: 16px;
-}
-
-.order-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f9fafb;
-}
-
-.order-item:last-child {
-  border-bottom: none;
-}
-
-.item-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f3f4f6;
-  flex-shrink: 0;
-}
-
-.item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.item-details {
-  flex: 1;
-}
-
-.item-details h4 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 4px;
-}
-
-.item-details p {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 4px;
-}
-
-.item-price {
-  font-weight: 600;
-  color: #111827;
-}
-
-.order-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
-}
-
-.order-total {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.order-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.action-btn {
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-  position: relative;
-  overflow: hidden;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.action-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.action-btn:hover::before {
-  left: 100%;
-}
-
-.action-btn.primary {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.action-btn.primary:hover {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.action-btn.secondary {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  color: #374151;
-  border: 2px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.action-btn.secondary:hover {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-/* Wishlist Grid */
-.wishlist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.wishlist-item {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.wishlist-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.wishlist-item:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.item-image {
-  position: relative;
-  width: 100%;
-  height: 200px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f3f4f6;
-  margin-bottom: 12px;
-}
-
-.item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.remove-btn {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.remove-btn:hover {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  transform: scale(1.15);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-}
-
-.item-details {
-  margin-bottom: 16px;
-}
-
-.item-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 4px;
-  line-height: 1.4;
-}
-
-.item-brand {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 8px;
-}
-
-.item-rating {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.stars {
-  display: flex;
-  gap: 2px;
-}
-
-.star {
-  color: #d1d5db;
-  font-size: 14px;
-}
-
-.star.filled {
-  color: #fbbf24;
-}
-
-.rating-text {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.item-price {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.original-price {
-  font-size: 14px;
-  color: #9ca3af;
-  text-decoration: line-through;
-}
-
-.current-price {
-  font-size: 20px;
-  font-weight: 800;
-  color: #111827;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.discount-badge {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.item-stock {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 8px;
-  display: inline-block;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.item-stock:not(.out-of-stock) {
-  color: #10b981;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border: 2px solid #bbf7d0;
-}
-
-.item-stock.out-of-stock {
-  color: #ef4444;
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  border: 2px solid #fecaca;
-}
-
-.item-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.item-actions .action-btn {
-  width: 100%;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 20px;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-/* Coming Soon */
-.coming-soon {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6b7280;
-}
-
-.coming-soon h3 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 12px;
-}
-
-.coming-soon p {
-  font-size: 16px;
-  margin: 0;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
   .account-content {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .account-sidebar {
-    order: 2;
-    border-radius: 16px;
-  }
-
-  .account-main {
-    order: 1;
-    padding: 24px;
-    border-radius: 16px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .account-nav {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    padding: 16px;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
   }
 
-  .nav-item {
-    flex-direction: column;
-    text-align: center;
-    padding: 16px 8px;
-    border-radius: 10px;
-  }
-
-  .nav-text {
-    font-size: 12px;
+  /* Sidebar */
+  .account-sidebar {
+    background: white;
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
   }
 
   .user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 16px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .user-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+  }
+
+  .user-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  .user-avatar:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+
+  .user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    font-size: 28px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .user-avatar:hover .avatar-overlay {
+    opacity: 1;
+  }
+
+  .avatar-upload-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #667eea;
+  }
+
+  .avatar-upload-btn:hover {
+    background: white;
+    transform: scale(1.1);
+  }
+
+  .user-details {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .user-details h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 6px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .user-details p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 4px;
+  }
+
+  .member-since {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+  }
+
+  .account-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 20px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: none;
+    background: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+    text-align: right;
+    width: 100%;
+    position: relative;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 0;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 2px;
+    transition: height 0.3s ease;
+  }
+
+  .nav-item:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #374151;
+    transform: translateX(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-item.active {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    transform: translateX(-4px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  }
+
+  .nav-item.active::before {
+    height: 24px;
+  }
+
+  .nav-icon {
+    font-size: 20px;
+    transition: transform 0.2s ease;
+  }
+
+  .nav-item:hover .nav-icon {
+    transform: scale(1.1);
+  }
+
+  .nav-text {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .logout-btn {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+    color: #ef4444;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+  }
+
+  .logout-btn:hover {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #dc2626;
+    transform: translateX(-4px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+  }
+
+  .logout-btn.active {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #dc2626;
+  }
+
+  .logout-btn::before {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  /* Main Content */
+  .account-main {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .account-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .tab-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .tab-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  .tab-header h2 {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 12px;
+    letter-spacing: -0.5px;
+  }
+
+  .tab-header p {
+    font-size: 16px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  /* Profile Form */
+  .profile-form {
+    max-width: 600px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .form-group input {
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+    font-weight: 500;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .form-group input:disabled {
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+
+  .form-group input:hover:not(:disabled) {
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .submit-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .submit-btn:hover:not(:disabled)::before {
+    left: 100%;
+  }
+
+  .submit-btn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .error-message {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #dc2626;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border: 2px solid #fecaca;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .error-message::before {
+    content: '⚠️';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+  }
+
+  .success-message {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #166534;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border: 2px solid #bbf7d0;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .success-message::before {
+    content: '✅';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+  }
+
+  /* Loading State */
+  .loading-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #6b7280;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 16px;
+    border: 2px solid #e2e8f0;
+  }
+
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 24px;
+    position: relative;
+  }
+
+  .spinner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    border-top: 2px solid #764ba2;
+    border-radius: 50%;
+    animation: spin 0.5s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Error State */
+  .error-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+  }
+
+  .error-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .error-state h3 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 12px;
+  }
+
+  .retry-btn {
+    background: #6b46c1;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #6b7280;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 16px;
+    border: 2px dashed #cbd5e1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .empty-state::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="%23cbd5e1" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+    opacity: 0.5;
+  }
+
+  .empty-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .empty-state h3 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .empty-state p {
+    font-size: 16px;
+    margin: 0 0 24px;
+    position: relative;
+    z-index: 1;
+    font-weight: 500;
+  }
+
+  .shop-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    text-decoration: none;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 16px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .shop-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  /* Orders List */
+  .orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .order-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .order-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  }
+
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .order-info h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px;
+  }
+
+  .order-date {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  .status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .status-badge:hover::before {
+    left: 100%;
+  }
+
+  .order-items {
+    margin-bottom: 16px;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f9fafb;
+  }
+
+  .order-item:last-child {
+    border-bottom: none;
+  }
+
+  .item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f3f4f6;
+    flex-shrink: 0;
+  }
+
+  .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .item-details {
+    flex: 1;
+  }
+
+  .item-details h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px;
+  }
+
+  .item-details p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 4px;
+  }
+
+  .item-price {
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .order-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  .order-total {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .order-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .action-btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .action-btn:hover::before {
+    left: 100%;
+  }
+
+  .action-btn.primary {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  }
+
+  .action-btn.primary:hover {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .action-btn.secondary {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #374151;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .action-btn.secondary:hover {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Wishlist Grid */
+  .wishlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .wishlist-item {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wishlist-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .wishlist-item:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .item-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f3f4f6;
+    margin-bottom: 12px;
+  }
+
+  .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .remove-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  .remove-btn:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    transform: scale(1.15);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+  }
+
+  .item-details {
+    margin-bottom: 16px;
+  }
+
+  .item-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px;
+    line-height: 1.4;
+  }
+
+  .item-brand {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 8px;
+  }
+
+  .item-rating {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .stars {
+    display: flex;
+    gap: 2px;
+  }
+
+  .star {
+    color: #d1d5db;
+    font-size: 14px;
+  }
+
+  .star.filled {
+    color: #fbbf24;
+  }
+
+  .rating-text {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .item-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .original-price {
+    font-size: 14px;
+    color: #9ca3af;
+    text-decoration: line-through;
+  }
+
+  .current-price {
+    font-size: 20px;
+    font-weight: 800;
+    color: #111827;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .discount-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .item-stock {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .item-stock:not(.out-of-stock) {
+    color: #10b981;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 2px solid #bbf7d0;
+  }
+
+  .item-stock.out-of-stock {
+    color: #ef4444;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 2px solid #fecaca;
+  }
+
+  .item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .item-actions .action-btn {
+    width: 100%;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  /* Coming Soon */
+  .coming-soon {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+  }
+
+  .coming-soon h3 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 12px;
+  }
+
+  .coming-soon p {
+    font-size: 16px;
+    margin: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .account-content {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .account-sidebar {
+      order: 2;
+      border-radius: 16px;
+    }
+
+    .account-main {
+      order: 1;
+      padding: 24px;
+      border-radius: 16px;
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .account-nav {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 16px;
+    }
+
+    .nav-item {
+      flex-direction: column;
+      text-align: center;
+      padding: 16px 8px;
+      border-radius: 10px;
+    }
+
+    .nav-text {
+      font-size: 12px;
+    }
+
+    .user-info {
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .user-avatar {
+      width: 60px;
+      height: 60px;
+    }
+
+    .user-details h3 {
+      font-size: 16px;
+    }
+
+    .user-details p {
+      font-size: 13px;
+    }
+
+    .member-since {
+      font-size: 11px;
+    }
+
+    .order-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .order-footer {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .order-actions {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .action-btn {
+      flex: 1;
+      text-align: center;
+    }
+
+    .wishlist-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .wishlist-item {
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .item-image {
+      height: 180px;
+    }
+
+    .item-actions {
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    .item-actions .action-btn {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+  }
+
+  /* Addresses */
+  .add-address-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .add-address-btn:hover {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .addresses-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+  }
+
+  .address-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .address-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .address-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .address-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .type-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .type-badge.home {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 2px solid #93c5fd;
+  }
+
+  .type-badge.work {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .type-badge.other {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #374151;
+    border: 2px solid #d1d5db;
+  }
+
+  .address-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .action-btn.danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  }
+
+  .action-btn.danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
+  }
+
+  .address-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .contact-info h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .contact-info p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .address-info p {
+    margin: 0 0 6px;
+    font-size: 14px;
+    color: #374151;
+  }
+
+  .address-text {
+    font-weight: 600;
+    line-height: 1.6;
+    color: #111827;
+  }
+
+  .city-zip {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .country {
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-content {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 28px 20px;
+    border-bottom: 2px solid #f1f5f9;
+    position: relative;
+    z-index: 1;
+  }
+
+  .modal-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+
+  .close-btn {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 2px solid #e2e8f0;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 10px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .close-btn:hover {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    color: #374151;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  .address-form {
+    padding: 24px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .form-actions::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  .form-group textarea {
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+    background: #fafbfc;
+    font-weight: 500;
+  }
+
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .form-group textarea:hover:not(:focus) {
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .form-group select {
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .form-group select:hover:not(:focus) {
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .form-group select:disabled {
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+
+  /* Responsive for addresses */
+  @media (max-width: 768px) {
+    .addresses-list {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .address-card {
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .address-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .address-actions {
+      width: 100%;
+      justify-content: stretch;
+      gap: 8px;
+    }
+
+    .address-actions .action-btn {
+      flex: 1;
+      text-align: center;
+      padding: 12px 16px;
+    }
+
+    .modal-content {
+      margin: 10px;
+      max-width: none;
+      border-radius: 16px;
+    }
+
+    .modal-header,
+    .address-form {
+      padding: 20px;
+    }
+
+    .form-actions {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-actions .action-btn {
+      width: 100%;
+      padding: 14px 20px;
+    }
+  }
+
+  /* Support Tickets */
+  .create-ticket-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .create-ticket-btn:hover {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .support-tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .ticket-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ticket-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .ticket-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .ticket-info h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .ticket-date {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .ticket-status {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-badge.open {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .status-badge.closed {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #6b7280;
+    border: 2px solid #d1d5db;
+  }
+
+  .status-badge.pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 2px solid #fbbf24;
+  }
+
+  .priority-badge {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .priority-badge.low {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .priority-badge.medium {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 2px solid #fbbf24;
+  }
+
+  .priority-badge.high {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #991b1b;
+    border: 2px solid #f87171;
+  }
+
+  .priority-badge.urgent {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #7f1d1d;
+    border: 2px solid #f87171;
+  }
+
+  .ticket-details {
+    margin-bottom: 16px;
+  }
+
+  .ticket-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .type-label {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .type-value {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 600;
+  }
+
+  .ticket-description {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 16px;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .ticket-description p {
+    margin: 0;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .ticket-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .form-help {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 8px 0 0;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  /* Responsive for support */
+  @media (max-width: 768px) {
+    .ticket-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .ticket-status {
+      flex-direction: row;
+      align-items: center;
+      width: 100%;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ticket-actions {
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .ticket-actions .action-btn {
+      width: 100%;
+      text-align: center;
+      padding: 12px 16px;
+    }
+
+    .ticket-card {
+      padding: 20px;
+      border-radius: 12px;
+    }
+  }
+
+  /* Coupons */
+  .apply-coupon-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .apply-coupon-btn:hover {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .coupons-content {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .coupons-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .coupons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+
+  .coupon-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .coupon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .coupon-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .coupon-card.my-coupon {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  }
+
+  .coupon-card.my-coupon::before {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .coupon-card.available-coupon {
+    border-left: 4px solid #6b46c1;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+
+  .coupon-card.available-coupon::before {
+    background: linear-gradient(135deg, #6b46c1 0%, #553c9a 100%);
+  }
+
+  .coupon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .coupon-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  .coupon-code {
+    font-size: 20px;
+    font-weight: 800;
+    color: #111827;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .coupon-type {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    color: #374151;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .coupon-details {
+    margin-bottom: 16px;
+  }
+
+  .coupon-discount {
+    font-size: 28px;
+    font-weight: 800;
+    color: #10b981;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .coupon-conditions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+  }
+
+  .coupon-conditions p {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .coupon-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 20px;
+    border-top: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .coupon-footer::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  .coupon-expiry {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .expiry-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .expiry-date {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .coupon-status .status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-badge.active {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .apply-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .apply-btn:hover {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .success-message {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border: 2px solid #86efac;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .success-message::before {
+    content: '✅';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+  }
+
+  /* Responsive for coupons */
+  @media (max-width: 768px) {
+    .coupons-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .coupon-card {
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .coupon-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .coupon-footer {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .apply-btn {
+      width: 100%;
+      text-align: center;
+      padding: 14px 20px;
+    }
+
+    .coupon-code {
+      font-size: 18px;
+      padding: 10px 14px;
+    }
+  }
+
+  /* Restock Requests */
+  .restock-requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .restock-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .restock-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .restock-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .restock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .restock-info h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .restock-date {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .restock-status .status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-badge.pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 2px solid #fbbf24;
+  }
+
+  .status-badge.approved {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .status-badge.rejected {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #991b1b;
+    border: 2px solid #f87171;
+  }
+
+  .status-badge.completed {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 2px solid #93c5fd;
+  }
+
+  .restock-details {
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+  }
+
+  .product-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .product-image {
+    width: 70px;
+    height: 70px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .product-details {
+    flex: 1;
+  }
+
+  .product-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 6px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .product-sku {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .restock-message {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 16px;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .restock-message p {
+    margin: 0;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .restock-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .restock-actions::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  /* Responsive for restock */
+  @media (max-width: 768px) {
+    .restock-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .product-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .product-image {
+      width: 60px;
+      height: 60px;
+    }
+
+    .restock-actions {
+      flex-direction: column;
+      width: 100%;
+      gap: 12px;
+    }
+
+    .restock-actions .action-btn {
+      width: 100%;
+      text-align: center;
+      padding: 12px 16px;
+    }
+
+    .restock-card {
+      padding: 20px;
+      border-radius: 12px;
+    }
+  }
+
+  /* Tracking */
+  .tracking-search {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 32px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tracking-search::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .search-form {
+    width: 100%;
+  }
+
+  .search-input-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+    font-weight: 500;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .search-input:hover:not(:focus) {
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .search-type-select {
+    padding: 16px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    background: #fafbfc;
+    cursor: pointer;
+    min-width: 140px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  .search-type-select:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .search-type-select:hover:not(:focus) {
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .search-btn {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 100px;
+  }
+
+  .search-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .search-btn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .tracking-result {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .order-summary {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .order-summary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f1f5f9;
+    position: relative;
+  }
+
+  .order-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 1px;
+  }
+
+  .order-header h3 {
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  .order-status {
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .order-status.pending {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 2px solid #fbbf24;
+  }
+
+  .order-status.confirmed {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    border: 2px solid #93c5fd;
+  }
+
+  .order-status.processing {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #3730a3;
+    border: 2px solid #a5b4fc;
+  }
+
+  .order-status.shipped {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .order-status.delivered {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #166534;
+    border: 2px solid #86efac;
+  }
+
+  .order-status.cancelled {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+    color: #991b1b;
+    border: 2px solid #f87171;
+  }
+
+  .order-status.returned {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #6b7280;
+    border: 2px solid #d1d5db;
+  }
+
+  .order-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+  }
+
+  .detail-row .label {
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 14px;
+  }
+
+  .detail-row .value {
+    font-weight: 700;
+    color: #111827;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 16px;
+  }
+
+  .tracking-timeline {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tracking-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+  }
+
+  .tracking-timeline h4 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 24px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 24px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    border-radius: 2px;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 28px;
+    padding-left: 24px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+  }
+
+  .timeline-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .timeline-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .timeline-marker {
+    position: absolute;
+    left: -18px;
+    top: 24px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border: 4px solid #fff;
+    box-shadow: 0 0 0 3px #e5e7eb;
+  }
+
+  .timeline-item.completed .timeline-marker {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 0 0 3px #10b981;
+    transform: scale(1.1);
+  }
+
+  .timeline-item.active .timeline-marker {
+    background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
+    box-shadow: 0 0 0 3px #667eea;
+    transform: scale(1.2);
+  }
+
+  .marker-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .timeline-content h5 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px;
+  }
+
+  .timeline-content p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 8px;
+    line-height: 1.5;
+  }
+
+  .timeline-date {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+  }
+
+  .order-items {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .order-items h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 20px;
+  }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+  }
+
+  .item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f3f4f6;
+    flex-shrink: 0;
+  }
+
+  .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .item-details {
+    flex: 1;
+  }
+
+  .item-details h5 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px;
+  }
+
+  .item-details p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  /* Responsive for tracking */
+  @media (max-width: 768px) {
+    .search-input-group {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .search-input,
+    .search-type-select,
+    .search-btn {
+      width: 100%;
+    }
+
+    .order-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .order-details {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline {
+      padding-left: 16px;
+    }
+  }
+
+  /* Order Details Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .modal-body {
+    padding: 24px;
+  }
+
+  .order-info {
+    background: #f8fafc;
+    border-radius: 12px;
     padding: 20px;
     margin-bottom: 24px;
   }
 
-  .user-avatar {
-    width: 60px;
-    height: 60px;
-  }
-
-  .user-details h3 {
-    font-size: 16px;
-  }
-
-  .user-details p {
-    font-size: 13px;
-  }
-
-  .member-since {
-    font-size: 11px;
-  }
-
-  .order-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .order-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .order-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .action-btn {
-    flex: 1;
-    text-align: center;
-  }
-
-  .wishlist-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .wishlist-item {
-    padding: 16px;
-    border-radius: 12px;
-  }
-
-  .item-image {
-    height: 180px;
-  }
-
-  .item-actions {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .item-actions .action-btn {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-}
-
-/* Addresses */
-.add-address-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.add-address-btn:hover {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.addresses-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
-}
-
-.address-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.address-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.address-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.address-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.type-badge {
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.type-badge.home {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border: 2px solid #93c5fd;
-}
-
-.type-badge.work {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.type-badge.other {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  color: #374151;
-  border: 2px solid #d1d5db;
-}
-
-.address-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn.danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-}
-
-.action-btn.danger:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
-}
-
-.address-details {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.contact-info h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 6px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.contact-info p {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 500;
-}
-
-.address-info p {
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: #374151;
-}
-
-.address-text {
-  font-weight: 600;
-  line-height: 1.6;
-  color: #111827;
-}
-
-.city-zip {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.country {
-  color: #9ca3af;
-  font-size: 13px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.modal-content {
-  background: #fff;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(20px);
-  position: relative;
-  overflow: hidden;
-}
-
-.modal-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 28px 20px;
-  border-bottom: 2px solid #f1f5f9;
-  position: relative;
-  z-index: 1;
-}
-
-.modal-header h2 {
-  font-size: 24px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
-  letter-spacing: -0.5px;
-}
-
-.close-btn {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px solid #e2e8f0;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 10px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.close-btn:hover {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  color: #374151;
-  transform: scale(1.1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-.address-form {
-  padding: 24px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.form-actions::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: 0;
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-.form-group textarea {
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  resize: vertical;
-  min-height: 100px;
-  font-family: inherit;
-  background: #fafbfc;
-  font-weight: 500;
-}
-
-.form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-}
-
-.form-group textarea:hover:not(:focus) {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.form-group select {
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  background: #fafbfc;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.form-group select:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-}
-
-.form-group select:hover:not(:focus) {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.form-group select:disabled {
-  background: #f9fafb;
-  color: #6b7280;
-  cursor: not-allowed;
-}
-
-/* Responsive for addresses */
-@media (max-width: 768px) {
-  .addresses-list {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .address-card {
-    padding: 20px;
-    border-radius: 12px;
-  }
-
-  .address-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .address-actions {
-    width: 100%;
-    justify-content: stretch;
-    gap: 8px;
-  }
-
-  .address-actions .action-btn {
-    flex: 1;
-    text-align: center;
-    padding: 12px 16px;
-  }
-
-  .modal-content {
-    margin: 10px;
-    max-width: none;
-    border-radius: 16px;
-  }
-
-  .modal-header,
-  .address-form {
-    padding: 20px;
-  }
-
-  .form-actions {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .form-actions .action-btn {
-    width: 100%;
-    padding: 14px 20px;
-  }
-}
-
-/* Support Tickets */
-.create-ticket-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.create-ticket-btn:hover {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.support-tickets-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.ticket-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.ticket-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.ticket-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.ticket-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.ticket-info h3 {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 6px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.ticket-date {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 500;
-}
-
-.ticket-status {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-}
-
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.status-badge.open {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.status-badge.closed {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  color: #6b7280;
-  border: 2px solid #d1d5db;
-}
-
-.status-badge.pending {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border: 2px solid #fbbf24;
-}
-
-.priority-badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.priority-badge.low {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.priority-badge.medium {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border: 2px solid #fbbf24;
-}
-
-.priority-badge.high {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #991b1b;
-  border: 2px solid #f87171;
-}
-
-.priority-badge.urgent {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #7f1d1d;
-  border: 2px solid #f87171;
-}
-
-.ticket-details {
-  margin-bottom: 16px;
-}
-
-.ticket-type {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.type-label {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.type-value {
-  font-size: 14px;
-  color: #374151;
-  font-weight: 600;
-}
-
-.ticket-description {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 16px;
-  border-radius: 12px;
-  border-left: 4px solid #667eea;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.ticket-description p {
-  margin: 0;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.6;
-  font-weight: 500;
-}
-
-.ticket-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-.form-help {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 8px 0 0;
-  font-weight: 500;
-  font-style: italic;
-}
-
-/* Responsive for support */
-@media (max-width: 768px) {
-  .ticket-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .ticket-status {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
+  .info-row {
+    display: flex;
     justify-content: space-between;
-    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
   }
 
-  .ticket-actions {
+  .info-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .info-row .label {
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  .info-row .value {
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .info-row .value.status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .info-row .value.status.pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .info-row .value.status.confirmed {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .info-row .value.status.processing {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
+  .info-row .value.status.shipped {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .info-row .value.status.delivered {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .info-row .value.status.canceled {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .order-items-details h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .items-list {
+    display: flex;
     flex-direction: column;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .ticket-actions .action-btn {
-    width: 100%;
-    text-align: center;
-    padding: 12px 16px;
-  }
-
-  .ticket-card {
-    padding: 20px;
-    border-radius: 12px;
-  }
-}
-
-/* Coupons */
-.apply-coupon-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.apply-coupon-btn:hover {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.coupons-content {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.coupons-section {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.coupons-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-}
-
-.coupon-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.coupon-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.coupon-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.coupon-card.my-coupon {
-  border-left: 4px solid #10b981;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-}
-
-.coupon-card.my-coupon::before {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.coupon-card.available-coupon {
-  border-left: 4px solid #6b46c1;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-.coupon-card.available-coupon::before {
-  background: linear-gradient(135deg, #6b46c1 0%, #553c9a 100%);
-}
-
-.coupon-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.coupon-header::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-.coupon-code {
-  font-size: 20px;
-  font-weight: 800;
-  color: #111827;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 2px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.coupon-type {
-  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-  color: #374151;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.coupon-details {
-  margin-bottom: 16px;
-}
-
-.coupon-discount {
-  font-size: 28px;
-  font-weight: 800;
-  color: #10b981;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.coupon-conditions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 16px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-}
-
-.coupon-conditions p {
-  margin: 0;
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.coupon-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 20px;
-  border-top: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.coupon-footer::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: 0;
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-.coupon-expiry {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.expiry-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.expiry-date {
-  font-size: 14px;
-  color: #374151;
-  font-weight: 700;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.coupon-status .status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.status-badge.active {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.apply-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.apply-btn:hover {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.success-message {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  padding: 16px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  border: 2px solid #86efac;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.success-message::before {
-  content: '✅';
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-}
-
-/* Responsive for coupons */
-@media (max-width: 768px) {
-  .coupons-grid {
-    grid-template-columns: 1fr;
     gap: 16px;
   }
 
-  .coupon-card {
-    padding: 20px;
-    border-radius: 12px;
-  }
-
-  .coupon-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .coupon-footer {
-    flex-direction: column;
-    align-items: flex-start;
+  .order-item-detail {
+    display: flex;
+    align-items: center;
     gap: 16px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
   }
 
-  .apply-btn {
-    width: 100%;
-    text-align: center;
-    padding: 14px 20px;
-  }
-
-  .coupon-code {
-    font-size: 18px;
-    padding: 10px 14px;
-  }
-}
-
-/* Restock Requests */
-.restock-requests-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.restock-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.restock-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.restock-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.restock-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.restock-info h3 {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 6px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.restock-date {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 500;
-}
-
-.restock-status .status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.status-badge.pending {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border: 2px solid #fbbf24;
-}
-
-.status-badge.approved {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.status-badge.rejected {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #991b1b;
-  border: 2px solid #f87171;
-}
-
-.status-badge.completed {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border: 2px solid #93c5fd;
-}
-
-.restock-details {
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 20px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-}
-
-.product-info {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.product-image {
-  width: 70px;
-  height: 70px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-details {
-  flex: 1;
-}
-
-.product-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 6px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.product-sku {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 500;
-}
-
-.restock-message {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 16px;
-  border-radius: 12px;
-  border-left: 4px solid #667eea;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.restock-message p {
-  margin: 0;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.6;
-  font-weight: 500;
-}
-
-.restock-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.restock-actions::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: 0;
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-/* Responsive for restock */
-@media (max-width: 768px) {
-  .restock-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .product-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .product-image {
+  .order-item-detail .item-image {
     width: 60px;
     height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
   }
 
-  .restock-actions {
-    flex-direction: column;
+  .order-item-detail .item-image img {
     width: 100%;
-    gap: 12px;
+    height: 100%;
+    object-fit: cover;
   }
 
-  .restock-actions .action-btn {
-    width: 100%;
-    text-align: center;
+  .order-item-detail .item-info {
+    flex: 1;
+  }
+
+  .order-item-detail .item-info h5 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .order-item-detail .item-info p {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .order-item-detail .item-info .price {
+    font-weight: 600;
+    color: #059669;
+  }
+
+  @media (max-width: 768px) {
+    .modal-overlay {
+      padding: 10px;
+    }
+    
+    .modal-content {
+      max-height: 90vh;
+    }
+    
+    .modal-header {
+      padding: 16px 20px;
+    }
+    
+    .modal-body {
+      padding: 20px;
+    }
+    
+    .order-item-detail {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: right;
+    }
+    
+    .order-item-detail .item-image {
+      width: 80px;
+      height: 80px;
+      align-self: center;
+    }
+
+    .timeline-marker {
+      left: -8px;
+    }
+
+    .order-item {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: center;
+    }
+
+    .item-image {
+      width: 80px;
+      height: 80px;
+    }
+  }
+
+  /* Success Message Styles */
+  .global-success-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    animation: slideInFromRight 0.3s ease-out;
+  }
+
+  .success-content {
+    background: #f0fff4;
+    color: #22543d;
     padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #9ae6b4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
   }
 
-  .restock-card {
-    padding: 20px;
-    border-radius: 12px;
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
-}
-
-/* Tracking */
-.tracking-search {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 32px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  position: relative;
-  overflow: hidden;
-}
-
-.tracking-search::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.search-form {
-  width: 100%;
-}
-
-.search-input-group {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1;
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  background: #fafbfc;
-  font-weight: 500;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-}
-
-.search-input:hover:not(:focus) {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.search-type-select {
-  padding: 16px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 16px;
-  background: #fafbfc;
-  cursor: pointer;
-  min-width: 140px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.search-type-select:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-}
-
-.search-type-select:hover:not(:focus) {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.search-btn {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  min-width: 100px;
-}
-
-.search-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.search-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.tracking-result {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.order-summary {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  position: relative;
-  overflow: hidden;
-}
-
-.order-summary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #f1f5f9;
-  position: relative;
-}
-
-.order-header::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 1px;
-}
-
-.order-header h3 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #111827;
-  margin: 0;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
-}
-
-.order-status {
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.order-status.pending {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border: 2px solid #fbbf24;
-}
-
-.order-status.confirmed {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border: 2px solid #93c5fd;
-}
-
-.order-status.processing {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: #3730a3;
-  border: 2px solid #a5b4fc;
-}
-
-.order-status.shipped {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.order-status.delivered {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #86efac;
-}
-
-.order-status.cancelled {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #991b1b;
-  border: 2px solid #f87171;
-}
-
-.order-status.returned {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  color: #6b7280;
-  border: 2px solid #d1d5db;
-}
-
-.order-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 20px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-}
-
-.detail-row .label {
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 14px;
-}
-
-.detail-row .value {
-  font-weight: 700;
-  color: #111827;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-size: 16px;
-}
-
-.tracking-timeline {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  position: relative;
-  overflow: hidden;
-}
-
-.tracking-timeline::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-}
-
-.tracking-timeline h4 {
-  font-size: 22px;
-  font-weight: 800;
-  color: #111827;
-  margin: 0 0 24px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
-}
-
-.timeline {
-  position: relative;
-  padding-left: 24px;
-}
-
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: 12px;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  border-radius: 2px;
-}
-
-.timeline-item {
-  position: relative;
-  margin-bottom: 28px;
-  padding-left: 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 20px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.timeline-item:last-child {
-  margin-bottom: 0;
-}
-
-.timeline-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.timeline-marker {
-  position: absolute;
-  left: -18px;
-  top: 24px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  border: 4px solid #fff;
-  box-shadow: 0 0 0 3px #e5e7eb;
-}
-
-.timeline-item.completed .timeline-marker {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 0 0 3px #10b981;
-  transform: scale(1.1);
-}
-
-.timeline-item.active .timeline-marker {
-  background: linear-gradient(135deg, #f58040 0%, #f58040 100%);
-  box-shadow: 0 0 0 3px #667eea;
-  transform: scale(1.2);
-}
-
-.marker-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.timeline-content h5 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 4px;
-}
-
-.timeline-content p {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 8px;
-  line-height: 1.5;
-}
-
-.timeline-date {
-  font-size: 12px;
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.order-items {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.order-items h4 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 20px;
-}
-
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.order-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.item-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f3f4f6;
-  flex-shrink: 0;
-}
-
-.item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.item-details {
-  flex: 1;
-}
-
-.item-details h5 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 4px;
-}
-
-.item-details p {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-}
-
-/* Responsive for tracking */
-@media (max-width: 768px) {
-  .search-input-group {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .search-input,
-  .search-type-select,
-  .search-btn {
-    width: 100%;
-  }
-
-  .order-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .order-details {
-    grid-template-columns: 1fr;
-  }
-
-  .timeline {
-    padding-left: 16px;
-  }
-}
-
-/* Order Details Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.order-info {
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.info-row:last-child {
-  margin-bottom: 0;
-}
-
-.info-row .label {
-  font-weight: 500;
-  color: #6b7280;
-}
-
-.info-row .value {
-  font-weight: 600;
-  color: #111827;
-}
-
-.info-row .value.status {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.info-row .value.status.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.info-row .value.status.confirmed {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.info-row .value.status.processing {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.info-row .value.status.shipped {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.info-row .value.status.delivered {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.info-row .value.status.canceled {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.order-items-details h4 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.order-item-detail {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.order-item-detail .item-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.order-item-detail .item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.order-item-detail .item-info {
-  flex: 1;
-}
-
-.order-item-detail .item-info h5 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.order-item-detail .item-info p {
-  margin: 0 0 4px 0;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.order-item-detail .item-info .price {
-  font-weight: 600;
-  color: #059669;
-}
-
-@media (max-width: 768px) {
-  .modal-overlay {
-    padding: 10px;
-  }
-  
-  .modal-content {
-    max-height: 90vh;
-  }
-  
-  .modal-header {
-    padding: 16px 20px;
-  }
-  
-  .modal-body {
-    padding: 20px;
-  }
-  
-  .order-item-detail {
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: right;
-  }
-  
-  .order-item-detail .item-image {
-    width: 80px;
-    height: 80px;
-    align-self: center;
-  }
-
-  .timeline-marker {
-    left: -8px;
-  }
-
-  .order-item {
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: center;
-  }
-
-  .item-image {
-    width: 80px;
-    height: 80px;
-  }
-}
-
-/* Success Message Styles */
-.global-success-message {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
-  animation: slideInFromRight 0.3s ease-out;
-}
-
-.success-content {
-  background: #f0fff4;
-  color: #22543d;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid #9ae6b4;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 200px;
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
 </style>
 

@@ -28,6 +28,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 // Set page title
+// @ts-ignore - useHead is auto-imported by Nuxt
 useHead({
   title: t('footer.links.company.about')
 })

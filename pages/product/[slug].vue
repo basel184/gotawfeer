@@ -1671,9 +1671,9 @@ const handleProductDetails = () => {
 <template>
   <div class="wrap" dir="rtl">
     <div class="crumbs">
-      <NuxtLink to="/">الرئيسية</NuxtLink>
+      <NuxtLink to="/">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
-      <NuxtLink to="/shop">المتجر</NuxtLink>
+      <NuxtLink to="/shop">{{ t('product.shop') }}</NuxtLink>
       <span>/</span>
       <b>{{ title }}</b>
     </div>
@@ -1727,7 +1727,7 @@ const handleProductDetails = () => {
             <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
             </svg>
-            <p>لا توجد صور متاحة</p>
+            <p>{{ t('product.no_images') }}</p>
           </div>
         </div>
         <SwiperComponent
@@ -1748,7 +1748,7 @@ const handleProductDetails = () => {
               <img :src="img" :alt="title" @error="onImgErr" />
               <div v-if="imageChanging && i === mainIndex" class="image-loading">
                 <div class="loading-spinner"></div>
-                <span>جاري تغيير الصورة...</span>
+                <span>{{ t('product.changing_image') }}</span>
               </div>
             </div>
           </SwiperSlideComponent>
@@ -1771,7 +1771,7 @@ const handleProductDetails = () => {
         <div class="brand-section">
           <div class="brand-info">
             <span v-if="brandName" class="brand">{{ brandName }}</span>
-            <span class="original-badge">100% أصلي</span>
+            <span class="original-badge">{{ t('product.original') }}</span>
           </div>
           <button 
             class="wishlist-btn" 
@@ -1809,7 +1809,7 @@ const handleProductDetails = () => {
           <div class="stars">
             <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(rating) }">★</span>
           </div>
-          <span class="rating-text">({{ reviewsCount }}) التقييمات</span>
+          <span class="rating-text">({{ reviewsCount }}) {{ t('product.reviews') }}</span>
         </div>
 
         <!-- Price -->
@@ -1825,7 +1825,7 @@ const handleProductDetails = () => {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            اختر اللون
+            {{ t('product.select_color') }}
           </h4>
           <div class="color-options">
             <div
@@ -1857,7 +1857,7 @@ const handleProductDetails = () => {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
-            اختر الحجم
+            {{ t('product.select_size') }}
           </h4>
           <div class="size-options">
             <button
@@ -1872,37 +1872,27 @@ const handleProductDetails = () => {
               :disabled="!isSizeAvailable(size.value)"
             >
               <span class="size-value">{{ size.name }}</span>
-              <span v-if="!isSizeAvailable(size.value)" class="unavailable-text">غير متوفر</span>
+              <span v-if="!isSizeAvailable(size.value)" class="unavailable-text">{{ t('product.unavailable') }}</span>
             </button>
           </div>
         </div>
 
         <!-- Promotions -->
         <div v-if="hasDiscount" class="promotion-banner">
-          <span class="promo-text">1+1 مجانا</span>
+          <span class="promo-text">{{ t('product.promo_1_plus_1') }}</span>
         </div>
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
-          <strong>.هذا المنتج لا يرد ولا يستبدل لضمان سلامتكم الا إذا تطبق سياسة الإرجاع.
-          </strong>
-          <p>جميع المنتجات أصلية ومستوردة من الوكالء المعتمدين
-          </p>
-          <p>
-            :سياسة توفر المنتجات
-          </p>
+          <strong>{{ t('product.disclaimer_title') }}</strong>
+          <p>{{ t('product.disclaimer_original') }}</p>
+          <p>{{ t('product.disclaimer_availability') }}:</p>
           <ul>
             <li>
-              <p>
-
-                جميع المنتجات المعروضة خاضعة لتوفرها في المخزون وقت تنفيذ الطلب. بعد تأكيد الطلب عبر الموقع، سيتم إخطاركم في حال عدم توفر أي
-                . من المنتجات المطلوبة. وفي هذه الحالة، يمكنكم اختيار استرداد قيمة المنتج غير المتوفر فقط
-              </p>
+              <p>{{ t('product.disclaimer_availability_1') }}</p>
             </li>
             <li>
-              <p>
-                .قد يختلف شكل عبوة المنتج الخارجي عن الصورة المعروضة في الموقع بسبب تحديثات التصميم من المصنع، لكن محتوى المنتج يظل كما هو
-              </p>
+              <p>{{ t('product.disclaimer_availability_2') }}</p>
             </li>
           </ul>
         </div>
@@ -1917,7 +1907,7 @@ const handleProductDetails = () => {
               </picture>
               <div class="payment-logo">Tabby</div>
             </div>
-            <div class="payment-text">قسم فاتورتك على 4 دفعات بدون فوائد</div>
+            <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
@@ -1927,21 +1917,18 @@ const handleProductDetails = () => {
             </picture>
               <div class="payment-logo">تمارا</div>
             </div>
-            <div class="payment-text">قسم فاتورتك على 4 دفعات بدون فوائد</div>
+            <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
           </div>
         </div>
         <div class="order-now border py-2 px-3 d-flex justify-content-between align-items-center mb-3 rounded-3 ">
           <div class="ship d-flex align-items-center gap-2">
             <i class="fa-solid fa-truck-fast"></i>
-            <strong>التوصيل المتوقع
-            </strong>
+            <strong>{{ t('product.expected_delivery') }}</strong>
           </div>
           <div class="d-flex flex-column ">
-            <p class="mb-3">مدة التوصيل لمدينة جدة ومكة: 3 أيام عمل.
-            </p>
-            <p class="mb-3">مدة التوصيل لكل انحاء المملكة: 5 أيام عمل
-            </p>
+            <p class="mb-3">{{ t('product.delivery_jeddah_makkah') }}</p>
+            <p class="mb-3">{{ t('product.delivery_all_kingdom') }}</p>
           </div>
         </div>
 
@@ -1954,13 +1941,11 @@ const handleProductDetails = () => {
           </div>
           <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
 
-            <span>{{ busy ? 'جاري الإضافة...' : 'أضف للسلة' }}</span>
+            <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
           </button>
         </div>
         <div class="payment-image mt-4 mb-3 d-flex align-items-center gap-2">
-          <strong>
-            وسائل الدفع :
-          </strong>
+          <strong>{{ t('product.payment_methods') }}:</strong>
           <div class="payment-image-container d-flex align-items-center gap-4">
             <picture>
               <img src="https://gotawfeer.com/wp-content/uploads/2022/12/4-150x84.png" alt="">
@@ -1981,12 +1966,10 @@ const handleProductDetails = () => {
         </div>
         <!-- Stock Status -->
         <div class="stock-status" :class="{ in: currentVariantStock, out: !currentVariantStock }">
-          {{ currentVariantStock ? `متوفر في المخزون (${currentVariantStock} قطعة)` : 'غير متوفر حالياً' }}
+          {{ currentVariantStock ? `${t('product.in_stock')} (${currentVariantStock} ${t('product.pieces')})` : t('product.out_of_stock') }}
         </div>
         <div class="offer-products mt-3">
-          <h4>
-            منتجات عليها عروض
-          </h4>
+          <h4>{{ t('product.offer_products') }}</h4>
           <div class="offer-products-container mt-4">
             <div v-if="offerProductsLoading" class="text-center py-4">
               <div class="spinner-border" role="status">
@@ -2013,7 +1996,7 @@ const handleProductDetails = () => {
               </NuxtLink>
             </template>
             <div v-else class="text-center py-4 text-muted">
-              لا توجد منتجات متاحة حالياً
+              {{ t('product.no_products_available') }}
             </div>
           </div>
         </div>
@@ -2079,51 +2062,49 @@ const handleProductDetails = () => {
     <!-- Revision -->
      <div class="revision-section mt-5">
         <div class="container">
-          <h4 class="text-center">
-            مراجعة العملاء
-          </h4>
+          <h4 class="text-center">{{ t('product.customer_reviews') }}</h4>
           <div class="row">
             <div class="col-lg-6 mb-4 d-flex flex-column gap-4 ">
               <strong class="text-center mt-3">
-                المراجعات ({{ totalReviewsCount }})
+                {{ t('product.reviews_count') }} ({{ totalReviewsCount }})
               </strong>
               <!-- Rating distribution (5 stars to 1 star) -->
               <div class="progress mt-2" role="progressbar" aria-label="5 stars" aria-valuenow="getRatingPercentage(5)" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" :style="`width: ${getRatingPercentage(5)}%`"></div>
-                <span class="ms-2">5 نجوم</span>
+                <span class="ms-2">{{ t('product.stars_5') }}</span>
               </div>
               <div class="progress" role="progressbar" aria-label="4 stars" aria-valuenow="getRatingPercentage(4)" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" :style="`width: ${getRatingPercentage(4)}%`"></div>
-                <span class="ms-2">4 نجوم</span>
+                <span class="ms-2">{{ t('product.stars_4') }}</span>
               </div>
               <div class="progress" role="progressbar" aria-label="3 stars" aria-valuenow="getRatingPercentage(3)" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" :style="`width: ${getRatingPercentage(3)}%`"></div>
-                <span class="ms-2">3 نجوم</span>
+                <span class="ms-2">{{ t('product.stars_3') }}</span>
               </div>
               <div class="progress" role="progressbar" aria-label="2 stars" aria-valuenow="getRatingPercentage(2)" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" :style="`width: ${getRatingPercentage(2)}%`"></div>
-                <span class="ms-2">2 نجوم</span>
+                <span class="ms-2">{{ t('product.stars_2') }}</span>
               </div>
               <div class="progress" role="progressbar" aria-label="1 star" aria-valuenow="getRatingPercentage(1)" aria-valuemin="0" aria-valuemax="100">
                 <div class="progress-bar" :style="`width: ${getRatingPercentage(1)}%`"></div>
-                <span class="ms-2">1 نجم</span>
+                <span class="ms-2">{{ t('product.stars_1') }}</span>
               </div>
             </div>
             <div class="col-lg-6">
               <div class="form-container mt-3">
-                <p v-if="totalReviewsCount === 0">كن أول من يقيم "{{ product?.name || product?.product_name || 'هذا المنتج' }}"
+                <p v-if="totalReviewsCount === 0">{{ t('product.be_first_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
                 </p>
                 <p v-else>
-                  شاركنا رأيك في "{{ product?.name || product?.product_name || 'هذا المنتج' }}"
+                  {{ t('product.share_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
                 </p>
                 <p>
-                  لن يتم نشر عنوان بريدك الإلكتروني. الحقول الإلزامية مشار إليها بـ <span class="text-danger">*</span>
+                  {{ t('product.email_not_published') }} <span class="text-danger">*</span>
                 </p>
                 <div v-if="guestReviewError" class="alert alert-danger" role="alert">
                   {{ guestReviewError }}
                 </div>
                 <div class="rating d-flex align-items-center gap-2">
-                  <strong>التقييم:</strong>
+                  <strong>{{ t('product.rating') }}:</strong>
                   <div class="rating-box d-flex align-items-center gap-2">
                     <i 
                       v-for="star in 5" 
@@ -2137,7 +2118,7 @@ const handleProductDetails = () => {
                 </div>
                 <form @submit="submitGuestReview">
                   <div class="mb-3">
-                    <label for="reviewComment" class="form-label">مراجعتك <span class="text-danger">*</span></label>
+                    <label for="reviewComment" class="form-label">{{ t('product.your_review') }} <span class="text-danger">*</span></label>
                     <textarea 
                       v-model="guestReviewForm.comment" 
                       class="form-control" 
@@ -2147,7 +2128,7 @@ const handleProductDetails = () => {
                     ></textarea>
                   </div>
                   <div class="mb-3">
-                    <label for="reviewName" class="form-label">الاسم <span class="text-danger">*</span></label>
+                    <label for="reviewName" class="form-label">{{ t('product.name') }} <span class="text-danger">*</span></label>
                     <input 
                       v-model="guestReviewForm.name" 
                       type="text" 
@@ -2157,7 +2138,7 @@ const handleProductDetails = () => {
                     >
                   </div>
                   <div class="mb-3">
-                    <label for="reviewEmail" class="form-label">البريد الإلكتروني <span class="text-danger">*</span></label>
+                    <label for="reviewEmail" class="form-label">{{ t('product.email') }} <span class="text-danger">*</span></label>
                     <input 
                       v-model="guestReviewForm.email" 
                       type="email" 
@@ -2169,11 +2150,11 @@ const handleProductDetails = () => {
                   </div>
                   <div class="mb-3 form-check d-flex align-items-center gap-2">
                     <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                    <label class="form-check-label" for="exampleCheck1">احفظ اسمي، بريدي الإلكتروني، والموقع الإلكتروني في هذا المتصفح لاستخدامها المرة المقبلة في تعليقي.</label>
+                    <label class="form-check-label" for="exampleCheck1">{{ t('product.save_info') }}</label>
                   </div>
                   <button type="submit" class="main-btn border-0" :disabled="guestReviewLoading">
-                    <span v-if="guestReviewLoading">جاري الإرسال...</span>
-                    <span v-else>إرسال</span>
+                    <span v-if="guestReviewLoading">{{ t('product.sending_review') }}</span>
+                    <span v-else>{{ t('product.submit') }}</span>
                   </button>
               </form>
               </div>
@@ -2182,7 +2163,7 @@ const handleProductDetails = () => {
           
           <!-- Reviews List -->
           <div v-if="reviews.length > 0" class="reviews-list mt-5">
-            <h5 class="mb-4">المراجعات ({{ totalReviewsCount }})</h5>
+            <h5 class="mb-4">{{ t('product.reviews_count') }} ({{ totalReviewsCount }})</h5>
             <div v-if="reviewsLoading" class="text-center py-4">
               <div class="spinner-border" role="status">
                 <span class="visually-hidden">جاري التحميل...</span>
@@ -2215,7 +2196,7 @@ const handleProductDetails = () => {
                 </div>
                 <div v-if="review?.reply || review?.response" class="review-reply mt-3 p-3 bg-light rounded">
                   <div class="reply-header mb-2">
-                    <strong class="text-primary">رد البائع:</strong>
+                    <strong class="text-primary">{{ t('product.vendor_reply') }}:</strong>
                   </div>
                   <p class="mb-0">{{ review?.reply || review?.response }}</p>
                 </div>
@@ -2233,7 +2214,7 @@ const handleProductDetails = () => {
             </div>
           </div>
           <div v-else-if="!reviewsLoading" class="text-center py-5 text-muted">
-            <p>لا توجد مراجعات حتى الآن. كن أول من يقيم هذا المنتج!</p>
+            <p>{{ t('product.no_reviews_yet') }}</p>
           </div>
         </div>
      </div>
@@ -2525,7 +2506,7 @@ const handleProductDetails = () => {
               <div class="product-content-popup">
                 <h5>{{ modalProductTitle }}</h5>
                 <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
-                  <strong class="me-2">البراند:</strong>
+                  <strong class="me-2">{{ t('product.brand') }}:</strong>
                   <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                     <picture>
                       <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
@@ -2540,18 +2521,18 @@ const handleProductDetails = () => {
               </div>
               <div class="buttons d-flex align-items-center gap-2">
                 <template v-if="hasProductOptions">
-                  <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">تحديد خيارات</NuxtLink>
+                  <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">{{ t('product.select_options') }}</NuxtLink>
                 </template>
                 <template v-else>
                   <a href="#" class="main-btn" @click.prevent="handleModalAddToCart" :disabled="isAddingToCart">
-                    <span v-if="!isAddingToCart">إضافة إلى السلة</span>
+                    <span v-if="!isAddingToCart">{{ t('product.add_to_cart') }}</span>
                     <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   </a>
                 </template>
-                <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
+                <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">{{ t('product.product_details') }}</NuxtLink>
               </div>
               <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3">
-                <strong class="d-block mb-2">التصنيفات:</strong>
+                <strong class="d-block mb-2">{{ t('product.categories') }}:</strong>
                 <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
                   <li v-for="(cat, index) in modalProductCategories" :key="index">
                     <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
@@ -2560,7 +2541,7 @@ const handleProductDetails = () => {
                   </li>
                 </ul>
               </div>
-              <strong class="mt-4 mb-2 d-block">مشاركة</strong>
+              <strong class="mt-4 mb-2 d-block">{{ t('product.share') }}</strong>
               <div class="share d-flex align-items-center gap-2">
                 <a href="#" class="text-decoration-none" @click.prevent="shareOnFacebook">
                   <i class="fa-brands fa-facebook"></i>
