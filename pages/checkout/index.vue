@@ -22,19 +22,19 @@ const loginForm = ref({ email: '', password: '' })
 const loginError = ref('')
 const loginLoading = ref(false)
 
-// Available payment methods
 const paymentMethods = computed(() => {
-  // Define translations directly to ensure they work
   const translations = {
     ar: {
       tabby: 'تابي - ادفع على 4 أقساط',
       tamara: 'تمارا - ادفع لاحقاً',
-      paymob: 'Paymob - دفع آمن'
+      paymob_visa: 'Paymob - فيزا / ماستركارد',
+      paymob_apple_pay: 'Paymob - Apple Pay'
     },
     en: {
       tabby: 'Tabby - Pay in 4 Installments',
       tamara: 'Tamara - Pay Later',
-      paymob: 'Paymob - Secure Payment'
+      paymob_visa: 'Paymob - Visa / Mastercard',
+      paymob_apple_pay: 'Paymob - Apple Pay'
     }
   }
   
@@ -44,14 +44,12 @@ const paymentMethods = computed(() => {
   const methods = [
     { id: 'tabby', name: localeTranslations.tabby, icon: '💳', available: true },
     { id: 'tamara', name: localeTranslations.tamara, icon: '🛒', available: true },
-    { id: 'paymob', name: localeTranslations.paymob, icon: '💳', available: true }
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '💳', available: true, integration_id: 9985 },
+    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: '🍎', available: true, integration_id: 9984 }
   ]
   
-  console.log('Payment methods (direct translations):', methods.map(m => ({ id: m.id, name: m.name, locale: currentLocale })))
-  console.log('Tamara method found:', methods.find(m => m.id === 'tamara')) // Debug log
   return methods
 })
-
 // Addresses
 const addresses = ref<any[]>([])
 
@@ -272,6 +270,8 @@ function selectPaymentMethod(methodId: string) {
 }
 
 // Place order
+// Place order
+
 async function placeOrder() {
   console.log('placeOrder called, selectedPaymentMethod:', selectedPaymentMethod.value) // Debug log
   
@@ -304,13 +304,26 @@ async function placeOrder() {
       })
     }
 
-    const orderData = {
+    // Get integration_id from selected payment method
+    const selectedMethod = paymentMethods.value.find(m => m.id === selectedPaymentMethod.value)
+    let integrationId = null
+    if (selectedPaymentMethod.value === 'paymob_visa' || selectedPaymentMethod.value === 'paymob_apple_pay') {
+      integrationId = selectedMethod?.integration_id || (selectedPaymentMethod.value === 'paymob_apple_pay' ? 9984 : 9985)
+    }
+
+    const orderData: any = {
       address_id: selectedAddress.value.id,
       payment_method: selectedPaymentMethod.value,
       coupon_code: appliedCoupon.value?.coupon_code || ''
     }
     
+    // Add integration_id if it's a Paymob payment method
+    if (integrationId) {
+      orderData.integration_id = integrationId
+    }
+    
     console.log('Selected payment method:', selectedPaymentMethod.value) // Debug log
+    console.log('Integration ID:', integrationId) // Debug log
     console.log('Available payment methods:', paymentMethods.value) // Debug log
     console.log('Sending order data:', orderData) // Debug log
     
@@ -322,9 +335,9 @@ async function placeOrder() {
     const response = await $post('v1/customer/order/place', orderData)
     console.log('Order placement response:', response) // Debug log
     
-    // Handle Paymob payment first
-    if (selectedPaymentMethod.value === 'paymob') {
-      console.log('Paymob payment selected, response:', response)
+    // Handle Paymob payment (Visa or Apple Pay)
+    if (selectedPaymentMethod.value === 'paymob_visa' || selectedPaymentMethod.value === 'paymob_apple_pay') {
+      console.log('Paymob payment selected:', selectedPaymentMethod.value, response)
       
       // For Paymob, redirect to payment URL
       let paymentUrl = null
@@ -347,7 +360,8 @@ async function placeOrder() {
         console.log('Redirecting to Paymob payment page...', paymentUrl)
         
         // Show loading message
-        alert('جاري فتح صفحة دفع Paymob...')
+        const paymentType = selectedPaymentMethod.value === 'paymob_apple_pay' ? 'Apple Pay' : 'فيزا / ماستركارد'
+        alert(`جاري فتح صفحة دفع Paymob (${paymentType})...`)
         
         // Force redirect immediately
         setTimeout(() => {
@@ -574,6 +588,7 @@ async function placeOrder() {
     placingOrder.value = false
   }
 }
+
 
 // Check if cart is empty after loading
 onMounted(async () => {

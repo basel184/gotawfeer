@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { useSwitchLocalePath } from '#i18n'
 import { useWishlist } from '../composables/useWishlist'
 import { useCompare } from '../composables/useCompare'
+import { useTaqnyatAuth } from '../composables/useTaqnyatAuth'
 import CategoriesSidebar from './CategoriesSidebar.vue'
 
 const router = useRouter()
@@ -482,18 +483,7 @@ const completeGlobalLoading = (progressInterval?: any) => {
   }, 500)
 }
 
-// Login form state
-const loginForm = ref({
-  email: '',
-  password: ''
-})
-const loginLoading = ref(false)
-const loginError = ref('')
-const loginSuccess = ref(false)
-const logoutSuccess = ref(false)
-
 // Taqnyat OTP state
-const loginMethod = ref<'email' | 'otp'>('email')
 const taqnyatAuth = useTaqnyatAuth()
 const otpForm = ref({
   phone: '',
@@ -502,6 +492,8 @@ const otpForm = ref({
 const otpSent = ref(false)
 const otpCountdown = ref(0)
 let otpTimer: any = null
+const loginSuccess = ref(false)
+const logoutSuccess = ref(false)
 
 // Register modal state
 const showRegisterModal = ref(false)
@@ -783,88 +775,10 @@ function switchTo(loc: 'ar' | 'en') {
   window.location.href = currentPath
 }
 
-// Login functions
-async function handleLogin() {
-  if (!loginForm.value.email || !loginForm.value.password) {
-    loginError.value = t('login.required_fields') || 'جميع الحقول مطلوبة'
-    return
-  }
-  
-  loginLoading.value = true
-  loginError.value = ''
-  
-  // Start global loading
-  const progressInterval = startGlobalLoading('جاري تسجيل الدخول...')
-  
-  try {
-    const response = await $post('v1/auth/login', {
-      email_or_phone: loginForm.value.email,
-      password: loginForm.value.password,
-      type: 'email'
-    })
-    
-    // Handle different response formats
-    if (response?.access_token) {
-      auth.setToken(response.access_token)
-      // Try to get user info
-      try {
-        const userInfo = await $get('v1/customer/info')
-        if (userInfo) auth.setUser(userInfo)
-      } catch (e) {
-        // If user info fails, still set token
-        auth.setUser(response.user || response.data)
-      }
-      loginModalOpen.value = false
-      loginForm.value = { email: '', password: '' }
-      // Show success message
-      loginSuccess.value = true
-      setTimeout(() => {
-        loginSuccess.value = false
-        // Refresh the page after showing success message
-        window.location.reload()
-      }, 2000)
-    } else if (response?.token) {
-      auth.setToken(response.token)
-      auth.setUser(response.user || response.data)
-      loginModalOpen.value = false
-      loginForm.value = { email: '', password: '' }
-      // Show success message
-      loginSuccess.value = true
-      setTimeout(() => {
-        loginSuccess.value = false
-        // Refresh the page after showing success message
-        window.location.reload()
-      }, 2000)
-    }
-  } catch (error: any) {
-    console.error('Login error:', error)
-    // Handle validation errors
-    if (error?.data?.errors && Array.isArray(error.data.errors)) {
-      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
-      loginError.value = errorMessages
-    } else {
-      loginError.value = error?.data?.message || t('login.error') || 'خطأ في تسجيل الدخول'
-    }
-  } finally {
-    loginLoading.value = false
-    completeGlobalLoading(progressInterval)
-  }
-}
-
 function openLoginModal() {
   loginModalOpen.value = true
-  loginError.value = ''
   loginSuccess.value = false
-  loginForm.value = { email: '', password: '' }
-}
-
-function closeLoginModal() {
-  loginModalOpen.value = false
-  loginError.value = ''
-  loginSuccess.value = false
-  loginForm.value = { email: '', password: '' }
   // Reset OTP form
-  loginMethod.value = 'email'
   otpForm.value = { phone: '', otp: '' }
   otpSent.value = false
   otpCountdown.value = 0
@@ -875,9 +789,17 @@ function closeLoginModal() {
   taqnyatAuth.clearMessages()
 }
 
-function clearLoginMessages() {
-  loginError.value = ''
+function closeLoginModal() {
+  loginModalOpen.value = false
   loginSuccess.value = false
+  // Reset OTP form
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
   taqnyatAuth.clearMessages()
 }
 
@@ -1658,71 +1580,8 @@ async function handleRegisterSubmit() {
             </button>
           </div>
           
-          <!-- Login Method Toggle -->
-          <div class="login-method-toggle">
-            <button 
-              type="button"
-              class="method-btn" 
-              :class="{ active: loginMethod === 'email' }"
-              @click="loginMethod = 'email'; clearLoginMessages()"
-            >
-              {{ t('taqnyat.email_login') || 'البريد الإلكتروني' }}
-            </button>
-            <button 
-              type="button"
-              class="method-btn" 
-              :class="{ active: loginMethod === 'otp' }"
-              @click="loginMethod = 'otp'; clearLoginMessages()"
-            >
-              {{ t('taqnyat.otp_login') || 'رمز التحقق' }}
-            </button>
-          </div>
-
-          <!-- Email/Password Login -->
-          <form v-if="loginMethod === 'email'" @submit.prevent="handleLogin" class="login-form">
-            <div class="form-group">
-              <label for="email">{{ t('email') || 'البريد الإلكتروني' }}</label>
-              <input 
-                id="email"
-                v-model="loginForm.email" 
-                type="email" 
-                :placeholder="t('email') || 'البريد الإلكتروني'"
-                required
-                :disabled="loginLoading"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label for="password">{{ t('password') || 'كلمة المرور' }}</label>
-              <input 
-                id="password"
-                v-model="loginForm.password" 
-                type="password" 
-                :placeholder="t('password') || 'كلمة المرور'"
-                required
-                :disabled="loginLoading"
-              />
-            </div>
-            
-            <div v-if="loginError" class="error-message">
-              {{ loginError }}
-            </div>
-            
-            <div v-if="loginSuccess" class="success-message">
-              <svg width="16" height="16" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-              </svg>
-              {{ t('login.success') || 'تم تسجيل الدخول بنجاح' }}
-            </div>
-            
-            <button type="submit" class="login-btn2" style="    width: 100%;background: #232323;color: #fff;padding: 10px;border-radius: 10px;" :disabled="loginLoading">
-              <span v-if="loginLoading">{{ t('loading') || 'جاري التحميل...' }}</span>
-              <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
-            </button>
-          </form>
-
           <!-- OTP Login -->
-          <form v-else @submit.prevent="handleOtpLogin" class="login-form">
+          <form @submit.prevent="handleOtpLogin" class="login-form">
             <div class="form-group">
               <label for="phone">{{ t('taqnyat.phone') || 'رقم الهاتف' }}</label>
               <input 
@@ -1797,13 +1656,13 @@ async function handleRegisterSubmit() {
             </div>
           </form>
           
-          <div class="login-footer">
+          <!-- <div class="login-footer">
             <p>{{ t('no_account') || 'ليس لديك حساب؟' }} 
               <a href="#" @click.prevent="openRegisterModal">
                 {{ t('register') || 'إنشاء حساب' }}
               </a>
             </p>
-          </div>
+          </div> -->
         </div>
       </div>
     </teleport>
@@ -1922,13 +1781,13 @@ async function handleRegisterSubmit() {
             </button>
           </form>
           
-          <div class="login-footer">
+          <!-- <div class="login-footer">
             <p>{{ t('have_account') || 'لديك حساب بالفعل؟' }} 
               <a href="#" @click.prevent="openLoginModal(); closeRegisterModal()">
                 {{ t('login') || 'تسجيل الدخول' }}
               </a>
             </p>
-          </div>
+          </div> -->
         </div>
       </div>
     </teleport>
@@ -3022,37 +2881,6 @@ body {
 .close-btn:hover {
   background: #f5f5f5;
   color: #333;
-}
-
-.login-method-toggle {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding: 0 24px;
-  padding-top: 10px;
-}
-
-.method-btn {
-  flex: 1;
-  padding: 10px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: #666;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.method-btn:hover {
-  color: #232323;
-}
-
-.method-btn.active {
-  color: #232323;
-  border-bottom-color: #232323;
-  font-weight: 600;
 }
 
 .login-form {
