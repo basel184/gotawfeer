@@ -2,15 +2,18 @@
   <div class="toggle-sidebar">
     <i class="fa-solid fa-chevron-left"></i>
   </div>
-  <div class="categories-sidebar" :dir="uiDir" @mouseenter="showAllCategoryNames" @mouseleave="hideAllCategoryNames">
+  <div class="categories-sidebar" :dir="uiDir">
     <!-- Menu Toggle Button -->
-    <div class="menu-toggle" @click="toggleSidebar">
+    <div 
+      class="menu-toggle" 
+      @mouseenter="showMainCategories"
+      @mouseleave="startHideMainCategoriesTimer"
+    >
       <div class="hamburger-icon">
         <span></span>
         <span></span>
         <span></span>
       </div>
-      <span class="menu-text" :class="{ 'show': showAllNames }">{{ t('all_categories') }}</span>
     </div>
 
     <!-- Categories Icons List -->
@@ -19,8 +22,9 @@
         v-for="category in categories" 
         :key="category.id"
         class="category-icon-item"
-        @mouseenter="showCategoryName(category)"
-        @mouseleave="hideCategoryName"
+        :class="{ 'active': hoveredCategoryId === category.id }"
+        @mouseenter="showMainCategories"
+        @mouseleave="startHideMainCategoriesTimer"
       >
         <img 
           :src="getCategoryImage(category)" 
@@ -28,17 +32,6 @@
           class="category-icon"
           @error="handleImageError"
         />
-        <!-- Category Name Tooltip -->
-        <div 
-          class="category-tooltip" 
-          :class="{ 'show': hoveredCategoryId === category.id || showAllNames }"
-          @click="toggleSubcategories(category)"
-        >
-          <span class="category-name">{{ category.name }}</span>
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
       </div>
     </div>
 
@@ -55,51 +48,107 @@
       </svg>
     </div>
 
-    <!-- Subcategories Overlay -->
-    <div 
-      v-if="hoveredCategory" 
-      class="subcategories-overlay"
-      @click="closeSubcategories"
-    >
-      <div class="subcategories-content" @click.stop>
-        <div class="subcategories-header">
-          <div class="header-content">
-            <h4>{{ hoveredCategory.name }}</h4>
-            <p>{{ t('browse_subcategories') }}</p>
+    <!-- Main Categories Overlay -->
+    <transition name="slide-fade">
+      <div 
+        v-if="showMainCategoriesMenu" 
+        class="main-categories-overlay"
+        @mouseenter="cancelHideMainCategoriesTimer"
+        @mouseleave="startHideMainCategoriesTimer"
+      >
+        <div class="main-categories-content">
+          <div class="main-categories-header">
+            <h3>{{ t('all_categories') || 'جميع الأقسام' }}</h3>
+            <p>{{ t('browse_categories') || 'تصفح الأقسام الرئيسية' }}</p>
           </div>
-          <button class="close-subcategories-btn" @click="closeSubcategories">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="subcategories-grid" v-if="hoveredCategory.childes && hoveredCategory.childes.length > 0">
-          <div 
-            v-for="subcategory in hoveredCategory.childes" 
-            :key="subcategory.id"
-            class="subcategory-item"
-            @click="goToSubcategory(subcategory)"
-          >
-            <h5>{{ subcategory.name }}</h5>
-            <p v-if="subcategory?.product_count || subcategory?.products_count">
-              ( {{ subcategory.product_count || subcategory.products_count }} 
-              {{ (subcategory.product_count || subcategory.products_count) === 1 
-                ? (t('all_products') || 'منتج') 
-                : (t('all_products') || 'منتجات') 
-              }} )
-            </p>
-            <p v-else class="no-count">
-              ( {{ t('all_products') || 'منتجات' }} )
-            </p>
+          
+          <div class="main-categories-list" v-if="categories.length > 0">
+            <div 
+              v-for="category in categories" 
+              :key="category.id"
+              class="main-category-item"
+              :class="{ 'active': hoveredCategoryId === category.id }"
+              @mouseenter="showSubcategories(category)"
+              @mouseleave="hideSubcategoriesPreview"
+            >
+              <div class="main-category-icon">
+                <img 
+                  :src="getCategoryImage(category)" 
+                  :alt="category.name"
+                  @error="handleImageError"
+                />
+              </div>
+              <div class="main-category-info">
+                <h4>{{ category.name }}</h4>
+                <p v-if="category.childes && category.childes.length > 0">
+                  {{ category.childes.length }} {{ category.childes.length === 1 ? (t('subcategory') || 'قسم فرعي') : (t('subcategories') || 'أقسام فرعية') }}
+                </p>
+                <p v-else>
+                  {{ t('no_subcategories') || 'لا توجد أقسام فرعية' }}
+                </p>
+              </div>
+              <svg class="category-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
           </div>
-        </div>
-        
-        <div v-else class="no-subcategories">
-          <p>{{ t('no_subcategories') }}</p>
         </div>
       </div>
-    </div>
+    </transition>
+
+    <!-- Subcategories Overlay -->
+    <transition name="slide-fade-sub">
+      <div 
+        v-if="hoveredCategory && showMainCategoriesMenu" 
+        class="subcategories-overlay"
+        @mouseenter="cancelAllTimers"
+        @mouseleave="startHideTimer"
+      >
+        <div class="subcategories-content">
+          <div class="subcategories-header">
+            <div class="header-content">
+              <div class="header-icon">
+                <img 
+                  :src="getCategoryImage(hoveredCategory)" 
+                  :alt="hoveredCategory.name"
+                  @error="handleImageError"
+                />
+              </div>
+              <h4>{{ hoveredCategory.name }}</h4>
+              <p>{{ t('browse_subcategories') || 'تصفح الأقسام الفرعية' }}</p>
+            </div>
+          </div>
+          
+          <div class="subcategories-grid" v-if="hoveredCategory.childes && hoveredCategory.childes.length > 0">
+            <div 
+              v-for="subcategory in hoveredCategory.childes" 
+              :key="subcategory.id"
+              class="subcategory-item"
+              @click="goToSubcategory(subcategory)"
+            >
+              <h5>{{ subcategory.name }}</h5>
+              <p v-if="subcategory?.product_count || subcategory?.products_count">
+                ( {{ subcategory.product_count || subcategory.products_count }} 
+                {{ (subcategory.product_count || subcategory.products_count) === 1 
+                  ? (t('product') || 'منتج') 
+                  : (t('products') || 'منتجات') 
+                }} )
+              </p>
+              <p v-else class="no-count">
+                ( {{ t('products') || 'منتجات' }} )
+              </p>
+            </div>
+          </div>
+          
+          <div v-else class="no-subcategories">
+            <p>{{ t('no_subcategories') || 'لا توجد أقسام فرعية' }}</p>
+            <button class="go-to-category-btn" @click="goToCategory(hoveredCategory)">
+              {{ t('browse_category') || 'تصفح القسم' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -115,77 +164,102 @@ const router = useRouter()
 const uiDir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')
 
 // State
-const isOpen = ref(false)
 const loading = ref(false)
 const categories = ref<any[]>([])
 const hoveredCategory = ref<any>(null)
 const hoveredCategoryId = ref<number | null>(null)
-const showAllNames = ref(false)
-const hideTimeout = ref<NodeJS.Timeout | null>(null)
+const showMainCategoriesMenu = ref(false)
+const hideTimer = ref<NodeJS.Timeout | null>(null)
+const hideMainCategoriesTimer = ref<NodeJS.Timeout | null>(null)
+const hideSubcategoriesTimer = ref<NodeJS.Timeout | null>(null)
 
-// Methods
-const toggleSidebar = () => {
-  isOpen.value = !isOpen.value
+// Hover delay settings
+const HOVER_DELAY = 1000 // milliseconds to wait before hiding main categories
+const SHOW_DELAY = 50 // milliseconds to wait before showing
+const SUBCATEGORY_HIDE_DELAY = 1500 // much longer delay for subcategories
+
+// Methods for main categories menu
+const showMainCategories = () => {
+  cancelHideMainCategoriesTimer()
+  setTimeout(() => {
+    showMainCategoriesMenu.value = true
+  }, SHOW_DELAY)
 }
 
-const showAllCategoryNames = () => {
-  if (hideTimeout.value) {
-    clearTimeout(hideTimeout.value)
-    hideTimeout.value = null
-  }
-  showAllNames.value = true
-}
-
-const hideAllCategoryNames = () => {
-  showAllNames.value = false
-  // Don't hide subcategories when leaving sidebar
-  // They should only close when clicking close button
-}
-
-const showCategoryName = (category: any) => {
-  if (hideTimeout.value) {
-    clearTimeout(hideTimeout.value)
-    hideTimeout.value = null
-  }
-  hoveredCategoryId.value = category.id
-  // Don't auto-show subcategories on hover
-  // Only show on click
-}
-
-const hideCategoryName = () => {
-  hoveredCategoryId.value = null
-  // Don't auto-hide subcategories
-  // They should only close when clicking close button
-}
-
-const toggleSubcategories = (category: any) => {
-  if (hideTimeout.value) {
-    clearTimeout(hideTimeout.value)
-    hideTimeout.value = null
-  }
-  
-  // If clicking on the same category, close it
-  if (hoveredCategory.value && hoveredCategory.value.id === category.id) {
+const startHideMainCategoriesTimer = () => {
+  hideMainCategoriesTimer.value = setTimeout(() => {
+    showMainCategoriesMenu.value = false
     hoveredCategory.value = null
     hoveredCategoryId.value = null
-  } else {
-    // Open new category
-    hoveredCategoryId.value = category.id
-    hoveredCategory.value = category
+  }, HOVER_DELAY)
+}
+
+const cancelHideMainCategoriesTimer = () => {
+  if (hideMainCategoriesTimer.value) {
+    clearTimeout(hideMainCategoriesTimer.value)
+    hideMainCategoriesTimer.value = null
   }
 }
 
-const closeSubcategories = () => {
+// Methods for subcategories
+const showSubcategories = (category: any) => {
+  // Cancel all hide timers
+  cancelHideTimer()
+  cancelHideSubcategoriesTimer()
+  
+  // Immediately show subcategories
+  hoveredCategoryId.value = category.id
+  hoveredCategory.value = category
+}
+
+const hideSubcategoriesPreview = () => {
+  // Don't hide if mouse is still over subcategories content
+  hideSubcategoriesTimer.value = setTimeout(() => {
+    hoveredCategory.value = null
+    hoveredCategoryId.value = null
+  }, SUBCATEGORY_HIDE_DELAY)
+}
+
+const cancelHideSubcategoriesTimer = () => {
+  if (hideSubcategoriesTimer.value) {
+    clearTimeout(hideSubcategoriesTimer.value)
+    hideSubcategoriesTimer.value = null
+  }
+}
+
+const startHideTimer = () => {
+  // Cancel any existing hide timer first
+  cancelHideTimer()
+  
+  hideTimer.value = setTimeout(() => {
+    hoveredCategory.value = null
+    hoveredCategoryId.value = null
+  }, SUBCATEGORY_HIDE_DELAY)
+}
+
+const cancelHideTimer = () => {
+  if (hideTimer.value) {
+    clearTimeout(hideTimer.value)
+    hideTimer.value = null
+  }
+  cancelHideSubcategoriesTimer()
+}
+
+// New function to cancel all timers
+const cancelAllTimers = () => {
+  cancelHideTimer()
+  cancelHideSubcategoriesTimer()
+  cancelHideMainCategoriesTimer()
+}
+
+const goToCategory = (category: any) => {
+  router.push({
+    path: '/shop',
+    query: { category: category.id }
+  })
+  showMainCategoriesMenu.value = false
   hoveredCategory.value = null
-  hoveredCategoryId.value = null
 }
-
-const hideSubcategories = () => {
-  // This function is no longer used since we removed auto-hide
-  // Subcategories only close when clicking close button
-}
-
-// Removed unused functions since we're using click-only approach
 
 const getCategoryImage = (category: any) => {
   if (category.icon_full_url?.path) {
@@ -205,13 +279,11 @@ const getCategoryImage = (category: any) => {
 
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement
-  // Try placeholder, if that fails, use a data URI
   if (!target.src.includes('category-placeholder.png')) {
     target.src = '/images/category-placeholder.png'
   } else {
-    // If placeholder also fails, use a data URI fallback
     target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="%23e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="10">?</text></svg>'
-    target.onerror = null // Prevent infinite loop
+    target.onerror = null
   }
 }
 
@@ -220,7 +292,9 @@ const goToSubcategory = (subcategory: any) => {
     path: '/shop',
     query: { category: subcategory.id }
   })
-  hideSubcategories()
+  hoveredCategory.value = null
+  hoveredCategoryId.value = null
+  showMainCategoriesMenu.value = false
 }
 
 const loadCategories = async () => {
@@ -243,65 +317,71 @@ const loadCategories = async () => {
 }
 
 // Lifecycle
-// Lifecycle
 onMounted(() => {
   loadCategories()
 
   const toggleSidebarV = document.getElementsByClassName("toggle-sidebar")[0];
   const catSidebar = document.querySelector(".categories-sidebar");
-  const categoriesBtn = document.querySelector(".categories-btn"); // ← زر الأقسام الجديد
+  const categoriesBtn = document.querySelector(".categories-btn");
 
   const toggleSidebar = () => {
     catSidebar?.classList.toggle("hide");
     toggleSidebarV?.classList.toggle("hide");
   };
 
-  // عند الضغط على زر الهامبرجر
   toggleSidebarV?.addEventListener("click", toggleSidebar);
-
-  // عند الضغط على زر الأقسام الجديد
   categoriesBtn?.addEventListener("click", toggleSidebar);
 })
 
-
 onUnmounted(() => {
-  if (hideTimeout.value) {
-    clearTimeout(hideTimeout.value)
+  if (hideTimer.value) {
+    clearTimeout(hideTimer.value)
+  }
+  if (hideMainCategoriesTimer.value) {
+    clearTimeout(hideMainCategoriesTimer.value)
+  }
+  if (hideSubcategoriesTimer.value) {
+    clearTimeout(hideSubcategoriesTimer.value)
   }
 })
-
-
-
-
 </script>
 
 <style scoped>
 /* ===== MAIN CONTAINER ===== */
 .categories-sidebar {
-  position: fixed;;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  height: 100vh;
   z-index: 1000;
   background: #fff;
   transition: all 0.3s ease;
-  padding: 5px;
-  border-radius: 20px 0px 0px 20px;
+  padding: 20px 5px;
+  border-radius: 0 20px 20px 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-[dir="ltr"] .categories-sidebar{
-  border-radius: 0px 20px 20px 0px;
+[dir="ltr"] .categories-sidebar {
+  border-radius: 20px 0 0 20px;
 }
 
 .categories-sidebar[dir="rtl"] {
   inset-inline-start: 0;
 }
+
 .categories-sidebar.hide {
-    inset-inline-start: -65px;
+  inset-inline-start: -65px;
 }
+
 /* ===== MENU TOGGLE BUTTON ===== */
 .menu-toggle {
   background: #3B82F6;
   color: white;
   padding: 12px;
-  border-radius: 12px 0 0 12px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -310,25 +390,15 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   width: 50px;
   height: 50px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   position: relative;
-  overflow: hidden;
-}
-
-.categories-sidebar[dir="rtl"] .menu-toggle {
-  border-radius:50%;
-}
-
-.categories-sidebar[dir="ltr"] .menu-toggle {
-  border-radius:50%;
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 .menu-toggle:hover {
   background: #2563EB;
-}
-
-.categories-sidebar[dir="ltr"] .menu-toggle:hover {
-  transform: translateX(5px);
+  transform: scale(1.1);
 }
 
 /* ===== HAMBURGER ICON ===== */
@@ -346,39 +416,34 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.menu-text {
-  position: absolute;
-  left: 60px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-weight: 600;
-  font-size: 14px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  background: #3B82F6;
-  padding: 8px 12px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
-}
-
-.categories-sidebar[dir="ltr"] .menu-text {
-  left: auto;
-  right: 60px;
-}
-
-.menu-text.show {
-  opacity: 1;
-  visibility: visible;
-}
-
 /* ===== CATEGORIES ICONS LIST ===== */
 .categories-icons {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 0;
+}
+
+/* Custom scrollbar for categories */
+.categories-icons::-webkit-scrollbar {
+  width: 4px;
+}
+
+.categories-icons::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 2px;
+}
+
+.categories-icons::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.categories-icons::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .category-icon-item {
@@ -387,6 +452,12 @@ onUnmounted(() => {
   height: 50px;
   cursor: pointer;
   transition: all 0.3s ease;
+}
+
+.category-icon-item:hover .category-icon,
+.category-icon-item.active .category-icon {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== CATEGORY ICON ===== */
@@ -398,53 +469,317 @@ onUnmounted(() => {
   background: white;
   padding: 8px;
   transition: all 0.3s ease;
+  border: 2px solid transparent;
 }
 
-/* ===== CATEGORY TOOLTIP ===== */
-.category-tooltip {
-  position: absolute;
-  right: 50px;
-  top: 50%;
-  height: 60px;
-  width: 150px;
-  transform: translateY(-50%);
-  background: white;
-  padding: 8px 12px;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1000;
+.category-icon-item:hover .category-icon {
+  border-color: #3B82F6;
+}
+
+.category-icon-item.active .category-icon {
+  border-color: #2563EB;
+  background: #eff6ff;
+}
+
+/* ===== MAIN CATEGORIES OVERLAY ===== */
+.main-categories-overlay {
+  position: fixed;
+  left: auto;
+  right: 60px;
+  top: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 999;
   display: flex;
   align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  cursor: pointer;
+  justify-content: flex-end;
 }
 
-.categories-sidebar[dir="ltr"] .category-tooltip {
+[dir="ltr"] .main-categories-overlay {
   right: auto;
-  left: 50px;
+  left: 60px;
+  justify-content: flex-start;
 }
 
-.category-tooltip.show {
-  opacity: 1;
-  visibility: visible;
+/* ===== MAIN CATEGORIES CONTENT ===== */
+.main-categories-content {
+  background: white;
+  padding: 24px;
+  max-width: 350px;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
 }
 
-.category-tooltip:hover {
-  background: #f8fafc;
-  transform: translateY(-50%) scale(1.05);
+[dir="ltr"] .main-categories-content {
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
 }
 
-.category-name {
-  font-weight: 500;
-  color: #374151;
+/* ===== MAIN CATEGORIES HEADER ===== */
+.main-categories-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.main-categories-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.main-categories-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* ===== MAIN CATEGORIES LIST ===== */
+.main-categories-list {
+  flex: 1;
+  /* overflow-y: auto; */
+  padding: 10px 0;
+}
+
+.main-category-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 6px;
+  background: #f9fafb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.main-category-item:hover,
+.main-category-item.active {
+  background: #eff6ff;
+  border-color: #3B82F6;
+  transform: translateX(-5px);
+}
+
+[dir="ltr"] .main-category-item:hover,
+[dir="ltr"] .main-category-item.active {
+  transform: translateX(5px);
+}
+
+.main-category-item.active {
+  background: #dbeafe;
+  border-color: #2563EB;
+}
+
+.main-category-icon {
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+}
+
+.main-category-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  background: white;
+  padding: 6px;
+}
+
+.main-category-info {
+  flex: 1;
+}
+
+.main-category-info h4 {
+  margin: 0 0 3px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.main-category-info p {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.category-arrow {
+  color: #9ca3af;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.main-category-item:hover .category-arrow,
+.main-category-item.active .category-arrow {
+  color: #3B82F6;
+  transform: translateX(3px);
+}
+
+[dir="rtl"] .main-category-item:hover .category-arrow,
+[dir="rtl"] .main-category-item.active .category-arrow {
+  transform: translateX(-3px) scaleX(-1);
+}
+
+[dir="rtl"] .category-arrow {
+  transform: scaleX(-1);
+}
+
+/* ===== SUBCATEGORIES OVERLAY ===== */
+.subcategories-overlay {
+  position: fixed;
+  left: auto;
+  right: 410px;
+  top: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+[dir="ltr"] .subcategories-overlay {
+  right: auto;
+  left: 410px;
+  justify-content: flex-start;
+}
+
+/* ===== SUBCATEGORIES CONTENT ===== */
+.subcategories-content {
+  background: white;
+  padding: 24px;
+  max-width: 600px;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+[dir="ltr"] .subcategories-content {
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== SUBCATEGORIES HEADER ===== */
+.subcategories-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.header-content {
+  text-align: center;
+}
+
+.header-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 15px;
+}
+
+.header-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 10px;
+}
+
+.subcategories-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.subcategories-header p {
+  margin: 0;
+  color: #6b7280;
   font-size: 14px;
 }
 
-.arrow-icon {
-  color: #9ca3af;
+/* ===== SUBCATEGORIES GRID ===== */
+.subcategories-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.subcategory-item {
+  background: #f9f9f9;
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  border: 2px solid transparent;
+  text-align: center;
+  height: fit-content;
+}
+
+.subcategory-item:hover {
+  background: #3B82F6;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-color: #2563EB;
+}
+
+.subcategory-item h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.subcategory-item p {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.subcategory-item:hover p {
+  color: white;
+  opacity: 0.9;
+}
+
+/* ===== NO SUBCATEGORIES ===== */
+.no-subcategories {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.go-to-category-btn {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.go-to-category-btn:hover {
+  background: #2563EB;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* ===== LOADING STATE ===== */
@@ -455,6 +790,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  margin: auto;
 }
 
 .loading-spinner {
@@ -479,154 +815,115 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  margin: auto;
 }
 
 .empty-icon {
   color: #9ca3af;
 }
 
-/* ===== SUBCATEGORIES OVERLAY ===== */
-.subcategories-overlay {
-  position: fixed;
-  left: auto;
-  right: 185px;
-  bottom: 0;
-  z-index: 999;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  height: 100vh;
-}
-[dir="ltr"] .subcategories-overlay{
-  right: auto;
-  left: 185px;
-}
-.categories-sidebar[dir="rtl"] .subcategories-overlay {
-  justify-content: flex-end;
+/* ===== TRANSITION ANIMATIONS ===== */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
 }
 
-.categories-sidebar[dir="ltr"] .subcategories-overlay {
-  justify-content: flex-start;
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
-/* ===== SUBCATEGORIES CONTENT ===== */
-.subcategories-content {
-  background: white;
-  padding: 24px;
-  max-width: 600px;
-  width: 100%;
-  height: 100vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  margin-right: 20px;
+[dir="ltr"] .slide-fade-enter-from {
+  transform: translateX(20px);
 }
 
-.categories-sidebar[dir="rtl"] .subcategories-content {
-  margin-right: 0;
-  margin-left: 0;
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
-.categories-sidebar[dir="ltr"] .subcategories-content {
-  margin-left: 0;
-  margin-right: 0;
+[dir="ltr"] .slide-fade-leave-to {
+  transform: translateX(20px);
 }
 
-/* ===== SUBCATEGORIES HEADER ===== */
-.subcategories-header {
-  margin-bottom: 24px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+/* Subcategories specific animation */
+.slide-fade-sub-enter-active,
+.slide-fade-sub-leave-active {
+  transition: all 0.25s ease;
 }
 
-.header-content {
-  flex: 1;
-  text-align: center;
+.slide-fade-sub-enter-from {
+  opacity: 0;
+  transform: translateX(-15px);
 }
 
-.subcategories-header h4 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
+[dir="ltr"] .slide-fade-sub-enter-from {
+  transform: translateX(15px);
 }
 
-.subcategories-header p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 16px;
+.slide-fade-sub-leave-to {
+  opacity: 0;
+  transform: translateX(-15px);
 }
 
-.close-subcategories-btn {
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+[dir="ltr"] .slide-fade-sub-leave-to {
+  transform: translateX(15px);
+}
+
+/* ===== TOGGLE SIDEBAR BUTTON ===== */
+.toggle-sidebar {
+  background-color: #3B82F6;
+  width: 35px;
+  height: 35px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.close-subcategories-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-/* ===== SUBCATEGORIES GRID ===== */
-.subcategories-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.subcategory-item {
-  background: #f9f9f9;
-  padding: 15px;
-  border-radius: 10px;
+  color: #fff;
+  position: fixed;
+  inset-inline-start: 43px;
+  top: 90%;
+  transform: translate(-50%, -50%);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid #e5e7eb;
-  text-align: center;
+  transition: .3s;
+  z-index: 999;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.subcategory-item:hover {
-  background: #3B82F6;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+.toggle-sidebar:hover {
+  background-color: #2563EB;
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
-.subcategory-item h5 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+.toggle-sidebar.hide {
+  inset-inline-start: -20px;
 }
 
-.subcategory-item p {
-  margin-top: 8px;
-  font-size: 14px;
-  opacity: 0.8;
+/* ===== SCROLLBAR STYLING ===== */
+.main-categories-content::-webkit-scrollbar,
+.subcategories-content::-webkit-scrollbar,
+.subcategories-grid::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* ===== NO SUBCATEGORIES ===== */
-.no-subcategories {
-  text-align: center;
-  padding: 40px;
-  color: #6b7280;
+.main-categories-content::-webkit-scrollbar-track,
+.subcategories-content::-webkit-scrollbar-track,
+.subcategories-grid::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
 }
 
-/* ===== RTL SUPPORT ===== */
-[dir="rtl"] .arrow-icon {
-  transform: scaleX(-1);
+.main-categories-content::-webkit-scrollbar-thumb,
+.subcategories-content::-webkit-scrollbar-thumb,
+.subcategories-grid::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 3px;
 }
 
-[dir="rtl"] .category-tooltip:hover .arrow-icon {
-  transform: scaleX(-1) translateX(-2px);
+.main-categories-content::-webkit-scrollbar-thumb:hover,
+.subcategories-content::-webkit-scrollbar-thumb:hover,
+.subcategories-grid::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -634,39 +931,43 @@ onUnmounted(() => {
   .categories-sidebar {
     display: none;
   }
+  
   .toggle-sidebar {
     display: none !important;
   }
 }
 
+@media (max-width: 1400px) {
+  .main-categories-content {
+    max-width: 300px;
+  }
+  
+  .subcategories-overlay {
+    right: 360px;
+  }
+  
+  [dir="ltr"] .subcategories-overlay {
+    left: 360px;
+  }
+  
+  .subcategories-content {
+    max-width: 400px;
+  }
+  
+  .subcategories-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 1200px) {
   .subcategories-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 900px) {
   .subcategories-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(1, 1fr);
   }
-}
-.toggle-sidebar {
-    background-color: var(--blue-color);
-    width: 35px;
-    height: 35px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    position: fixed;
-    inset-inline-start: 43px;
-    top: 90%;
-    transform: translate(-50%, -50%);
-    cursor: pointer;
-    transition: .3s;
-    z-index: 999;
-}
-.toggle-sidebar.hide {
-      inset-inline-start: -20px;
 }
 </style>
