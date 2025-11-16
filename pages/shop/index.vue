@@ -790,50 +790,204 @@ const handleProductDetails = () => {
     }
   }
 }
+
+const filterDrawerOpen = ref(false)
+
+// Function to apply filters and close drawer
+const applyFilters = () => {
+  filterDrawerOpen.value = false
+  resetAndFetch()
+}
+
+// Close drawer on escape key
+onMounted(() => {
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && filterDrawerOpen.value) {
+      filterDrawerOpen.value = false
+    }
+  }
+  document.addEventListener('keydown', handleEscape)
+  
+  onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleEscape)
+  })
+})
 </script>
 
 <template>
   <div class="shop container" dir="rtl">
-    <!-- Desktop Sidebar -->
-    <aside class="desktop-sidebar">
-      <div class="box">
-        <input v-model="q" type="search" :placeholder="t('shop.search_placeholder')" class="search" />
+ <!-- Filter Toggle Button -->
+    <button 
+      class="filter-toggle-btn" 
+      @click="filterDrawerOpen = !filterDrawerOpen"
+      :class="{ active: filterDrawerOpen }"
+    >
+      <svg v-if="!filterDrawerOpen" class="filter-icon" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/>
+      </svg>
+      <svg v-else class="close-icon" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
+      </svg>
+    </button>
+
+    <!-- Overlay -->
+    <div 
+      v-if="filterDrawerOpen" 
+      class="filter-overlay" 
+      @click="filterDrawerOpen = false"
+    ></div>
+
+    <!-- Filter Drawer -->
+    <div class="filter-drawer" :class="{ active: filterDrawerOpen }">
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <h3>
+          <svg class="header-icon" fill="currentColor" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+          </svg>
+          {{ t('shop.filter') }}
+        </h3>
+        <button class="close-drawer-btn" @click="filterDrawerOpen = false">
+          <svg fill="currentColor" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
+          </svg>
+        </button>
       </div>
 
-      <div class="box">
-        <div class="box-title">{{ t('shop.price') }}</div>
-        <div class="row">
-          <input class="num" type="number" v-model.number="price_min" :placeholder="t('shop.min_price')" />
-          <span>-</span>
-          <input class="num" type="number" v-model.number="price_max" :placeholder="t('shop.max_price')" />
+      <!-- Drawer Content -->
+      <div class="drawer-content">
+        <!-- Search -->
+        <div class="filter-section">
+          <div class="filter-title">
+            <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            {{ t('shop.search') }}
+          </div>
+          <div class="search-wrapper">
+            <input 
+              v-model="q" 
+              type="search" 
+              :placeholder="t('shop.search_placeholder')" 
+              class="search-input"
+            />
+            <svg class="search-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+          </div>
         </div>
-        <div class="subtle" v-if="priceRangeText">{{ t('shop.price_range') }}: {{ priceRangeText }}</div>
+
+        <!-- Sort By -->
+        <div class="filter-section">
+          <div class="filter-title">
+            <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>
+            </svg>
+            {{ t('shop.sort_by') }}
+          </div>
+          <select v-model="sort_by" class="sort-select">
+            <option value="latest">{{ t('shop.latest') }}</option>
+            <option value="best_selling">{{ t('shop.best_selling') }}</option>
+            <option value="price_low">{{ t('shop.price_low_high') }}</option>
+            <option value="price_high">{{ t('shop.price_high_low') }}</option>
+          </select>
+        </div>
+
+        <!-- Price Range -->
+        <div class="filter-section">
+          <div class="filter-title">
+            <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1.81.45 1.61 1.67 1.61 1.16 0 1.6-.64 1.6-1.46 0-.84-.68-1.22-1.88-1.54-2.57-.72-3.58-1.74-3.58-3.36 0-1.58 1.16-2.81 3.12-3.17V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.63-1.63-1.63-1.01 0-1.46.54-1.46 1.28 0 .64.5 1.02 1.88 1.37 2.51.68 3.58 1.52 3.58 3.4 0 1.71-1.2 3.06-3.26 3.33z"/>
+            </svg>
+            {{ t('shop.price') }}
+          </div>
+          <div class="price-range">
+            <input 
+              class="price-input" 
+              type="number" 
+              v-model.number="price_min" 
+              :placeholder="t('shop.min_price')"
+            />
+            <span class="price-separator">-</span>
+            <input 
+              class="price-input" 
+              type="number" 
+              v-model.number="price_max" 
+              :placeholder="t('shop.max_price')"
+            />
+          </div>
+          <div class="price-hint" v-if="priceRangeText">
+            {{ t('shop.price_range') }}: {{ priceRangeText }}
+          </div>
+        </div>
+
+        <!-- Categories -->
+        <div class="filter-section">
+          <div class="filter-title">
+            <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l-5.5 9h11z M12 22l5.5-9h-11z M3.5 9l5.5 9v-11z M20.5 9l-5.5 9v-11z"/>
+            </svg>
+            {{ t('shop.categories') }}
+          </div>
+          <div class="filter-options">
+            <label 
+              v-for="c in flatCategories" 
+              :key="c.id" 
+              class="filter-option"
+              :class="{ selected: category.includes(c.id) }"
+              :style="{ paddingInlineStart: (10 + c.depth*16) + 'px' }"
+            >
+              <input 
+                type="checkbox" 
+                :value="c.id" 
+                v-model="category"
+                class="filter-checkbox"
+              />
+              <span class="filter-option-label">{{ c.name }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Brands -->
+        <div class="filter-section">
+          <div class="filter-title">
+            <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 7h5v2H5zm0 4h5v2H5zm0 4h5v2H5zm7-8h7v10h-7z"/>
+            </svg>
+            {{ t('shop.brands') }}
+          </div>
+          <div class="filter-options" v-if="brandsList.length > 0">
+            <label 
+              v-for="b in brandsList" 
+              :key="b.id" 
+              class="filter-option"
+              :class="{ selected: brand.includes(b.id) }"
+            >
+              <input 
+                type="checkbox" 
+                :value="b.id" 
+                v-model="brand"
+                class="filter-checkbox"
+              />
+              <span class="filter-option-label">{{ b.name }}</span>
+            </label>
+          </div>
+          <div v-else class="no-items-message">
+            {{ t('shop.no_brands') || 'لا توجد علامات تجارية' }}
+          </div>
+        </div>
       </div>
 
-      <div class="box">
-        <div class="box-title">{{ t('shop.categories') }}</div>
-        <div class="list">
-          <label v-for="c in flatCategories" :key="c.id" class="chk" :style="{ paddingInlineStart: (8 + c.depth*12) + 'px' }">
-            <input type="checkbox" :value="c.id" v-model="category" /> {{ c.name }}
-          </label>
-        </div>
+      <!-- Drawer Footer -->
+      <div class="drawer-footer">
+        <button class="btn-clear" @click="clearFilters">
+          {{ t('shop.clear_filters') }}
+        </button>
+        <button class="btn-apply" @click="applyFilters">
+          {{ t('shop.apply_filters') }}
+        </button>
       </div>
-
-      <div class="box">
-        <div class="box-title">{{ t('shop.brands') }}</div>
-        <div class="list" v-if="brandsList.length > 0">
-          <label v-for="b in brandsList" :key="b.id" class="chk">
-            <input type="checkbox" :value="b.id" v-model="brand" /> {{ b.name }}
-          </label>
-        </div>
-        <div v-else class="empty-list">
-          <p style="padding: 12px; color: #6b7280; font-size: 14px; text-align: center;">
-            {{ t('shop.no_brands') || 'لا توجد براندات متاحة' }}
-          </p>
-        </div>
-      </div>
-    </aside>
-
+    </div>
     <main class="content">
       <!-- Mobile Filter Toggle Button -->
       <button class="mobile-filter-btn" @click="mobileFilterOpen = !mobileFilterOpen">
@@ -918,76 +1072,7 @@ const handleProductDetails = () => {
       </div>
     </main>
 
-    <!-- Mobile Filter Popup -->
-    <div v-if="mobileFilterOpen" class="mobile-filter-overlay" @click="mobileFilterOpen = false">
-      <div class="mobile-filter-popup" @click.stop>
-        <!-- Header -->
-        <div class="popup-header">
-          <h3>{{ t('shop.filter') }}</h3>
-          <button class="close-btn" @click="mobileFilterOpen = false">
-            <svg width="24" height="24" viewBox="0 0 24 24">
-              <path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
-            </svg>
-          </button>
-        </div>
 
-        <!-- Content -->
-        <div class="popup-content">
-          <!-- Search -->
-          <div class="filter-group">
-            <input v-model="q" type="search" :placeholder="t('shop.search_placeholder')" class="filter-input" />
-          </div>
-          
-          <!-- Price Range -->
-          <div class="filter-group">
-            <label class="filter-label">{{ t('shop.price') }}</label>
-            <div class="price-range">
-              <input class="price-input" type="number" v-model.number="price_min" :placeholder="t('shop.min_price')" />
-              <span class="price-separator">-</span>
-              <input class="price-input" type="number" v-model.number="price_max" :placeholder="t('shop.max_price')" />
-            </div>
-          </div>
-          
-          <!-- Categories -->
-          <div class="filter-group">
-            <label class="filter-label">{{ t('shop.categories') }}</label>
-            <div class="filter-options">
-              <label v-for="c in flatCategories" :key="c.id" class="filter-option" :style="{ paddingInlineStart: (8 + c.depth*12) + 'px' }">
-                <input type="checkbox" :value="c.id" v-model="category" />
-                <span>{{ c.name }}</span>
-              </label>
-            </div>
-          </div>
-          
-          <!-- Brands -->
-          <div class="filter-group">
-            <label class="filter-label">{{ t('shop.brands') }}</label>
-            <div class="filter-options" v-if="brandsList.length > 0">
-              <label v-for="b in brandsList" :key="b.id" class="filter-option">
-                <input type="checkbox" :value="b.id" v-model="brand" />
-                <span>{{ b.name }}</span>
-              </label>
-            </div>
-            <div v-else class="empty-message">
-              <p style="padding: 12px; color: #6b7280; font-size: 14px; text-align: center;">
-                {{ t('shop.no_brands') || 'لا توجد براندات متاحة' }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="popup-actions">
-          <button class="btn-clear" @click="clearFilters">
-            {{ t('shop.clear_filters') }}
-          </button>
-          <button class="btn-apply" @click="mobileFilterOpen = false">
-            {{ t('shop.apply_filters') }}
-          </button>
-        </div>
-      </div>
-    </div>
-    
     <!-- Product Modal -->
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-products">
@@ -1853,5 +1938,444 @@ const handleProductDetails = () => {
 
 [dir="rtl"] .success-content {
   text-align: right;
+}
+
+/* Filter Toggle Button */
+.filter-toggle-btn {
+  /* position: fixed; */
+  /* top: 100px; */
+  /* right: 20px; */
+  z-index: 999;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F58040 0%, #ff6b35 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.filter-toggle-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(245, 128, 64, 0.4);
+}
+
+.filter-toggle-btn.active {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+}
+
+.filter-icon, .close-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Overlay */
+.filter-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Filter Drawer */
+.filter-drawer {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 430px;
+  height: 100vh;
+  background: white;
+  z-index: 1001;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-drawer.active {
+  right: 0;
+}
+
+/* RTL Support */
+[dir="rtl"] .filter-drawer {
+  right: auto;
+  left: -100%;
+}
+
+[dir="rtl"] .filter-drawer.active {
+  left: 0;
+}
+
+[dir="rtl"] .filter-toggle-btn {
+  right: auto;
+  left: 20px;
+}
+
+/* Drawer Header */
+.drawer-header {
+  padding: 20px;
+  background: #1a1a1a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.drawer-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.header-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.close-drawer-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-drawer-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Drawer Content */
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drawer-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+  background: #F58040;
+  border-radius: 3px;
+}
+
+/* Filter Sections */
+.filter-section {
+  margin-bottom: 25px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filter-section:last-child {
+  border-bottom: none;
+}
+
+.filter-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-title-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+}
+
+/* Search Input */
+.search-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #F58040;
+  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
+}
+
+/* Sort Select */
+.sort-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #F58040;
+  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
+}
+
+/* Price Range */
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price-input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.price-input:focus {
+  outline: none;
+  border-color: #F58040;
+  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
+}
+
+.price-separator {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.price-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Filter Options */
+.filter-options {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.filter-options::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-options::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-option:hover {
+  background: #f9fafb;
+}
+
+.filter-option.selected {
+  background: rgba(245, 128, 64, 0.05);
+}
+
+.filter-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #F58040;
+  cursor: pointer;
+}
+
+.filter-option-label {
+  flex: 1;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-option.selected .filter-option-label {
+  color: #F58040;
+  font-weight: 500;
+}
+
+.no-items-message {
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+/* Drawer Footer */
+.drawer-footer {
+  padding: 20px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 10px;
+}
+
+.btn-clear, .btn-apply {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear {
+  background: white;
+  color: #6b7280;
+  border: 2px solid #e5e7eb;
+}
+
+.btn-clear:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.btn-apply {
+  background: #1a1a1a;
+  color: white;
+  border: none;
+}
+
+.btn-apply:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
+}
+
+/* Main Content Shift */
+.content {
+  transition: margin-right 0.3s ease;
+}
+
+.content.shifted {
+  margin-right: 320px;
+}
+
+[dir="rtl"] .content.shifted {
+  margin-right: 0;
+  margin-left: 320px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .filter-drawer {
+    width: 280px;
+    right: -280px;
+  }
+  
+  [dir="rtl"] .filter-drawer {
+    left: -280px;
+  }
+  
+  .content.shifted {
+    margin-right: 0;
+  }
+  
+  [dir="rtl"] .content.shifted {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-drawer {
+    width: 100%;
+    right: -100%;
+  }
+  
+  [dir="rtl"] .filter-drawer {
+    left: -100%;
+  }
+  
+  .filter-toggle-btn {
+    width: 45px;
+    height: 45px;
+    right: 15px;
+  }
+  
+  [dir="rtl"] .filter-toggle-btn {
+    left: 15px;
+  }
+}
+
+/* Remove old desktop sidebar and mobile filter styles */
+.desktop-sidebar,
+.mobile-filter-btn,
+.mobile-filter-overlay,
+.mobile-filter-popup {
+  display: none !important;
+}
+
+/* Update main shop layout */
+.shop {
+  display: block;
+  padding: 16px;
+  position: relative;
 }
 </style>

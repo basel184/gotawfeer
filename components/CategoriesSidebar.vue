@@ -6,8 +6,8 @@
     <!-- Menu Toggle Button -->
     <div 
       class="menu-toggle" 
-      @mouseenter="showMainCategories"
-      @mouseleave="startHideMainCategoriesTimer"
+      @mouseenter="handleMenuToggleEnter"
+      @mouseleave="handleMenuToggleLeave"
     >
       <div class="hamburger-icon">
         <span></span>
@@ -23,8 +23,8 @@
         :key="category.id"
         class="category-icon-item"
         :class="{ 'active': hoveredCategoryId === category.id }"
-        @mouseenter="showMainCategories"
-        @mouseleave="startHideMainCategoriesTimer"
+        @mouseenter="handleCategoryIconEnter(category)"
+        @mouseleave="handleCategoryIconLeave"
       >
         <img 
           :src="getCategoryImage(category)" 
@@ -53,14 +53,14 @@
       <div 
         v-if="showMainCategoriesMenu" 
         class="main-categories-overlay"
-        @mouseenter="cancelHideMainCategoriesTimer"
-        @mouseleave="startHideMainCategoriesTimer"
+        @mouseenter="handleMainCategoriesEnter"
+        @mouseleave="handleMainCategoriesLeave"
       >
         <div class="main-categories-content">
-          <div class="main-categories-header">
+          <!-- <div class="main-categories-header">
             <h3>{{ t('all_categories') || 'جميع الأقسام' }}</h3>
             <p>{{ t('browse_categories') || 'تصفح الأقسام الرئيسية' }}</p>
-          </div>
+          </div> -->
           
           <div class="main-categories-list" v-if="categories.length > 0">
             <div 
@@ -68,8 +68,8 @@
               :key="category.id"
               class="main-category-item"
               :class="{ 'active': hoveredCategoryId === category.id }"
-              @mouseenter="showSubcategories(category)"
-              @mouseleave="hideSubcategoriesPreview"
+              @mouseenter="handleMainCategoryItemEnter(category)"
+              @mouseleave="handleMainCategoryItemLeave"
             >
               <div class="main-category-icon">
                 <img 
@@ -87,9 +87,6 @@
                   {{ t('no_subcategories') || 'لا توجد أقسام فرعية' }}
                 </p>
               </div>
-              <svg class="category-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
             </div>
           </div>
         </div>
@@ -101,11 +98,11 @@
       <div 
         v-if="hoveredCategory && showMainCategoriesMenu" 
         class="subcategories-overlay"
-        @mouseenter="cancelAllTimers"
-        @mouseleave="startHideTimer"
+        @mouseenter="handleSubcategoriesEnter"
+        @mouseleave="handleSubcategoriesLeave"
       >
         <div class="subcategories-content">
-          <div class="subcategories-header">
+          <!-- <div class="subcategories-header">
             <div class="header-content">
               <div class="header-icon">
                 <img 
@@ -117,7 +114,7 @@
               <h4>{{ hoveredCategory.name }}</h4>
               <p>{{ t('browse_subcategories') || 'تصفح الأقسام الفرعية' }}</p>
             </div>
-          </div>
+          </div> -->
           
           <div class="subcategories-grid" v-if="hoveredCategory.childes && hoveredCategory.childes.length > 0">
             <div 
@@ -169,89 +166,87 @@ const categories = ref<any[]>([])
 const hoveredCategory = ref<any>(null)
 const hoveredCategoryId = ref<number | null>(null)
 const showMainCategoriesMenu = ref(false)
+
+// Single timer reference for all hide operations
 const hideTimer = ref<NodeJS.Timeout | null>(null)
-const hideMainCategoriesTimer = ref<NodeJS.Timeout | null>(null)
-const hideSubcategoriesTimer = ref<NodeJS.Timeout | null>(null)
 
 // Hover delay settings
-const HOVER_DELAY = 1000 // milliseconds to wait before hiding main categories
-const SHOW_DELAY = 50 // milliseconds to wait before showing
-const SUBCATEGORY_HIDE_DELAY = 1500 // much longer delay for subcategories
+const HIDE_DELAY = 300 // milliseconds to wait before hiding anything
 
-// Methods for main categories menu
-const showMainCategories = () => {
-  cancelHideMainCategoriesTimer()
-  setTimeout(() => {
-    showMainCategoriesMenu.value = true
-  }, SHOW_DELAY)
-}
-
-const startHideMainCategoriesTimer = () => {
-  hideMainCategoriesTimer.value = setTimeout(() => {
-    showMainCategoriesMenu.value = false
-    hoveredCategory.value = null
-    hoveredCategoryId.value = null
-  }, HOVER_DELAY)
-}
-
-const cancelHideMainCategoriesTimer = () => {
-  if (hideMainCategoriesTimer.value) {
-    clearTimeout(hideMainCategoriesTimer.value)
-    hideMainCategoriesTimer.value = null
-  }
-}
-
-// Methods for subcategories
-const showSubcategories = (category: any) => {
-  // Cancel all hide timers
-  cancelHideTimer()
-  cancelHideSubcategoriesTimer()
-  
-  // Immediately show subcategories
-  hoveredCategoryId.value = category.id
-  hoveredCategory.value = category
-}
-
-const hideSubcategoriesPreview = () => {
-  // Don't hide if mouse is still over subcategories content
-  hideSubcategoriesTimer.value = setTimeout(() => {
-    hoveredCategory.value = null
-    hoveredCategoryId.value = null
-  }, SUBCATEGORY_HIDE_DELAY)
-}
-
-const cancelHideSubcategoriesTimer = () => {
-  if (hideSubcategoriesTimer.value) {
-    clearTimeout(hideSubcategoriesTimer.value)
-    hideSubcategoriesTimer.value = null
-  }
-}
-
-const startHideTimer = () => {
-  // Cancel any existing hide timer first
-  cancelHideTimer()
-  
-  hideTimer.value = setTimeout(() => {
-    hoveredCategory.value = null
-    hoveredCategoryId.value = null
-  }, SUBCATEGORY_HIDE_DELAY)
-}
-
-const cancelHideTimer = () => {
+// Clear any existing timer
+const clearHideTimer = () => {
   if (hideTimer.value) {
     clearTimeout(hideTimer.value)
     hideTimer.value = null
   }
-  cancelHideSubcategoriesTimer()
 }
 
-// New function to cancel all timers
-const cancelAllTimers = () => {
-  cancelHideTimer()
-  cancelHideSubcategoriesTimer()
-  cancelHideMainCategoriesTimer()
+// Set timer to hide everything
+const setHideTimer = () => {
+  clearHideTimer()
+  hideTimer.value = setTimeout(() => {
+    showMainCategoriesMenu.value = false
+    hoveredCategory.value = null
+    hoveredCategoryId.value = null
+  }, HIDE_DELAY)
 }
 
+// Menu Toggle Handlers
+const handleMenuToggleEnter = () => {
+  clearHideTimer()
+  showMainCategoriesMenu.value = true
+}
+
+const handleMenuToggleLeave = () => {
+  setHideTimer()
+}
+
+// Category Icon Handlers
+const handleCategoryIconEnter = (category: any) => {
+  clearHideTimer()
+  showMainCategoriesMenu.value = true
+  // Optional: You can pre-select the category here
+  // hoveredCategoryId.value = category.id
+}
+
+const handleCategoryIconLeave = () => {
+  setHideTimer()
+}
+
+// Main Categories Overlay Handlers
+const handleMainCategoriesEnter = () => {
+  clearHideTimer()
+}
+
+const handleMainCategoriesLeave = () => {
+  setHideTimer()
+}
+
+// Main Category Item Handlers
+const handleMainCategoryItemEnter = (category: any) => {
+  clearHideTimer()
+  hoveredCategoryId.value = category.id
+  hoveredCategory.value = category
+}
+
+const handleMainCategoryItemLeave = () => {
+  // Don't hide immediately - wait for mouse to potentially enter subcategories
+  // The subcategories overlay will clear the timer if entered
+}
+
+// Subcategories Overlay Handlers
+const handleSubcategoriesEnter = () => {
+  clearHideTimer()
+}
+
+const handleSubcategoriesLeave = () => {
+  // Hide subcategories immediately but keep main menu visible briefly
+  hoveredCategory.value = null
+  hoveredCategoryId.value = null
+  setHideTimer()
+}
+
+// Navigation methods
 const goToCategory = (category: any) => {
   router.push({
     path: '/shop',
@@ -259,8 +254,20 @@ const goToCategory = (category: any) => {
   })
   showMainCategoriesMenu.value = false
   hoveredCategory.value = null
+  hoveredCategoryId.value = null
 }
 
+const goToSubcategory = (subcategory: any) => {
+  router.push({
+    path: '/shop',
+    query: { category: subcategory.id }
+  })
+  showMainCategoriesMenu.value = false
+  hoveredCategory.value = null
+  hoveredCategoryId.value = null
+}
+
+// Helper methods
 const getCategoryImage = (category: any) => {
   if (category.icon_full_url?.path) {
     return category.icon_full_url.path
@@ -285,16 +292,6 @@ const handleImageError = (event: Event) => {
     target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="%23e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="10">?</text></svg>'
     target.onerror = null
   }
-}
-
-const goToSubcategory = (subcategory: any) => {
-  router.push({
-    path: '/shop',
-    query: { category: subcategory.id }
-  })
-  hoveredCategory.value = null
-  hoveredCategoryId.value = null
-  showMainCategoriesMenu.value = false
 }
 
 const loadCategories = async () => {
@@ -334,15 +331,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (hideTimer.value) {
-    clearTimeout(hideTimer.value)
-  }
-  if (hideMainCategoriesTimer.value) {
-    clearTimeout(hideMainCategoriesTimer.value)
-  }
-  if (hideSubcategoriesTimer.value) {
-    clearTimeout(hideSubcategoriesTimer.value)
-  }
+  clearHideTimer()
 })
 </script>
 
@@ -357,7 +346,7 @@ onUnmounted(() => {
   background: #fff;
   transition: all 0.3s ease;
   padding: 20px 5px;
-  border-radius: 0 20px 20px 0;
+  /* border-radius: 0 20px 20px 0; */
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -454,11 +443,6 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.category-icon-item:hover .category-icon,
-.category-icon-item.active .category-icon {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
 
 /* ===== CATEGORY ICON ===== */
 .category-icon {
@@ -474,6 +458,7 @@ onUnmounted(() => {
 
 .category-icon-item:hover .category-icon {
   border-color: #3B82F6;
+  border-radius: 50%;
 }
 
 .category-icon-item.active .category-icon {
@@ -510,13 +495,8 @@ onUnmounted(() => {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
-  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-}
-
-[dir="ltr"] .main-categories-content {
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== MAIN CATEGORIES HEADER ===== */
@@ -543,7 +523,6 @@ onUnmounted(() => {
 /* ===== MAIN CATEGORIES LIST ===== */
 .main-categories-list {
   flex: 1;
-  /* overflow-y: auto; */
   padding: 10px 0;
 }
 
@@ -609,32 +588,11 @@ onUnmounted(() => {
   color: #6b7280;
 }
 
-.category-arrow {
-  color: #9ca3af;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.main-category-item:hover .category-arrow,
-.main-category-item.active .category-arrow {
-  color: #3B82F6;
-  transform: translateX(3px);
-}
-
-[dir="rtl"] .main-category-item:hover .category-arrow,
-[dir="rtl"] .main-category-item.active .category-arrow {
-  transform: translateX(-3px) scaleX(-1);
-}
-
-[dir="rtl"] .category-arrow {
-  transform: scaleX(-1);
-}
-
 /* ===== SUBCATEGORIES OVERLAY ===== */
 .subcategories-overlay {
   position: fixed;
   left: auto;
-  right: 410px;
+  right: 280px;
   top: 0;
   bottom: 0;
   height: 100vh;
@@ -646,7 +604,7 @@ onUnmounted(() => {
 
 [dir="ltr"] .subcategories-overlay {
   right: auto;
-  left: 410px;
+  left: 330px;
   justify-content: flex-start;
 }
 
@@ -943,11 +901,11 @@ onUnmounted(() => {
   }
   
   .subcategories-overlay {
-    right: 360px;
+    right: 295px;
   }
   
   [dir="ltr"] .subcategories-overlay {
-    left: 360px;
+    left: 295px;
   }
   
   .subcategories-content {
