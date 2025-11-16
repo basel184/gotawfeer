@@ -1515,7 +1515,7 @@ onMounted(() => {
 .content { display:flex; flex-direction:column; gap:12px }
 .toolbar { display:flex; align-items:center; gap:12px; padding:8px 0 }
 .spacer { flex:1 }
-.grid { display:grid; grid-template-columns: repeat(5, 1fr); gap:12px }
+.grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:12px }
 @media (max-width: 1200px){ .grid { grid-template-columns: repeat(4, 1fr) } }
 @media (max-width: 900px){ .grid { grid-template-columns: repeat(3, 1fr) } }
 @media (max-width: 640px){ 

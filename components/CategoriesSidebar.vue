@@ -2,7 +2,7 @@
   <div class="toggle-sidebar">
     <i class="fa-solid fa-chevron-left"></i>
   </div>
-  <div class="categories-sidebar" :dir="uiDir">
+  <div class="categories-sidebar shadow " :dir="uiDir">
     <!-- Menu Toggle Button -->
     <div 
       class="menu-toggle" 

@@ -497,7 +497,7 @@ const onImgErr = (e: any) => {
   background: #A21025;
   border-radius: 20px;
   padding: 10px 0;
-  width: 75%;
+  width: 70%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -576,7 +576,7 @@ const onImgErr = (e: any) => {
   border-radius: 20px;
   text-align: center;
   position: relative;
-  width: 25%;
+  width: 30%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -1586,7 +1586,7 @@ const onImgErr = (e: any) => {
   }
   
   .countdown-number {
-    font-size: 18px;
+    font-size: 36px;
   }
   
   .countdown-label {
@@ -1601,6 +1601,19 @@ const onImgErr = (e: any) => {
   .promo-countdown h4 {
     padding: 8px 12px;
     font-size: 14px;
+  }
+}
+@media (max-width: 1199.98px) {
+  .promo-banner-section {
+    flex-direction: row !important;
+  }
+  .promo-countdown h4 {
+    flex-direction: column;
+  }
+}
+@media (max-width: 991.98px) {
+  .promo-banner {
+    display: none;
   }
 }
 </style>
