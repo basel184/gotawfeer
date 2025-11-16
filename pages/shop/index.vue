@@ -119,10 +119,20 @@ onMounted(async () => {
     if (!isNaN(n)) brand.value = [n]
   }
   
-    const searchParam = route.query.q
-    if (typeof searchParam === 'string' && searchParam) {
-      q.value = searchParam
-    }
+  const searchParam = route.query.q
+  if (typeof searchParam === 'string' && searchParam) {
+    q.value = searchParam
+  }
+  
+  // Handle price range from query
+  if (route.query.price_min) {
+    const min = Number(route.query.price_min)
+    if (!isNaN(min)) price_min.value = min
+  }
+  if (route.query.price_max) {
+    const max = Number(route.query.price_max)
+    if (!isNaN(max)) price_max.value = max
+  }
   
   // Fetch filter data - load in parallel for faster loading
   try { 
@@ -160,6 +170,20 @@ onMounted(async () => {
   
   // Setup infinite scroll after initial load
   setupInfiniteScroll()
+  
+  // Setup escape key handler for filter drawer
+  if (process.client) {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && filterDrawerOpen.value) {
+        filterDrawerOpen.value = false
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    
+    onBeforeUnmount(() => {
+      document.removeEventListener('keydown', handleEscape)
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -795,23 +819,28 @@ const filterDrawerOpen = ref(false)
 
 // Function to apply filters and close drawer
 const applyFilters = () => {
-  filterDrawerOpen.value = false
+  // Reset to first page and fetch with current filters
   resetAndFetch()
+  // Close drawer after applying filters
+  filterDrawerOpen.value = false
 }
 
 // Close drawer on escape key
-onMounted(() => {
+if (process.client) {
   const handleEscape = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && filterDrawerOpen.value) {
       filterDrawerOpen.value = false
     }
   }
-  document.addEventListener('keydown', handleEscape)
+  
+  onMounted(() => {
+    document.addEventListener('keydown', handleEscape)
+  })
   
   onBeforeUnmount(() => {
     document.removeEventListener('keydown', handleEscape)
   })
-})
+}
 </script>
 
 <template>
@@ -860,7 +889,7 @@ onMounted(() => {
             <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
-            {{ t('shop.search') }}
+            {{ t('search.title') }}
           </div>
           <div class="search-wrapper">
             <input 
@@ -884,10 +913,12 @@ onMounted(() => {
             {{ t('shop.sort_by') }}
           </div>
           <select v-model="sort_by" class="sort-select">
-            <option value="latest">{{ t('shop.latest') }}</option>
-            <option value="best_selling">{{ t('shop.best_selling') }}</option>
-            <option value="price_low">{{ t('shop.price_low_high') }}</option>
-            <option value="price_high">{{ t('shop.price_high_low') }}</option>
+            <option value="latest">{{ t('shop.sort_options.latest') }}</option>
+
+            <option value="price_low">{{ t('shop.sort_options.low_high') }}</option>
+            <option value="price_high">{{ t('shop.sort_options.high_low') }}</option>
+            <option value="a-z">{{ t('shop.sort_options.a_z') }}</option>
+            <option value="z-a">{{ t('shop.sort_options.z_a') }}</option>
           </select>
         </div>
 
@@ -932,12 +963,12 @@ onMounted(() => {
               v-for="c in flatCategories" 
               :key="c.id" 
               class="filter-option"
-              :class="{ selected: category.includes(c.id) }"
+              :class="{ selected: category.includes(Number(c.id)) }"
               :style="{ paddingInlineStart: (10 + c.depth*16) + 'px' }"
             >
               <input 
                 type="checkbox" 
-                :value="c.id" 
+                :value="Number(c.id)" 
                 v-model="category"
                 class="filter-checkbox"
               />
@@ -959,11 +990,11 @@ onMounted(() => {
               v-for="b in brandsList" 
               :key="b.id" 
               class="filter-option"
-              :class="{ selected: brand.includes(b.id) }"
+              :class="{ selected: brand.includes(Number(b.id)) }"
             >
               <input 
                 type="checkbox" 
-                :value="b.id" 
+                :value="Number(b.id)" 
                 v-model="brand"
                 class="filter-checkbox"
               />

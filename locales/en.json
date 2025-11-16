@@ -679,5 +679,40 @@
     "request_failed": "Failed to send OTP code",
     "verify_failed": "Failed to verify OTP code",
     "resend_failed": "Failed to resend OTP code"
+  },
+  "shop": {
+    "search_placeholder": "Search for a product",
+    "price": "Price",
+    "min_price": "Min",
+    "max_price": "Max",
+    "price_range": "Range",
+    "categories": "Categories",
+    "brands": "Brands",
+    "results": "Results",
+    "sort_by": "Sort By",
+    "sort_options": {
+      "latest": "Latest",
+      "low_high": "Price: Low to High",
+      "high_low": "Price: High to Low",
+      "a_z": "A-Z",
+      "z_a": "Z-A"
+    },
+    "search_results": {
+      "title": "Search results for",
+      "products_count": "products"
+    },
+    "loading": "Loading...",
+    "no_more_results": "No more results",
+    "filter": "Filter",
+    "apply_filters": "Apply Filters",
+    "clear_filters": "Clear Filters",
+    "close_filter": "Close Filter",
+    "loading_products": "Loading products...",
+    "search": "Search",
+    "latest": "Latest",
+    "best_selling": "Best Selling",
+    "price_low_high": "Price: Low to High",
+    "price_high_low": "Price: High to Low",
+    "no_brands": "No brands available"
   }
 }
