@@ -290,14 +290,30 @@ const tooltipInstances = ref<any[]>([])
 const initTooltip = (element: any) => {
   if (!element || !process.client || !(window as any).bootstrap) return null
   
+  // Check if element is in DOM
+  if (!document.contains(element)) {
+    return null
+  }
+  
   try {
-    // Dispose existing tooltip if any
-    const existingTooltip = (window as any).bootstrap.Tooltip.getInstance(element)
-    if (existingTooltip) {
-      existingTooltip.dispose()
+    // Dispose existing tooltip if any (safely)
+    try {
+      const existingTooltip = (window as any).bootstrap.Tooltip.getInstance(element)
+      if (existingTooltip) {
+        // Only dispose if element is still in DOM
+        if (document.contains(element)) {
+          existingTooltip.dispose()
+        }
+      }
+    } catch (e) {
+      // Ignore errors when disposing existing tooltip
     }
     
-    // Create new tooltip
+    // Create new tooltip only if element is still in DOM
+    if (!document.contains(element)) {
+      return null
+    }
+    
     const tooltip = new (window as any).bootstrap.Tooltip(element, {
       trigger: 'hover',
       placement: element.getAttribute('data-bs-placement') || 'top',
@@ -339,22 +355,58 @@ onMounted(async () => {
 
 // Cleanup tooltips on unmount
 onBeforeUnmount(() => {
-  if (process.client) {
-    tooltipInstances.value.forEach((tooltip: any) => {
-      try {
-        if (tooltip && typeof tooltip.dispose === 'function') {
-          // Check if tooltip element still exists in DOM before disposing
-          const element = tooltip._element || tooltip._config?.element
-          if (element && document.contains(element)) {
+  if (!process.client) return
+  
+  // Dispose all tooltips safely
+  tooltipInstances.value.forEach((tooltip: any) => {
+    try {
+      if (!tooltip) return
+      
+      // Get the element from tooltip instance
+      const element = tooltip._element || tooltip._config?.element || tooltip.element
+      
+      // Only dispose if element exists and is in DOM
+      if (element && typeof element.closest === 'function') {
+        // Check if element is still in DOM
+        if (document.contains(element)) {
+          // Check if dispose method exists
+          if (typeof tooltip.dispose === 'function') {
             tooltip.dispose()
           }
         }
-      } catch (error) {
-        // Silently ignore errors during cleanup (element may already be removed)
-        console.debug('[ProductCard] Tooltip cleanup error (safe to ignore):', error)
       }
-    })
-    tooltipInstances.value = []
+    } catch (error) {
+      // Silently ignore errors during cleanup (element may already be removed)
+      // This is safe - tooltip cleanup errors don't affect functionality
+    }
+  })
+  
+  // Clear the array
+  tooltipInstances.value = []
+  
+  // Also dispose any tooltips that might be attached to elements in this component
+  if (process.client && (window as any).bootstrap?.Tooltip) {
+    try {
+      const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
+      if (cardElement) {
+        const tooltipElements = cardElement.querySelectorAll('[data-bs-toggle="tooltip"]')
+        tooltipElements.forEach((el: any) => {
+          try {
+            const tooltip = (window as any).bootstrap.Tooltip.getInstance(el)
+            if (tooltip && typeof tooltip.dispose === 'function') {
+              // Check if element is still in DOM before disposing
+              if (el && typeof el.closest === 'function' && document.contains(el)) {
+                tooltip.dispose()
+              }
+            }
+          } catch (e) {
+            // Ignore errors
+          }
+        })
+      }
+    } catch (e) {
+      // Ignore errors
+    }
   }
 })
 
