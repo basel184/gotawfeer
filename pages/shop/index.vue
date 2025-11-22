@@ -359,13 +359,16 @@ onMounted(async () => {
   // Use silent error handling to prevent console spam
   Promise.all([
     cart.list().catch((e) => {
-      // Only log if it's not a timeout (timeouts are expected if API is slow)
-      if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
+      // Only log if it's not a timeout or 404 (these are expected)
+      const statusCode = e?.statusCode || e?.status || e?.response?.status
+      if (statusCode !== 404 && !e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
         console.warn('[Shop] Cart load failed:', e)
       }
     }),
     wishlist.list().catch((e) => {
-      if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
+      // Only log if it's not a timeout or 404 (these are expected)
+      const statusCode = e?.statusCode || e?.status || e?.response?.status
+      if (statusCode !== 404 && !e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
         console.warn('[Shop] Wishlist load failed:', e)
       }
     })

@@ -41,9 +41,22 @@ const list = async (force = false) => {
     lastFetch.value = now
     // console.log('Wishlist loaded:', wishlist.value.length, 'items')
   } catch (err: any) {
-    console.error('Error loading wishlist:', err)
-    error.value = err?.data?.message || 'خطأ في تحميل قائمة الرغبات'
-    wishlist.value = []
+    const statusCode = err?.statusCode || err?.status || err?.response?.status
+    
+    // Handle 404 errors silently (endpoint may not exist or user not authenticated)
+    if (statusCode === 404) {
+      wishlist.value = []
+      error.value = ''
+      // Don't log 404 errors - they're expected if endpoint doesn't exist or user is not logged in
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[Wishlist] Endpoint not found (404) - this is normal if user is not authenticated')
+      }
+    } else {
+      // Only log non-404 errors
+      console.error('Error loading wishlist:', err)
+      error.value = err?.data?.message || 'خطأ في تحميل قائمة الرغبات'
+      wishlist.value = []
+    }
   } finally {
     loading.value = false
   }
