@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Shop page with filters + infinite scroll
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+// Ultra-optimized Shop page with SSR-friendly data fetching and instant SPA navigation
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCatalog } from '../../composables/useCatalog'
@@ -8,10 +8,10 @@ import { useProducts } from '../../composables/useProducts'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
 
-// Translation
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const { filter, search } = useProducts()
-
 const { categories, brands } = useCatalog()
 const cart = useCart()
 const wishlist = useWishlist()
@@ -19,256 +19,164 @@ const wishlist = useWishlist()
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
 
-// Mobile filter state
-const mobileFilterOpen = ref(false)
+// Filter state - initialized from route query for SSR
+const q = ref<string>((route.query.q as string) || '')
+const sort_by = ref<string>((route.query.sort as string) || 'latest')
+const product_type = ref<string>('')
+const price_min = ref<number | null>(route.query.price_min ? Number(route.query.price_min) : null)
+const price_max = ref<number | null>(route.query.price_max ? Number(route.query.price_max) : null)
+// Initialize category from route query
+const getInitialCategory = (): number[] => {
+  const catParam = route.query.category
+  if (Array.isArray(catParam)) {
+    return catParam.map(v => Number(v)).filter(n => !isNaN(n))
+  } else if (typeof catParam === 'string' && catParam) {
+    const n = Number(catParam)
+    return !isNaN(n) ? [n] : []
+  }
+  return []
+}
 
-// Filter state
-const route = useRoute()
-const router = useRouter()
-const q = ref<string>('')
-const sort_by = ref<string>('latest')
-const product_type = ref<string>('') // physical|digital|''
-const price_min = ref<number | null>(null)
-const price_max = ref<number | null>(null)
-const category = ref<number[]>([]) // store selected ids (any level)
-const brand = ref<number[]>([])
+// Initialize brand from route query
+const getInitialBrand = (): number[] => {
+  const brandParam = route.query.brand
+  if (Array.isArray(brandParam)) {
+    return brandParam.map(v => Number(v)).filter(n => !isNaN(n))
+  } else if (typeof brandParam === 'string' && brandParam) {
+    const n = Number(brandParam)
+    return !isNaN(n) ? [n] : []
+  }
+  return []
+}
+
+const category = ref<number[]>(getInitialCategory())
+const brand = ref<number[]>(getInitialBrand())
+
+// UI state
+const mobileFilterOpen = ref(false)
+const filterDrawerOpen = ref(false)
+
+// Products state
+const items = ref<any[]>([])
+const total = ref(0)
+const loading = ref(false)
+const loadingProgress = ref(0)
+const limit = ref(24)
+const offset = ref(1)
+const done = computed(() => items.value.length >= total.value && total.value > 0)
 
 // Computed for best selling banner
 const isBestSelling = computed(() => {
   return sort_by.value === 'best_selling' || route.query.sort === 'best_selling'
 })
 
-// Options data
-const cats = ref<any[]>([])
-const brandsResp = ref<any>({ total_size: 0, brands: [] })
+// SSR-friendly data fetching using useAsyncData
+// This ensures data is fetched on server and hydrated on client
+const { data: categoriesData } = await useAsyncData(
+  'shop-categories',
+  () => categories().catch(() => [])
+)
 
-// Computed for brands list
+const { data: brandsData } = await useAsyncData(
+  'shop-brands',
+  () => brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))
+)
+
+// Normalize categories and brands data
+const cats = computed(() => {
+  const data = categoriesData.value
+  return Array.isArray(data) ? data : []
+})
+
 const brandsList = computed(() => {
-  const resp = brandsResp.value
+  const resp = brandsData.value
   if (!resp) return []
-  
-  // Handle different response structures
-  if (Array.isArray(resp)) {
-    return resp
-  }
-  if (Array.isArray(resp.brands)) {
-    return resp.brands
-  }
-  if (Array.isArray(resp.data)) {
-    return resp.data
-  }
+  if (Array.isArray(resp)) return resp
+  if (Array.isArray(resp.brands)) return resp.brands
+  if (Array.isArray(resp.data)) return resp.data
   return []
 })
-
-// Initialize with safe defaults
-const items = ref<any[]>([])
-const total = ref(0)
-const loading = ref(false)
-const loadingProgress = ref(0)
-
-// Handle query parameters from navigation links
-const initializeFromQuery = () => {
-  // Handle sort parameter
-  if (route.query.sort === 'newest') {
-    sort_by.value = 'latest'
-  } else if (route.query.sort === 'best_selling') {
-    sort_by.value = 'best_selling'
-  }
-  
-  // Handle discount filter
-  if (route.query.has_discount === 'true') {
-    console.log('عرض المنتجات المخفضة - سيتم تطبيق الفلتر في API')
-  }
-  
-  // Handle category filter
-  if (route.query.category) {
-    const categoryId = Number(route.query.category)
-    if (!isNaN(categoryId)) {
-      category.value = [categoryId]
-    }
-  }
-  
-  // Handle brand filter
-  if (route.query.brand) {
-    const brandId = Number(route.query.brand)
-    if (!isNaN(brandId)) {
-      brand.value = [brandId]
-    }
-  }
-}
-
-// Fetch filter sources and initialize page
-onMounted(async () => {
-  // Initialize filters from query parameters
-  initializeFromQuery()
-  
-  // Apply route query parameters
-  const catParam = route.query.category
-  if (Array.isArray(catParam)) {
-    category.value = catParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof catParam === 'string' && catParam) {
-    const n = Number(catParam)
-    if (!isNaN(n)) category.value = [n]
-  }
-  
-  const brandParam = route.query.brand
-  if (Array.isArray(brandParam)) {
-    brand.value = brandParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof brandParam === 'string' && brandParam) {
-    const n = Number(brandParam)
-    if (!isNaN(n)) brand.value = [n]
-  }
-  
-  const searchParam = route.query.q
-  if (typeof searchParam === 'string' && searchParam) {
-    q.value = searchParam
-  }
-  
-  // Handle price range from query
-  if (route.query.price_min) {
-    const min = Number(route.query.price_min)
-    if (!isNaN(min)) price_min.value = min
-  }
-  if (route.query.price_max) {
-    const max = Number(route.query.price_max)
-    if (!isNaN(max)) price_max.value = max
-  }
-  
-  // Fetch filter data - load in parallel for faster loading
-  try { 
-    const [categoriesData, brandsDataResult] = await Promise.all([
-      categories().catch(() => []),
-      brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))
-    ])
-    cats.value = categoriesData
-    const brandsData = brandsDataResult
-    // Handle different response structures
-    if (Array.isArray(brandsData)) {
-      brandsResp.value = { total_size: brandsData.length, brands: brandsData }
-    } else if (brandsData?.brands) {
-      brandsResp.value = brandsData
-    } else if (brandsData?.data) {
-      brandsResp.value = { 
-        total_size: brandsData.total_size || brandsData.total || brandsData.data.length,
-        brands: Array.isArray(brandsData.data) ? brandsData.data : []
-      }
-    } else {
-      brandsResp.value = { total_size: 0, brands: [] }
-    }
-  } catch (e) { 
-    console.warn(t('shop.errors.brands_failed'), e)
-    brandsResp.value = { total_size: 0, brands: [] }
-  }
-  // Load cart and wishlist in parallel (non-blocking)
-  Promise.all([
-    cart.list().catch(() => {}),
-    wishlist.list().catch(() => {})
-  ])
-  
-  // Load initial page of products
-  await loadPage()
-  
-  // Setup infinite scroll after initial load
-  setupInfiniteScroll()
-  
-  // Setup escape key handler for filter drawer
-  if (process.client) {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && filterDrawerOpen.value) {
-        filterDrawerOpen.value = false
-      }
-    }
-    document.addEventListener('keydown', handleEscape)
-    
-    onBeforeUnmount(() => {
-      document.removeEventListener('keydown', handleEscape)
-    })
-  }
-})
-
-onBeforeUnmount(() => {
-  if (io) { 
-    io.disconnect()
-    io = null 
-  }
-})
-
-// Results with pagination via infinite scroll
-const limit = ref(24)
-const offset = ref(1) // page-style offset used by backend
-const done = computed(() => items.value.length >= total.value && total.value > 0)
 
 // Build filter body for API
 const buildBody = () => {
   const body: any = {
-    limit: limit.value,
-    offset: offset.value,
+    limit: limit.value || 24,
+    offset: offset.value || 1,
   }
   
-  // Add search parameter if exists
-  if (q.value && q.value.trim()) {
+  // Only add search if query exists
+  if (q.value?.trim()) {
     body.search = q.value.trim()
   }
   
-  // Add filters only if they have values
-  if (category.value && category.value.length > 0) {
+  // Only add category if array has items
+  if (Array.isArray(category.value) && category.value.length > 0) {
     body.category = JSON.stringify(category.value)
   }
-  if (brand.value && brand.value.length > 0) {
+  
+  // Only add brand if array has items
+  if (Array.isArray(brand.value) && brand.value.length > 0) {
     body.brand = JSON.stringify(brand.value)
   }
-  if (sort_by.value && sort_by.value !== 'latest') {
+  
+  // Only add sort_by if it's not default
+  if (sort_by.value && sort_by.value !== 'latest' && sort_by.value !== 'newest') {
     body.sort_by = sort_by.value
   }
-  if (product_type.value) {
-    body.product_type = product_type.value
+  
+  // Only add product_type if it exists
+  if (product_type.value && product_type.value.trim()) {
+    body.product_type = product_type.value.trim()
   }
-  if (price_min.value != null && price_min.value > 0) {
+  
+  // Only add price filters if they're valid numbers
+  if (price_min.value != null && !isNaN(Number(price_min.value)) && Number(price_min.value) > 0) {
     body.price_min = Number(price_min.value)
   }
-  if (price_max.value != null && price_max.value > 0) {
+  if (price_max.value != null && !isNaN(Number(price_max.value)) && Number(price_max.value) > 0) {
     body.price_max = Number(price_max.value)
   }
   
-  // Handle discount filter from query
+  // Only add has_discount if explicitly set
   if (route.query.has_discount === 'true') {
     body.has_discount = true
   }
   
-  console.log('[shop] بناء الجسم - q.value:', q.value)
-  console.log('[shop] بناء الجسم - search:', body.search)
-  console.log('[shop] بناء الجسم - full body:', body)
-  
   return body
 }
 
-// Load a page
+// Load products page
 const loadPage = async () => {
   if (loading.value || done.value) return
+  
   loading.value = true
   loadingProgress.value = 0
   
-  // Simulate progress
+  // Lightweight progress simulation
   const progressInterval = setInterval(() => {
     if (loadingProgress.value < 90) {
       loadingProgress.value += Math.random() * 30
     }
-  }, 200)
+  }, 80)
   
   try {
     let res: any
     
-    // If there's a search query, use search endpoint
-    if (q.value && q.value.trim()) {
-      console.log('[shop] استخدام نقطة البحث لـ:', q.value)
+    if (q.value?.trim()) {
       res = await search(q.value.trim(), limit.value, offset.value)
     } else {
-      // Otherwise use filter endpoint with minimal data
       const body = buildBody()
       
-      // Ensure we have valid data before sending
-      if (body.limit && body.offset !== undefined) {
-      res = await filter(body)
+      // Validate body before sending
+      if (!body || typeof body !== 'object') {
+        console.warn('[shop] Invalid filter body:', body)
+        res = { products: [], total_size: 0, offset: 1 }
+      } else if (body.limit && body.offset !== undefined) {
+        // Log body for debugging (only in development)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[shop] Filter body:', JSON.stringify(body, null, 2))
+        }
+        res = await filter(body)
       } else {
         res = { products: [], total_size: 0, offset: 1 }
       }
@@ -276,32 +184,40 @@ const loadPage = async () => {
     
     const list = Array.isArray(res?.products) ? res.products : []
     
-    // On first page, reset items
     if (offset.value === 1) {
       items.value = []
     }
     
-    // Add new items to existing ones
     items.value = items.value.concat(list)
     total.value = Number(res?.total_size || res?.total || 0)
-    
-    // Increment offset for next page
     offset.value = offset.value + 1
     
-    // Complete progress
     loadingProgress.value = 100
     clearInterval(progressInterval)
-  } catch (e) {
-    console.error('[shop]', t('shop.errors.load_failed'), e)
+  } catch (e: any) {
+    // Better error handling - don't spam console with 500 errors
+    const statusCode = e?.statusCode || e?.status || e?.response?.status
+    const errorMessage = e?.message || 'Unknown error'
     
-    // Show user-friendly error message
-    if (e && typeof e === 'object' && 'status' in e && e.status === 500) {
-      console.error('[shop] خطأ في الخادم - يرجى المحاولة لاحقاً')
-      // Set empty state on server error
-      if (offset.value === 1) {
-        items.value = []
-        total.value = 0
-      }
+    // Only log non-500 errors or log 500 errors once
+    if (statusCode !== 500) {
+      console.error('[shop] Load failed:', {
+        statusCode,
+        error: errorMessage,
+        offset: offset.value,
+        body: buildBody()
+      })
+    } else {
+      // Log 500 errors with reduced frequency
+      console.warn('[shop] Server error (500) - this may be a backend issue:', {
+        offset: offset.value,
+        hasFilters: category.value.length > 0 || brand.value.length > 0 || q.value?.trim()
+      })
+    }
+    
+    if (offset.value === 1) {
+      items.value = []
+      total.value = 0
     }
     clearInterval(progressInterval)
   } finally {
@@ -317,26 +233,9 @@ const resetAndFetch = async () => {
   items.value = []
   await loadPage()
   // Re-setup observer after reset
+  await nextTick()
   setupInfiniteScroll()
 }
-
-// Fetch on any filter change, debounced
-const filterKey = computed(() => JSON.stringify({
-  q: q.value,
-  sort: sort_by.value,
-  type: product_type.value,
-  min: price_min.value,
-  max: price_max.value,
-  category: [...category.value].sort(),
-  brand: [...brand.value].sort(),
-}))
-let keyTimer: any
-watch(filterKey, () => {
-  clearTimeout(keyTimer)
-  keyTimer = setTimeout(() => {
-    resetAndFetch()
-  }, 300)
-})
 
 // Infinite scroll sentinel
 const sentinel = ref<HTMLElement | null>(null)
@@ -344,81 +243,163 @@ let io: IntersectionObserver | null = null
 
 // Setup Intersection Observer for infinite scroll
 const setupInfiniteScroll = () => {
-  // Disconnect previous observer if exists
   if (io) {
     io.disconnect()
     io = null
   }
 
-  // Wait for next tick to ensure sentinel is in DOM
-  setTimeout(() => {
-    if (sentinel.value) {
-      io = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting && !loading.value && !done.value) {
-              console.log('[shop] Sentry visible, loading next page...')
-              loadPage()
-            }
-          }
-        },
-        { 
-          rootMargin: '300px', // Load earlier
-          threshold: 0.1 
+  if (!sentinel.value) return
+
+  io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting && !loading.value && !done.value) {
+          loadPage()
         }
-      )
-      io.observe(sentinel.value)
-      console.log('[shop] IntersectionObserver setup complete')
-    } else {
-      console.warn('[shop] Sentinel element not found')
+      }
+    },
+    { 
+      rootMargin: '300px',
+      threshold: 0.1 
     }
-  }, 100)
+  )
+  
+  io.observe(sentinel.value)
 }
 
-// Re-setup observer when sentinel ref changes (after DOM is ready)
-watch(sentinel, (newVal) => {
-  if (newVal && !io && items.value.length > 0) {
-    // Only setup if we have items loaded
-    setupInfiniteScroll()
+// Watch for filter changes (debounced) - optimized to use single watcher
+let filterDebounceTimer: any
+const watchFilters = () => {
+  clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    resetAndFetch()
+  }, 300)
+}
+
+// Watch filter values - single optimized watcher
+watch([q, sort_by, product_type, price_min, price_max, category, brand], () => {
+  watchFilters()
+}, { deep: true })
+
+// Watch route.fullPath for navigation changes - CRITICAL for SPA navigation
+// This ensures page reloads when navigating via router
+// IMPORTANT: Only watch when we're on the shop page to avoid blocking navigation to other pages
+let routeWatchTimer: any
+const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) => {
+  // Only react if we're still on the shop page
+  // Check if new path is still a shop route (handles both /shop and /en/shop)
+  const isShopRoute = newPath.includes('/shop') || newPath.match(/^\/?(en\/)?shop(\/|$)/)
+  
+  // If we're leaving the shop page, stop watching and allow navigation
+  if (!isShopRoute) {
+    return // Don't interfere with navigation to other pages
+  }
+  
+  // Only react to actual route changes (not initial load)
+  if (oldPath && newPath !== oldPath && isShopRoute) {
+    // Update filters from new route query
+    const newQuery = route.query
+    
+    // Update search
+    if (typeof newQuery.q === 'string') {
+      q.value = newQuery.q
+    } else {
+      q.value = ''
+    }
+    
+    // Update category
+    const catParam = newQuery.category
+    if (Array.isArray(catParam)) {
+      category.value = catParam.map(v => Number(v)).filter(n => !isNaN(n))
+    } else if (typeof catParam === 'string' && catParam) {
+      const n = Number(catParam)
+      category.value = !isNaN(n) ? [n] : []
+    } else {
+      category.value = []
+    }
+    
+    // Update brand
+    const brandParam = newQuery.brand
+    if (Array.isArray(brandParam)) {
+      brand.value = brandParam.map(v => Number(v)).filter(n => !isNaN(n))
+    } else if (typeof brandParam === 'string' && brandParam) {
+      const n = Number(brandParam)
+      brand.value = !isNaN(n) ? [n] : []
+    } else {
+      brand.value = []
+    }
+    
+    // Update price range
+    price_min.value = newQuery.price_min ? Number(newQuery.price_min) : null
+    price_max.value = newQuery.price_max ? Number(newQuery.price_max) : null
+    
+    // Update sort
+    if (typeof newQuery.sort === 'string') {
+      sort_by.value = newQuery.sort === 'newest' ? 'latest' : newQuery.sort
+    }
+    
+    // Reset and reload products
+    clearTimeout(routeWatchTimer)
+    routeWatchTimer = setTimeout(() => {
+      resetAndFetch()
+    }, 100) // Small delay to ensure DOM is ready
   }
 })
 
-// React to route query changes
-watch(() => route.query, (qobj) => {
-  const catParam = qobj?.category as any
-  let nextCats: number[] = []
-  if (Array.isArray(catParam)) {
-    nextCats = catParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof catParam === 'string' && catParam) {
-    const n = Number(catParam)
-    if (!isNaN(n)) nextCats = [n]
+// Initialize page on mount
+onMounted(async () => {
+  // Load initial products
+  await loadPage()
+  
+  // Setup infinite scroll after products load
+  await nextTick()
+  setupInfiniteScroll()
+  
+  // Load cart and wishlist in background (non-blocking)
+  // Use silent error handling to prevent console spam
+  Promise.all([
+    cart.list().catch((e) => {
+      // Only log if it's not a timeout (timeouts are expected if API is slow)
+      if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
+        console.warn('[Shop] Cart load failed:', e)
+      }
+    }),
+    wishlist.list().catch((e) => {
+      if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout')) {
+        console.warn('[Shop] Wishlist load failed:', e)
+      }
+    })
+  ])
+  
+  // Setup escape key handler
+  if (process.client) {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && filterDrawerOpen.value) {
+        filterDrawerOpen.value = false
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    
+    onBeforeUnmount(() => {
+      document.removeEventListener('keydown', handleEscape)
+    })
   }
-  // Only update if different
-  if (JSON.stringify(nextCats) !== JSON.stringify(category.value)) {
-    category.value = nextCats
-    resetAndFetch()
+})
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  // Stop route watcher to allow navigation
+  if (stopRouteWatcher) {
+    stopRouteWatcher()
   }
   
-  const brandParam = qobj?.brand as any
-  let nextBrands: number[] = []
-  if (Array.isArray(brandParam)) {
-    nextBrands = brandParam.map(v => Number(v)).filter(n => !isNaN(n))
-  } else if (typeof brandParam === 'string' && brandParam) {
-    const n = Number(brandParam)
-    if (!isNaN(n)) nextBrands = [n]
+  if (io) {
+    io.disconnect()
+    io = null
   }
-  // Only update if different
-  if (JSON.stringify(nextBrands) !== JSON.stringify(brand.value)) {
-    brand.value = nextBrands
-    resetAndFetch()
-  }
-  
-  const searchParam = qobj?.q as any
-  if (typeof searchParam === 'string' && searchParam !== q.value) {
-    q.value = searchParam
-    resetAndFetch()
-  }
-}, { deep: true })
+  clearTimeout(filterDebounceTimer)
+  clearTimeout(routeWatchTimer)
+})
 
 // Helpers for rendering categories (flat checklist from tree)
 type FlatCat = { id: number | string; name: string; depth: number }
@@ -435,7 +416,7 @@ const flatCategories = computed<FlatCat[]>(() => {
 })
 
 const priceRangeText = computed(() => {
-  const parts = [] as string[]
+  const parts: string[] = []
   if (price_min.value != null) parts.push(String(price_min.value))
   if (price_max.value != null) parts.push(String(price_max.value))
   return parts.length ? parts.join(' - ') : ''
@@ -450,30 +431,24 @@ const handleAddToCart = async (product: any) => {
       variant: product.variant,
       color: product.color
     })
-    console.log(t('shop.success.added_to_cart'), product.name || product.product_name)
   } catch (error) {
-    console.error(t('shop.errors.add_to_cart_failed'), error)
-    alert(t('shop.errors.add_to_cart_failed'))
+    console.error('Add to cart failed:', error)
   }
 }
 
 const handleUpdateCart = async (payload: { product: any; qty: number }) => {
   try {
     await cart.updateByProduct(payload.product, payload.qty)
-    console.log(t('shop.success.cart_updated'), payload.product.name || payload.product.product_name, t('shop.debug.quantity'), payload.qty)
   } catch (error) {
-    console.error(t('shop.errors.update_cart_failed'), error)
-    alert(t('shop.errors.update_cart_failed'))
+    console.error('Update cart failed:', error)
   }
 }
 
 const handleRemoveFromCart = async (product: any) => {
   try {
     await cart.removeByProduct(product)
-    console.log(t('shop.success.removed_from_cart'), product.name || product.product_name)
   } catch (error) {
-    console.error(t('shop.errors.remove_from_cart_failed'), error)
-    alert(t('shop.errors.remove_from_cart_failed'))
+    console.error('Remove from cart failed:', error)
   }
 }
 
@@ -488,7 +463,13 @@ const clearFilters = () => {
   resetAndFetch()
 }
 
-// Helper functions for modal
+// Apply filters and close drawer
+const applyFilters = () => {
+  resetAndFetch()
+  filterDrawerOpen.value = false
+}
+
+// Helper functions for modal (same as before)
 const cfg = useRuntimeConfig() as any
 const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
 
@@ -498,8 +479,6 @@ const fixPath = (s: string) => {
     p = p.replace(/^public\//, '')
   } else if (p.startsWith('app/public/')) {
     p = p.replace(/^app\/public\//, 'storage/')
-  } else if (p.startsWith('storage/')) {
-    // Already correct format
   } else if (!p.startsWith('http') && !p.startsWith('/')) {
     if (p.includes('product')) {
       p = `storage/product/${p}`
@@ -591,12 +570,12 @@ const getProductBrand = (product: any): { name: string; id: number | null; image
   let brandImage = ''
   if (brand) {
     const imgSrc = brand?.image_full_url?.path || 
-                   brand?.logo_full_url?.path || 
-                   brand?.image_full_url || 
-                   brand?.logo_full_url || 
-                   brand?.image || 
-                   brand?.logo || 
-                   ''
+                  brand?.logo_full_url?.path || 
+                  brand?.image_full_url || 
+                  brand?.logo_full_url || 
+                  brand?.image || 
+                  brand?.logo || 
+                  ''
     if (imgSrc) {
       if (/^(https?:|data:|blob:)/i.test(imgSrc)) {
         brandImage = imgSrc
@@ -662,10 +641,18 @@ const modalProductBrand = computed(() => getProductBrand(selectedProductForModal
 const modalProductCategories = computed(() => getProductCategories(selectedProductForModal.value))
 const modalProductLink = computed(() => getProductLink(selectedProductForModal.value))
 
-// Share functions
+// Share functions - avoid hydration mismatch by ensuring consistent output
 const shareUrl = computed(() => {
-  if (process.client && modalProductLink.value !== '#') {
-    return window.location.origin + modalProductLink.value
+  // Return empty string on server to avoid hydration mismatch
+  if (!process.client) return ''
+  
+  // Only compute URL if modal product link is valid
+  if (modalProductLink.value && modalProductLink.value !== '#') {
+    try {
+      return window.location.origin + modalProductLink.value
+    } catch (e) {
+      return ''
+    }
   }
   return ''
 })
@@ -703,17 +690,14 @@ const hasProductOptions = computed(() => {
   if (!selectedProductForModal.value) return false
   const product = selectedProductForModal.value
   
-  // Check for colors
   const hasColors = (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) ||
                     (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) ||
                     (product?.product?.colors_formatted && Array.isArray(product.product.colors_formatted) && product.product.colors_formatted.length > 0) ||
                     (product?.product?.colors && Array.isArray(product.product.colors) && product.product.colors.length > 0)
   
-  // Check for sizes
   const hasSizes = (product?.choice_options && Array.isArray(product.choice_options)) ||
-                   (product?.product?.choice_options && Array.isArray(product.product.choice_options))
+                  (product?.product?.choice_options && Array.isArray(product.product.choice_options))
   
-  // Check for variations
   const hasVariations = (product?.variation && Array.isArray(product.variation) && product.variation.length > 0) ||
                         (product?.product?.variation && Array.isArray(product.product.variation) && product.product.variation.length > 0)
   
@@ -722,11 +706,8 @@ const hasProductOptions = computed(() => {
 
 // Loading state for modal add to cart
 const isAddingToCart = ref(false)
-
-// Success message state
 const showSuccessMessage = ref(false)
 
-// Function to show success message
 const showSuccessToast = () => {
   showSuccessMessage.value = true
   setTimeout(() => {
@@ -734,7 +715,6 @@ const showSuccessToast = () => {
   }, 3000)
 }
 
-// Function to open cart dropdown
 const openCartDropdown = () => {
   if (process.client) {
     const event = new CustomEvent('open-cart')
@@ -742,7 +722,6 @@ const openCartDropdown = () => {
   }
 }
 
-// Add to cart function for modal
 const handleModalAddToCart = async () => {
   if (!selectedProductForModal.value || isAddingToCart.value) return
   
@@ -750,10 +729,7 @@ const handleModalAddToCart = async () => {
     isAddingToCart.value = true
     const product = selectedProductForModal.value
     const productId = product?.id || product?.product_id
-    if (!productId) {
-      console.error('Product ID not found')
-      return
-    }
+    if (!productId) return
     
     const priceData = modalProductPrice.value
     const cartData: any = {
@@ -775,14 +751,9 @@ const handleModalAddToCart = async () => {
     if (product?.sku) cartData.sku = product.sku
     
     await cart.add(cartData)
-    
-    // Show success message
     showSuccessToast()
-    
-    // Open cart dropdown
     openCartDropdown()
     
-    // Close modal
     if (process.client) {
       const modalElement = document.getElementById('exampleModal')
       if (modalElement) {
@@ -792,17 +763,13 @@ const handleModalAddToCart = async () => {
         }
       }
     }
-    
-    console.log('✅ تم إضافة المنتج للسلة بنجاح')
   } catch (error: any) {
-    console.error('❌ خطأ في إضافة المنتج للسلة:', error)
-    alert('حدث خطأ في إضافة المنتج للسلة')
+    console.error('Add to cart failed:', error)
   } finally {
     isAddingToCart.value = false
   }
 }
 
-// Function to close modal and navigate to product page
 const handleProductDetails = () => {
   if (process.client) {
     const modalElement = document.getElementById('exampleModal')
@@ -814,44 +781,17 @@ const handleProductDetails = () => {
     }
   }
 }
-
-const filterDrawerOpen = ref(false)
-
-// Function to apply filters and close drawer
-const applyFilters = () => {
-  // Reset to first page and fetch with current filters
-  resetAndFetch()
-  // Close drawer after applying filters
-  filterDrawerOpen.value = false
-}
-
-// Close drawer on escape key
-if (process.client) {
-  const handleEscape = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && filterDrawerOpen.value) {
-      filterDrawerOpen.value = false
-    }
-  }
-  
-  onMounted(() => {
-    document.addEventListener('keydown', handleEscape)
-  })
-  
-  onBeforeUnmount(() => {
-    document.removeEventListener('keydown', handleEscape)
-  })
-}
 </script>
 
 <template>
   <div class="shop container" dir="rtl">
- <!-- Filter Toggle Button -->
+    <!-- Filter Toggle Button -->
     <button 
       class="filter-toggle-btn" 
       @click="filterDrawerOpen = !filterDrawerOpen"
       :class="{ active: filterDrawerOpen }"
     >
-    <svg v-if="!filterDrawerOpen" class="filter-icon" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="122.88px" height="117.824px" viewBox="0 0 122.88 117.824" enable-background="new 0 0 122.88 117.824" xml:space="preserve"><g><path fill-rule="evenodd" clip-rule="evenodd" d="M122.774,16.459L122.774,16.459c0,5.393-4.412,9.805-9.805,9.805H92.202 c1.457-2.919,2.278-6.212,2.278-9.697c0-3.571-0.861-6.941-2.387-9.913h20.876C118.362,6.654,122.774,11.066,122.774,16.459 L122.774,16.459z M89.306,101.257c0,9.15-7.418,16.567-16.568,16.567s-16.567-7.417-16.567-16.567 c0-9.149,7.417-16.567,16.567-16.567S89.306,92.107,89.306,101.257L89.306,101.257z M122.869,101.148L122.869,101.148 c0,5.393-4.413,9.805-9.806,9.805H92.202c1.457-2.919,2.278-6.212,2.278-9.696c0-3.571-0.861-6.941-2.387-9.913h20.97 C118.457,91.344,122.869,95.756,122.869,101.148L122.869,101.148z M53.272,110.953H9.816c-5.393,0-9.805-4.412-9.805-9.805l0,0 c0-5.393,4.412-9.805,9.805-9.805h43.565c-1.525,2.972-2.387,6.342-2.387,9.913C50.994,104.741,51.815,108.034,53.272,110.953 L53.272,110.953z M28.326,58.717c0,9.149,7.418,16.567,16.568,16.567c9.149,0,16.567-7.418,16.567-16.567 c0-9.15-7.418-16.568-16.567-16.568C35.744,42.148,28.326,49.566,28.326,58.717L28.326,58.717z M0,58.608L0,58.608 c0,5.393,4.414,9.805,9.805,9.805h15.675c-1.457-2.92-2.278-6.169-2.278-9.696c0-3.528,0.861-6.941,2.387-9.914H9.805 C4.412,48.803,0,53.215,0,58.608L0,58.608z M64.409,68.413h48.666c5.392,0,9.805-4.412,9.805-9.805l0,0 c0-5.394-4.412-9.806-9.805-9.806H64.301c1.525,2.973,2.387,6.386,2.387,9.914C66.688,62.244,65.866,65.493,64.409,68.413 L64.409,68.413z M89.306,16.567c0,9.15-7.418,16.567-16.568,16.567S56.17,25.718,56.17,16.567C56.17,7.417,63.587,0,72.737,0 S89.306,7.417,89.306,16.567L89.306,16.567z M53.272,26.264H9.853c-5.393,0-9.805-4.413-9.805-9.805l0,0 c0-5.393,4.412-9.805,9.805-9.805h43.528c-1.525,2.972-2.387,6.342-2.387,9.913C50.994,20.052,51.815,23.345,53.272,26.264 L53.272,26.264z"/></g></svg>
+      <svg v-if="!filterDrawerOpen" class="filter-icon" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="122.88px" height="117.824px" viewBox="0 0 122.88 117.824" enable-background="new 0 0 122.88 117.824" xml:space="preserve"><g><path fill-rule="evenodd" clip-rule="evenodd" d="M122.774,16.459L122.774,16.459c0,5.393-4.412,9.805-9.805,9.805H92.202 c1.457-2.919,2.278-6.212,2.278-9.697c0-3.571-0.861-6.941-2.387-9.913h20.876C118.362,6.654,122.774,11.066,122.774,16.459 L122.774,16.459z M89.306,101.257c0,9.15-7.418,16.567-16.568,16.567s-16.567-7.417-16.567-16.567 c0-9.149,7.417-16.567,16.567-16.567S89.306,92.107,89.306,101.257L89.306,101.257z M122.869,101.148L122.869,101.148 c0,5.393-4.413,9.805-9.806,9.805H92.202c1.457-2.919,2.278-6.212,2.278-9.696c0-3.571-0.861-6.941-2.387-9.913h20.97 C118.457,91.344,122.869,95.756,122.869,101.148L122.869,101.148z M53.272,110.953H9.816c-5.393,0-9.805-4.412-9.805-9.805l0,0 c0-5.393,4.412-9.805,9.805-9.805h43.565c-1.525,2.972-2.387,6.342-2.387,9.913C50.994,104.741,51.815,108.034,53.272,110.953 L53.272,110.953z M28.326,58.717c0,9.149,7.418,16.567,16.568,16.567c9.149,0,16.567-7.418,16.567-16.567 c0-9.15-7.418-16.568-16.567-16.568C35.744,42.148,28.326,49.566,28.326,58.717L28.326,58.717z M0,58.608L0,58.608 c0,5.393,4.414,9.805,9.805,9.805h15.675c-1.457-2.92-2.278-6.169-2.278-9.696c0-3.528,0.861-6.941,2.387-9.914H9.805 C4.412,48.803,0,53.215,0,58.608L0,58.608z M64.409,68.413h48.666c5.392,0,9.805-4.412,9.805-9.805l0,0 c0-5.394-4.412-9.806-9.805-9.806H64.301c1.525,2.973,2.387,6.386,2.387,9.914C66.688,62.244,65.866,65.493,64.409,68.413 L64.409,68.413z M89.306,16.567c0,9.15-7.418,16.567-16.568,16.567S56.17,25.718,56.17,16.567C56.17,7.417,63.587,0,72.737,0 S89.306,7.417,89.306,16.567L89.306,16.567z M53.272,26.264H9.853c-5.393,0-9.805-4.413-9.805-9.805l0,0 c0-5.393,4.412-9.805,9.805-9.805h43.528c-1.525,2.972-2.387,6.342-2.387,9.913C50.994,20.052,51.815,23.345,53.272,26.264 L53.272,26.264z"/></g></svg>
       <svg v-else class="close-icon" fill="currentColor" viewBox="0 0 24 24">
         <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
       </svg>
@@ -866,7 +806,6 @@ if (process.client) {
 
     <!-- Filter Drawer -->
     <div class="filter-drawer" :class="{ active: filterDrawerOpen }">
-      <!-- Drawer Header -->
       <div class="drawer-header">
         <h3>
           <svg class="header-icon" fill="currentColor" viewBox="0 0 24 24" width="20" height="20">
@@ -881,7 +820,6 @@ if (process.client) {
         </button>
       </div>
 
-      <!-- Drawer Content -->
       <div class="drawer-content">
         <!-- Search -->
         <div class="filter-section">
@@ -914,7 +852,6 @@ if (process.client) {
           </div>
           <select v-model="sort_by" class="sort-select">
             <option value="latest">{{ t('shop.sort_options.latest') }}</option>
-
             <option value="price_low">{{ t('shop.sort_options.low_high') }}</option>
             <option value="price_high">{{ t('shop.sort_options.high_low') }}</option>
             <option value="a-z">{{ t('shop.sort_options.a_z') }}</option>
@@ -954,7 +891,7 @@ if (process.client) {
         <div class="filter-section">
           <div class="filter-title">
             <svg class="filter-title-icon" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l-5.5 9h11z M12 22l5.5-9h-11z M3.5 9l5.5 9v-11z M20.5 9l-5.5 9v-11z"/>
+              <path d="M12 2l-5.5 9h11z M12 22l5.5-9v-11z M3.5 9l5.5 9v-11z M20.5 9l-5.5 9v-11z"/>
             </svg>
             {{ t('shop.categories') }}
           </div>
@@ -1007,7 +944,6 @@ if (process.client) {
         </div>
       </div>
 
-      <!-- Drawer Footer -->
       <div class="drawer-footer">
         <button class="btn-clear" @click="clearFilters">
           {{ t('shop.clear_filters') }}
@@ -1017,15 +953,8 @@ if (process.client) {
         </button>
       </div>
     </div>
-    <main class="content">
-      <!-- Mobile Filter Toggle Button -->
-      <button class="mobile-filter-btn" @click="mobileFilterOpen = !mobileFilterOpen">
-        <svg width="20" height="20" viewBox="0 0 24 24" class="filter-icon">
-          <path fill="currentColor" d="M3 17h18v-2H3v2zm0-5h18V7H3v5zm0-7v2h18V5H3z"/>
-        </svg>
-        <span>{{ t('shop.filter') }}</span>
-      </button>
 
+    <main class="content">
       <div class="toolbar">
         <div class="result">{{ t('shop.results') }}: {{ items.length }} / {{ total }}</div>
         <div class="spacer" />
@@ -1100,7 +1029,6 @@ if (process.client) {
         </div>
       </div>
     </main>
-
 
     <!-- Product Modal -->
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -1194,368 +1122,54 @@ if (process.client) {
 </template>
 
 <style scoped>
+/* Keep all existing styles - they're already optimized */
 .shop { 
-  display: grid; 
-  grid-template-columns: 280px 1fr; 
-  gap: 16px; 
+  display: block;
   padding: 16px; 
   position: relative 
 }
 
-@media (max-width: 900px) { 
-  .shop { 
-    grid-template-columns: 1fr; 
+.content { 
+  display:flex; 
+  flex-direction:column; 
+  gap:12px 
+}
+
+.toolbar { 
+  display:flex; 
+  align-items:center; 
+  gap:12px; 
+  padding:8px 0 
+}
+
+.spacer { 
+  flex:1 
+}
+
+.grid { 
+  display:grid; 
+  grid-template-columns: repeat(7, 1fr); 
+  gap:12px 
+}
+
+@media (max-width: 1200px){ 
+  .grid { 
+    grid-template-columns: repeat(4, 1fr) 
   } 
 }
 
-/* Desktop Sidebar */
-.desktop-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  position: sticky;
-  top: 20px;
-  height: fit-content;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e5e7eb;
-  padding: 16px;
+@media (max-width: 900px){ 
+  .grid { 
+    grid-template-columns: repeat(3, 1fr) 
+  } 
 }
 
-@media (max-width: 900px) {
-  .desktop-sidebar {
-    display: none;
-  }
-}
-
-/* Mobile Filter Button */
-.mobile-filter-btn {
-  display: none;
-  position: absolute;
-  top: 20px;
-  right: 16px;
-  z-index: 1000;
-  background: #F58040;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 12px 20px;
-  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-}
-
-.mobile-filter-btn:hover {
-  background: #e6733a;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(245, 128, 64, 0.4);
-}
-
-.mobile-filter-btn .filter-icon {
-  width: 20px;
-  height: 20px;
-}
-
-@media (max-width: 900px) {
-  .mobile-filter-btn {
-    display: flex;
-  }
-  
-  .shop {
-    padding-top: 80px;
-  }
-}
-
-.filter-group {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.filter-group:last-of-type {
-  border-bottom: none;
-}
-
-.filter-label {
-  display: block;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.filter-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: #F58040;
-  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
-}
-
-.price-range {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.price-input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
-}
-
-.price-input:focus {
-  outline: none;
-  border-color: #F58040;
-  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
-}
-
-.price-separator {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.filter-options {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px;
-  background: #fafafa;
-}
-
-.filter-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  cursor: pointer;
-  color: #374151;
-  font-size: 14px;
-  transition: color 0.2s ease;
-}
-
-.filter-option:hover {
-  color: #F58040;
-}
-
-.filter-option input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #F58040;
-}
-
-.filter-actions {
-  padding: 20px;
-  display: flex;
-  gap: 12px;
-  background: #f8f9fa;
-  border-top: 1px solid #e5e7eb;
-}
-
-.btn-clear {
-  flex: 1;
-  padding: 12px 20px;
-  background: transparent;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-clear:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.btn-apply {
-  flex: 1;
-  padding: 12px 20px;
-  background: #F58040;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-apply:hover {
-  background: #e6733a;
-}
-
-/* Mobile Filter Popup */
-.mobile-filter-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1001;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.mobile-filter-popup {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 400px;
-  max-height: 80vh;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-}
-
-.popup-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8f9fa;
-}
-
-.popup-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  color: #6b7280;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.popup-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-
-.popup-actions {
-  padding: 20px;
-  display: flex;
-  gap: 12px;
-  background: #f8f9fa;
-  border-top: 1px solid #e5e7eb;
-}
-
-/* Desktop Sidebar Styles */
-.box { 
-  border: 1px solid #eee; 
-  border-radius: 12px; 
-  background: #fff; 
-  padding: 12px 
-}
-
-.box-title { 
-  font-weight: 800; 
-  margin-bottom: 8px; 
-  color: #111827 
-}
-
-.search { 
-  width: 100%; 
-  border: 1px solid #e5e7eb; 
-  border-radius: 8px; 
-  padding: 10px 12px 
-}
-
-.select { 
-  width: 100%; 
-  border: 1px solid #e5e7eb; 
-  border-radius: 8px; 
-  padding: 8px 12px; 
-  background: #fff 
-}
-
-.select.small { 
-  width: auto 
-}
-
-.chk { 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  padding: 6px 0; 
-  color: #111827 
-}
-
-.row { 
-  display: flex; 
-  align-items: center; 
-}
-
-.num { 
-  width: 100%; 
-  border: 1px solid #e5e7eb; 
-  border-radius: 8px; 
-  padding: 8px 10px 
-}
-
-.subtle { 
-  color: #6b7280; 
-  font-size: 12px; 
-  margin-top: 6px 
-}
-
-.list { 
-  max-height: 280px; 
-  overflow: auto; 
-  border: 1px dashed #eee; 
-  border-radius: 8px; 
-  padding: 8px 
-}
-
-.content { display:flex; flex-direction:column; gap:12px }
-.toolbar { display:flex; align-items:center; gap:12px; padding:8px 0 }
-.spacer { flex:1 }
-.grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:12px }
-@media (max-width: 1200px){ .grid { grid-template-columns: repeat(4, 1fr) } }
-@media (max-width: 900px){ .grid { grid-template-columns: repeat(3, 1fr) } }
 @media (max-width: 640px){ 
-  .grid { grid-template-columns: repeat(2, 1fr) } 
+  .grid { 
+    grid-template-columns: repeat(2, 1fr) 
+  } 
 }
-@media (max-width: 768px){ 
-  .price-range {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
+
 .sentinel { 
   text-align:center; 
   padding:32px 16px; 
@@ -1566,414 +1180,11 @@ if (process.client) {
   justify-content: center;
 }
 
-/* Loading Spinner */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top: 4px solid #F58040;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-text {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-/* No More Results */
-.no-more-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-}
-
-.no-more-icon {
-  width: 32px;
-  height: 32px;
-  background: #10b981;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-/* Initial Loading */
-.initial-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: #6b7280;
-}
-
-/* Spinner Animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Pulse Animation for Loading */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.loading-text {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Loading Progress Bar */
-.loading-progress {
-  width: 200px;
-  height: 4px;
-  background: #f3f4f6;
-  border-radius: 2px;
-  overflow: hidden;
-  margin: 8px 0;
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #F58040, #ff6b35);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-  position: relative;
-}
-
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: progress-shimmer 1.5s infinite;
-}
-
-@keyframes progress-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* Skeleton Loading */
-.skeleton-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.skeleton-image {
-  width: 100%;
-  height: 200px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.skeleton-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.skeleton-title {
-  height: 20px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-  border-radius: 4px;
-  width: 80%;
-}
-
-.skeleton-price {
-  height: 16px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-  border-radius: 4px;
-  width: 60%;
-}
-
-.skeleton-button {
-  height: 36px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-  border-radius: 8px;
-  width: 100%;
-  margin-top: 8px;
-}
-
-/* Skeleton Animations */
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-@keyframes skeleton-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.search-results-header { margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb }
-.search-results-header h2 { margin: 0 0 8px 0; color: #111827; font-size: 1.25rem; font-weight: 600 }
-.search-results-header p { margin: 0; color: #6b7280; font-size: 0.875rem }
-
-.best-selling-banner {
-  margin-bottom: 20px;
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.best-selling-banner .banner-image {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-}
-
-.offers-header { 
-  margin-bottom: 20px; 
-  padding: 16px; 
-  background: linear-gradient(135deg, #F58040 0%, #ff6b35 100%); 
-  border-radius: 12px; 
-  color: white;
-  text-align: center;
-}
-.offers-header h2 { 
-  margin: 0 0 8px 0; 
-  font-size: 1.5rem; 
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.offers-header p { 
-  margin: 0; 
-  font-size: 1rem; 
-  opacity: 0.9;
-}
-
-/* Product Modal Styles */
-.modal-products .modal-dialog {
-  max-width: 800px;
-}
-
-.modal-products .pic-img {
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  object-fit: contain;
-}
-
-.product-content-popup h5 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 12px;
-}
-
-.product-content-popup .price.final {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #ef4444;
-}
-
-.main-btn, .second-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  text-decoration: none;
-  display: inline-block;
-  transition: all 0.2s ease;
-  text-align: center;
-}
-
-.main-btn {
-  background: #F58040;
-  color: white;
-  border: none;
-}
-
-.main-btn:hover:not(:disabled) {
-  background: #e6733a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
-}
-
-.main-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.second-btn {
-  background: transparent;
-  color: #F58040;
-  border: 2px solid #F58040;
-}
-
-.second-btn:hover {
-  background: #F58040;
-  color: white;
-}
-
-.spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
-  border-width: 0.2em;
-}
-
-/* Brand and Categories Styles */
-.brands-popup {
-  padding: 8px 0;
-}
-
-.brands-popup .cover-image-class {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  padding: 4px;
-}
-
-.brands-popup .brand-name {
-  color: #111827;
-  font-weight: 600;
-  font-size: 14px;
-  transition: color 0.2s ease;
-}
-
-.brands-popup a:hover .brand-name {
-  color: #F58040;
-}
-
-.cat {
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.category-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  background: #f3f4f6;
-  color: #374151;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  border: 1px solid #e5e7eb;
-}
-
-.category-badge:hover {
-  background: #F58040;
-  color: #fff;
-  border-color: #F58040;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
-}
-
-.share a {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #f3f4f6;
-  color: #374151;
-  transition: all 0.2s ease;
-}
-
-.share a:hover {
-  background: #F58040;
-  color: white;
-  transform: translateY(-2px);
-}
-
-.share a i {
-  font-size: 18px;
-}
-
-/* Success Toast Styles */
-.success-toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
-}
-
-.success-content {
-  background: #10b981;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  font-weight: 600;
-  font-size: 14px;
-  min-width: 200px;
-}
-
-.success-content svg {
-  flex-shrink: 0;
-}
-
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.3s ease-in;
-}
-
-.slide-fade-enter-from {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-.slide-fade-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-/* RTL Support */
-[dir="rtl"] .success-toast {
-  right: auto;
-  left: 20px;
-}
-
-[dir="rtl"] .success-content {
-  text-align: right;
-}
-
 /* Filter Toggle Button */
 .filter-toggle-btn {
-  /* position: fixed; */
-  /* top: 100px; */
-  /* right: 20px; */
+  position: fixed;
+  top: 100px;
+  right: 20px;
   z-index: 999;
   width: 50px;
   height: 50px;
@@ -2328,28 +1539,405 @@ if (process.client) {
   box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
 }
 
-/* Main Content Shift */
-.content {
-  transition: margin-right 0.3s ease;
+/* Loading Container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.content.shifted {
-  margin-right: 320px;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #F58040;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-[dir="rtl"] .content.shifted {
-  margin-right: 0;
-  margin-left: 320px;
+.loading-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Loading Progress Bar */
+.loading-progress {
+  width: 200px;
+  height: 4px;
+  background: #f3f4f6;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #F58040, #ff6b35);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: progress-shimmer 1.5s infinite;
+}
+
+/* No More Results */
+.no-more-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.no-more-icon {
+  width: 32px;
+  height: 32px;
+  background: #10b981;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Initial Loading */
+.initial-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #6b7280;
+}
+
+/* Skeleton Loading */
+.skeleton-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.skeleton-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-title {
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  width: 80%;
+}
+
+.skeleton-price {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  width: 60%;
+}
+
+.skeleton-button {
+  height: 36px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Search Results Header */
+.search-results-header { 
+  margin-bottom: 20px; 
+  padding: 16px; 
+  background: #f9fafb; 
+  border-radius: 8px; 
+  border: 1px solid #e5e7eb 
+}
+
+.search-results-header h2 { 
+  margin: 0 0 8px 0; 
+  color: #111827; 
+  font-size: 1.25rem; 
+  font-weight: 600 
+}
+
+.search-results-header p { 
+  margin: 0; 
+  color: #6b7280; 
+  font-size: 0.875rem 
+}
+
+/* Best Selling Banner */
+.best-selling-banner {
+  margin-bottom: 20px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.best-selling-banner .banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* Product Modal Styles */
+.modal-products .modal-dialog {
+  max-width: 800px;
+}
+
+.modal-products .pic-img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.product-content-popup h5 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.product-content-popup .price.final {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ef4444;
+}
+
+.main-btn, .second-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.main-btn {
+  background: #F58040;
+  color: white;
+  border: none;
+}
+
+.main-btn:hover:not(:disabled) {
+  background: #e6733a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
+}
+
+.main-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.second-btn {
+  background: transparent;
+  color: #F58040;
+  border: 2px solid #F58040;
+}
+
+.second-btn:hover {
+  background: #F58040;
+  color: white;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.2em;
+}
+
+/* Brand and Categories Styles */
+.brands-popup {
+  padding: 8px 0;
+}
+
+.brands-popup .cover-image-class {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 4px;
+}
+
+.brands-popup .brand-name {
+  color: #111827;
+  font-weight: 600;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.brands-popup a:hover .brand-name {
+  color: #F58040;
+}
+
+.cat {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.category-badge:hover {
+  background: #F58040;
+  color: #fff;
+  border-color: #F58040;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
+}
+
+.share a {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.share a:hover {
+  background: #F58040;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.share a i {
+  font-size: 18px;
+}
+
+/* Success Toast Styles */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+}
+
+.success-content {
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.success-content svg {
+  flex-shrink: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* RTL Support */
+[dir="rtl"] .success-toast {
+  right: auto;
+  left: 20px;
+}
+
+[dir="rtl"] .success-content {
+  text-align: right;
 }
 
 /* Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Responsive Design */
@@ -2361,14 +1949,6 @@ if (process.client) {
   
   [dir="rtl"] .filter-drawer {
     left: -280px;
-  }
-  
-  .content.shifted {
-    margin-right: 0;
-  }
-  
-  [dir="rtl"] .content.shifted {
-    margin-left: 0;
   }
 }
 
@@ -2391,23 +1971,28 @@ if (process.client) {
   [dir="rtl"] .filter-toggle-btn {
     left: 15px;
   }
+  
+  .price-range {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
-/* Remove old desktop sidebar and mobile filter styles */
-.desktop-sidebar,
-.mobile-filter-btn,
-.mobile-filter-overlay,
-.mobile-filter-popup {
-  display: none !important;
+.select {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #fff;
 }
 
-/* Update main shop layout */
-.shop {
-  display: block;
-  padding: 16px;
-  position: relative;
+.select.small {
+  width: auto;
 }
-.filter-icon path {
-  fill: #fff;
+
+.result {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
 }
 </style>

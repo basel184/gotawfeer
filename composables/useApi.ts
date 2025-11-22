@@ -77,28 +77,55 @@ export function useApi() {
     const url = buildUrl(path)
     const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$get]', url, headers, { guestId: guestId?.value, guestCookie: guestCookie?.value })
-    return await $fetch(url, { credentials: 'include', headers, ...opts })
+    // Add timeout to prevent hanging requests
+    return await $fetch(url, { 
+      credentials: 'include', 
+      headers, 
+      timeout: opts.timeout || 10000, // 10 seconds default timeout
+      ...opts 
+    })
   }
 
   const $post = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
     const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$post]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
-    return await $fetch(url, { method: 'POST', body, credentials: 'include', headers, ...opts })
+    return await $fetch(url, { 
+      method: 'POST', 
+      body, 
+      credentials: 'include', 
+      headers, 
+      timeout: opts.timeout || 10000, // 10 seconds default timeout
+      ...opts 
+    })
   }
 
   const $put = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
     const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$put]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
-    return await $fetch(url, { method: 'PUT', body, credentials: 'include', headers, ...opts })
+    return await $fetch(url, { 
+      method: 'PUT', 
+      body, 
+      credentials: 'include', 
+      headers, 
+      timeout: opts.timeout || 10000,
+      ...opts 
+    })
   }
 
   const $del = async (path: string, body?: any, opts: any = {}) => {
     const url = buildUrl(path)
     const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
     console.log('[API:$del]', url, body, { guestId: guestId?.value, guestCookie: guestCookie?.value })
-    return await $fetch(url, { method: 'DELETE', body, credentials: 'include', headers, ...opts })
+    return await $fetch(url, { 
+      method: 'DELETE', 
+      body, 
+      credentials: 'include', 
+      headers, 
+      timeout: opts.timeout || 10000,
+      ...opts 
+    })
   }
 
   return { $get, $post, $put, $del }

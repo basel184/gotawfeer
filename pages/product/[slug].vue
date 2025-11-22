@@ -47,7 +47,38 @@ const reviewsError = ref('')
 const totalReviewsCount = ref(0)
 const averageRating = ref(0)
 
-const slug = computed(() => String(route.params.slug || ''))
+// Decode slug from route params (Nuxt automatically decodes, but ensure it's a string)
+const slug = computed(() => {
+  const param = route.params.slug
+  if (!param) {
+    console.warn('[Product] No slug in route params')
+    return ''
+  }
+  
+  // Nuxt automatically decodes route params, but ensure it's a string
+  let decoded = typeof param === 'string' ? param : String(param)
+  
+  // Double-decode if needed (in case of double encoding)
+  try {
+    if (decoded.includes('%')) {
+      decoded = decodeURIComponent(decoded)
+    }
+  } catch (e) {
+    // If decode fails, use original
+    console.warn('[Product] Failed to decode slug:', decoded, e)
+  }
+  
+  // Log for debugging
+  if (process.client) {
+    console.log('[Product] Slug from route:', {
+      original: param,
+      decoded: decoded,
+      type: typeof param
+    })
+  }
+  
+  return decoded
+})
 const loading = ref(true)
 const loadingProgress = ref(0)
 const error = ref<string>('')
@@ -1365,7 +1396,10 @@ const load = async () => {
   }, 200)
   
   try {
+    // Log slug for debugging
+    console.log('[Product] Loading product with slug:', slug.value)
     const res = await getDetails(slug.value)
+    console.log('[Product] Product loaded successfully:', res?.name || res?.product?.name)
     product.value = res
     loadingProgress.value = 50
     
@@ -1385,7 +1419,28 @@ const load = async () => {
     loadingProgress.value = 100
     clearInterval(progressInterval)
   } catch (e: any) {
-    error.value = e?.data?.message || 'تعذر تحميل تفاصيل المنتج'
+    // Better error handling - check if it's a 404 or network error
+    const statusCode = e?.statusCode || e?.status || e?.response?.status
+    const errorMessage = e?.data?.message || e?.message || 'تعذر تحميل تفاصيل المنتج'
+    
+    console.error('[Product] Error loading product:', {
+      slug: slug.value,
+      statusCode,
+      error: errorMessage,
+      fullError: e
+    })
+    
+    if (statusCode === 404) {
+      error.value = `المنتج غير موجود: ${slug.value}`
+      // Don't throw 404 error - let the error state display
+    } else if (statusCode === 500) {
+      error.value = 'خطأ في الخادم. يرجى المحاولة لاحقاً'
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+      error.value = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى'
+    } else {
+      error.value = errorMessage
+    }
+    
     clearInterval(progressInterval)
   } finally {
     loading.value = false
@@ -1409,17 +1464,14 @@ const load = async () => {
 }
 
 onMounted(async () => {
-  // Load wishlist and cart first
-  try {
-    await Promise.all([
-      wishlist.list(),
-      cart.list()
-    ])
-  } catch (error) {
-    console.error('Failed to load wishlist or cart:', error)
-  }
-  
+  // Load product first (non-blocking)
   load()
+  
+  // Load wishlist and cart in parallel (non-blocking)
+  Promise.all([
+    wishlist.list().catch(() => {}),
+    cart.list().catch(() => {})
+  ])
   // Check wishlist status after product loads
   watch(product, () => {
     if (product.value) {
@@ -1714,7 +1766,18 @@ const handleProductDetails = () => {
       </div>
     </div>
     
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <!-- Error State with 404 handling -->
+    <div v-else-if="error" class="error-container">
+      <div class="error-content">
+        <div class="error-code">404</div>
+        <h1 class="error-title">المنتج غير موجود</h1>
+        <p class="error-message">{{ error }}</p>
+        <div class="error-actions">
+          <NuxtLink to="/shop" class="btn-primary">العودة للمتجر</NuxtLink>
+          <NuxtLink to="/" class="btn-secondary">الصفحة الرئيسية</NuxtLink>
+        </div>
+      </div>
+    </div>
     <div v-else class="product">
       <!-- Gallery -->
       <div class="gallery">
@@ -1740,6 +1803,7 @@ const handleProductDetails = () => {
           :space-between="10"
           :navigation="images.length > 1"
           :modules="modules"
+          :loop="false"
           @swiper="setMainSwiper"
           class="mySwiper2"
         >
@@ -2043,6 +2107,7 @@ const handleProductDetails = () => {
         <Swiper
           :modules="[Navigation]"
           :navigation="true"
+          :loop="false"
           :breakpoints="{
             0: { slidesPerView: 2.2, spaceBetween: 10 },
             480: { slidesPerView: 4, spaceBetween: 12 },
@@ -4321,5 +4386,84 @@ const handleProductDetails = () => {
 
   .share a i {
     font-size: 18px;
+  }
+
+  /* Error/404 Page Styles */
+  .error-container {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .error-content {
+    text-align: center;
+    max-width: 600px;
+    padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  .error-code {
+    font-size: 120px;
+    font-weight: 900;
+    color: #F58040;
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+
+  .error-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 16px;
+  }
+
+  .error-message {
+    font-size: 18px;
+    color: #6b7280;
+    margin-bottom: 32px;
+  }
+
+  .error-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background: #F58040;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #e6733a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: #F58040;
+    border: 2px solid #F58040;
+  }
+
+  .btn-secondary:hover {
+    background: #F58040;
+    color: white;
   }
 </style>

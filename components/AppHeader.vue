@@ -414,12 +414,30 @@ const handleImageError = (e: Event) => {
   }
 }
 
-const getLocalizedPath = (path: string) => {
-  if (i18nLocale.value === 'en') {
-    return path.startsWith('/en') ? path : '/en' + path
-  } else {
-    return path.startsWith('/en') ? path.substring(3) : path
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = i18nLocale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
   }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
 }
 
 // Check if nav link is active
@@ -430,15 +448,11 @@ const isNavLinkActive = (path: string, exact = false) => {
   return route.path.startsWith(path)
 }
 
-// Handle navigation click with loading
+// Handle navigation click with loading (non-blocking)
 const handleNavClick = (pageName: string) => {
-  // Start global loading
-  const progressInterval = startGlobalLoading(`جاري تحميل ${pageName}...`)
-  
-  // Complete loading after a short delay
-  setTimeout(() => {
-    completeGlobalLoading(progressInterval)
-  }, 800)
+  // Don't block navigation - let Nuxt router handle it naturally
+  // Only show minimal loading indicator if needed
+  // Navigation will be handled by NuxtLink automatically
 }
 
 // Handle product click with loading
@@ -476,11 +490,12 @@ const completeGlobalLoading = (progressInterval?: any) => {
     clearInterval(progressInterval)
   }
   loadingProgress.value = 100
+  // Faster completion to allow page rendering
   setTimeout(() => {
     globalLoading.value = false
     loadingProgress.value = 0
     loadingMessage.value = ''
-  }, 500)
+  }, 150)
 }
 
 // Taqnyat OTP state
@@ -677,7 +692,8 @@ function goSearch(term?: string) {
   const [best] = getCorrections(query, 1)
   const finalQ = (products.value.length === 0 && best && best !== query) ? best : query
   
-  router.push({ path: '/shop', query: { q: finalQ } })
+  // Use navigateTo for proper SPA navigation
+  navigateTo(`/shop?q=${encodeURIComponent(finalQ)}`)
   
   // Complete loading after navigation
   setTimeout(() => {
@@ -693,7 +709,8 @@ function goCategory(cat: Cat) {
     
     // Use getLocalizedPath to maintain locale prefix
     const localizedPath = getLocalizedPath('/shop')
-    router.push({ path: localizedPath, query: { category: String(cat.id) } })
+    // Use navigateTo for proper SPA navigation
+    navigateTo(`${localizedPath}?category=${String(cat.id)}`)
     
     // Complete loading after navigation
     setTimeout(() => {
@@ -743,8 +760,8 @@ function changeLocale(loc: 'ar' | 'en') {
     }
   }
   
-  // Navigate to the new path
-  router.push(currentPath)
+  // Navigate to the new path using navigateTo for proper SPA navigation
+  navigateTo(currentPath)
   
   // Complete loading after navigation
   setTimeout(() => {

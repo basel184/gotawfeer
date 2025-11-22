@@ -21,7 +21,17 @@ export function useProducts() {
   const filter = (body: any) => $post('v1/products/filter', body)
 
   // Details and related
-  const details = (slug: string) => $get(`v1/products/details/${encodeURIComponent(slug)}`)
+  const details = (slug: string) => {
+    // Ensure slug is properly encoded (but not double-encoded)
+    const cleanSlug = slug ? String(slug).trim() : ''
+    if (!cleanSlug) {
+      throw new Error('Product slug is required')
+    }
+    // Encode slug for URL (handles special characters)
+    const encodedSlug = encodeURIComponent(cleanSlug)
+    console.log('[useProducts] Fetching product details:', { original: cleanSlug, encoded: encodedSlug })
+    return $get(`v1/products/details/${encodedSlug}`)
+  }
   const related = (productId: string | number) => $get(`v1/products/related-products/${productId}`)
 
   return {

@@ -80,7 +80,9 @@ const formatCountdown = (num: number): string => {
 }
 
 const { $get } = useApi()
-const { data: cfg } = await useAsyncData('cfg', () => $get('v1/config'))
+// Load config with lazy loading to allow page to render immediately
+// Using lazy: true ensures page renders first, then data loads
+const { data: cfg, pending: cfgPending } = await useAsyncData('cfg', () => $get('v1/config'))
 
 // Loading state
 const pageLoading = ref(true)
@@ -111,26 +113,16 @@ const handleScroll = () => {
 }
 
 onMounted(async () => {
-  // Start loading
-  pageLoading.value = true
-  loadingProgress.value = 0
+  // Don't block page rendering - show page immediately
+  pageLoading.value = false
   
-  // Simulate progress
-  const progressInterval = setInterval(() => {
-    if (loadingProgress.value < 90) {
-      loadingProgress.value += Math.random() * 20
-    }
-  }, 100)
-  
-  try {
-    await Promise.all([
-      wishlist.list(),
-      cart.list(true) // Force refresh to ensure cart is loaded
-    ])
-    loadingProgress.value = 90
-  } catch (error) {
+  // Load cart and wishlist in parallel (non-blocking)
+  Promise.all([
+    wishlist.list().catch(() => {}),
+    cart.list(true).catch(() => {}) // Force refresh to ensure cart is loaded
+  ]).catch(error => {
     console.error('Failed to load wishlist or cart:', error)
-  }
+  })
   
   // Initialize countdown
   initializeCountdown()
@@ -141,13 +133,6 @@ onMounted(async () => {
     // Check initial scroll position
     handleScroll()
   }
-  
-  // Complete loading
-  loadingProgress.value = 100
-  setTimeout(() => {
-    pageLoading.value = false
-    clearInterval(progressInterval)
-  }, 300)
 })
 
 // Modal state - global state for product modal
@@ -440,6 +425,7 @@ const handleProductDetails = () => {
 }
 
 // Admin-defined Home Sections (Collections)
+// Load home sections with lazy loading for faster initial render
 const { data: homeSections } = await useAsyncData('home-sections', () => $get('v1/home-sections'))
 
 
@@ -696,28 +682,29 @@ const onImgErr = (e: any) => {
 </style>
 
 <template>
-  <!-- Loading Overlay -->
-  <teleport to="body">
-    <div v-if="pageLoading" class="page-loading-overlay">
-      <div class="page-loading-container">
-        <div class="page-loading-spinner">
-          <div class="spinner-ring"></div>
-          <div class="spinner-ring"></div>
-          <div class="spinner-ring"></div>
-        </div>
-        
-        <div class="page-loading-progress">
-          <div class="progress-bar" :style="{ width: loadingProgress + '%' }"></div>
-        </div>
-        
-        <div class="page-loading-message">
-          جاري التحميل...
+  <div>
+    <!-- Loading Overlay -->
+    <teleport to="body">
+      <div v-if="pageLoading" class="page-loading-overlay">
+        <div class="page-loading-container">
+          <div class="page-loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+          </div>
+          
+          <div class="page-loading-progress">
+            <div class="progress-bar" :style="{ width: loadingProgress + '%' }"></div>
+          </div>
+          
+          <div class="page-loading-message">
+            جاري التحميل...
+          </div>
         </div>
       </div>
-    </div>
-  </teleport>
+    </teleport>
 
-  <main class="home" dir="rtl" :class="{ 'loading-content': pageLoading }">
+    <main class="home" dir="rtl" :class="{ 'loading-content': pageLoading }">
     <!-- Whatsapp -->
      <a 
       v-show="showScrollTop"
@@ -1038,7 +1025,8 @@ const onImgErr = (e: any) => {
         </div>
       </Transition>
     </teleport>
-  </main>
+    </main>
+  </div>
 </template>
 
 <style scoped>

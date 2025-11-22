@@ -41,19 +41,18 @@ const onErr = (e: any) => {
 
 <template>
   <div class="row" :style="{ gridTemplateColumns: gridCols }" dir="rtl">
-    <a v-for="(b,i) in banners" :key="b?.id || i" 
-       v-if="b?.url && b?.url !== '#'" 
-       :href="b.url" 
-       target="_blank" 
-       class="banner-link">
-      <img :src="toSrc(b?.photo_full_url || b?.image_full_url || b?.image || b?.photo)" class="banner" @error="onErr" />
-    </a>
-    <img v-for="(b,i) in banners" 
-         v-else
-         :key="b?.id || i" 
-         :src="toSrc(b?.photo_full_url || b?.image_full_url || b?.image || b?.photo)" 
-         class="banner" 
-         @error="onErr" />
+    <template v-for="(banner, i) in banners" :key="banner?.id || i">
+      <a v-if="banner?.url && banner?.url !== '#'" 
+         :href="banner.url" 
+         target="_blank" 
+         class="banner-link">
+        <img :src="toSrc(banner?.photo_full_url || banner?.image_full_url || banner?.image || banner?.photo)" class="banner" @error="onErr" />
+      </a>
+      <img v-else
+           :src="toSrc(banner?.photo_full_url || banner?.image_full_url || banner?.image || banner?.photo)" 
+           class="banner" 
+           @error="onErr" />
+    </template>
   </div>
 </template>
 

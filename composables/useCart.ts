@@ -55,8 +55,21 @@ export function useCart() {
       return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to load cart'
-      console.error('[Cart:list] Error loading cart:', e)
-      throw e
+      // Don't log timeout errors as errors - they're expected if API is slow
+      if (e?.message?.includes('timeout') || e?.message?.includes('Timeout') || e?.name === 'TimeoutError') {
+        console.warn('[Cart:list] Request timed out, using cached data if available')
+        // Return cached items if available instead of throwing
+        if (items.value.length > 0) {
+          return items.value
+        }
+      } else {
+        console.error('[Cart:list] Error loading cart:', e)
+      }
+      // Don't throw timeout errors - just return empty array
+      if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout') && e?.name !== 'TimeoutError') {
+        throw e
+      }
+      return items.value
     } finally {
       loading.value = false
     }

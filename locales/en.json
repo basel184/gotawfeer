@@ -51,6 +51,8 @@
         "offers": "Offers",
   "browse_subcategories": "Browse Subcategories",
   "no_subcategories": "No subcategories available",
+  "subcategory": "Subcategory",
+  "subcategories": "Subcategories",
   "all_categories": "All Categories",
         "contact": "Contact Us",
         "my_account": "My Account",
@@ -714,5 +716,5 @@
     "price_low_high": "Price: Low to High",
     "price_high_low": "Price: High to Low",
     "no_brands": "No brands available"
-  }
+       }
 }

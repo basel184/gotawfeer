@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { useCatalog } from '../../composables/useCatalog'
 
 const { t } = useI18n()
-const { $get } = useApi()
+const { categories: getCategories } = useCatalog()
 const router = useRouter()
 
-// Loading state
-const loading = ref(true)
+// Loading state - use pending from useAsyncData
 const loadingProgress = ref(0)
 
 // Get category image with proper fallback
@@ -32,6 +32,7 @@ const getCategoryImage = (category: any) => {
 
 // Preload images for better performance
 const preloadImages = (categories: any[]) => {
+  if (!process.client) return
   categories.forEach(category => {
     const imageUrl = getCategoryImage(category)
     if (imageUrl && imageUrl !== '/images/category-placeholder.jpg') {
@@ -41,18 +42,25 @@ const preloadImages = (categories: any[]) => {
   })
 }
 
-// Load categories with faster loading
-const { data } = await useAsyncData('categories-list', async () => {
-  loading.value = true
-  loadingProgress.value = 0
-  
+// Load categories using useAsyncData with proper state management
+const { data, pending, error } = await useAsyncData('categories-list', async () => {
   try {
-    const result = await $get('v1/categories')
-    loadingProgress.value = 100
-    
-    // Preload images for better performance - only first 12 for faster initial load
-    const categories = result?.data || result || []
-    if (Array.isArray(categories)) {
+    const result = await getCategories()
+    return result
+  } catch (error) {
+    console.error('[Categories] Failed to load categories:', error)
+    return null
+  }
+})
+
+// Use pending from useAsyncData as loading state
+const loading = computed(() => pending.value)
+
+// Watch for data changes to preload images
+watch(() => data.value, (newData) => {
+  if (newData && process.client) {
+    const categories = Array.isArray(newData?.data) ? newData.data : (Array.isArray(newData) ? newData : [])
+    if (categories.length > 0) {
       // Preload only visible categories first
       const visibleCategories = categories.slice(0, 12)
       setTimeout(() => preloadImages(visibleCategories), 0)
@@ -61,54 +69,23 @@ const { data } = await useAsyncData('categories-list', async () => {
         setTimeout(() => preloadImages(categories.slice(12)), 500)
       }
     }
-    
-    // Complete loading immediately
-    loading.value = false
-    loadingProgress.value = 0
-    
-    return result
-  } catch (error) {
-    loading.value = false
-    loadingProgress.value = 0
-    throw error
   }
-})
+}, { immediate: true })
 
 const items = computed(() => {
   const raw = data.value
   if (!raw) return []
   if (Array.isArray(raw?.data)) return raw.data
   if (Array.isArray(raw)) return raw
+  if (Array.isArray(raw?.categories)) return raw.categories
   return []
 })
 
 // Navigate to shop with category filter
 const goToCategory = (category: any) => {
-  // Start loading
-  loading.value = true
-  loadingProgress.value = 0
-  
-  // Simulate progress
-  const progressInterval = setInterval(() => {
-    if (loadingProgress.value < 90) {
-      loadingProgress.value += Math.random() * 30
-    }
-  }, 100)
-  
-  router.push({ 
-    path: '/shop', 
-    query: { category: String(category.id) } 
-  })
-  
-  // Complete loading
-  setTimeout(() => {
-    loadingProgress.value = 100
-    clearInterval(progressInterval)
-    setTimeout(() => {
-      loading.value = false
-      loadingProgress.value = 0
-    }, 300)
-  }, 600)
+  // Use navigateTo for SPA navigation
+  const categoryId = String(category.id || category.category_id || '')
+  navigateTo(`/shop?category=${categoryId}`)
 }
 
 // Handle image error

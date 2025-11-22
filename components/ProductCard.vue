@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useBrands } from '../composables/useBrands'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 import { useCompare } from '../composables/useCompare'
+
+const { locale } = useI18n()
 
 
 const props = defineProps<{ product: any; qty?: number; busy?: boolean }>()
@@ -113,10 +116,42 @@ const normalize = (s: any): string => {
   return result
 }
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 const link = computed(() => {
   const p: any = props.product || {}
   const slug = p?.slug || p?.product?.slug
-  return slug ? `/product/${encodeURIComponent(String(slug))}` : ''
+  if (!slug) return ''
+  
+  // Create base path with encoded slug
+  const basePath = `/product/${encodeURIComponent(String(slug))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(basePath)
 })
 const imgSrc = computed(() => {
   const p: any = props.product || {}
@@ -306,8 +341,17 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (process.client) {
     tooltipInstances.value.forEach((tooltip: any) => {
-      if (tooltip && typeof tooltip.dispose === 'function') {
-        tooltip.dispose()
+      try {
+        if (tooltip && typeof tooltip.dispose === 'function') {
+          // Check if tooltip element still exists in DOM before disposing
+          const element = tooltip._element || tooltip._config?.element
+          if (element && document.contains(element)) {
+            tooltip.dispose()
+          }
+        }
+      } catch (error) {
+        // Silently ignore errors during cleanup (element may already be removed)
+        console.debug('[ProductCard] Tooltip cleanup error (safe to ignore):', error)
       }
     })
     tooltipInstances.value = []
