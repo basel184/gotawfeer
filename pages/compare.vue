@@ -44,7 +44,7 @@
                       <img 
                         :src="item.image" 
                         :alt="item.name" 
-                        style="width: 100%; height: 100%; object-fit: cover;"
+                        style="width: 100%; height: 100%; object-fit: contain;"
                       />
                     </div>
                     <h5 class="product-name">{{ item.name }}</h5>
@@ -55,16 +55,92 @@
                       </div>
                       <small class="text-muted">({{ item.reviews_count }})</small>
                     </div>
-                    <div class="product-actions mt-3">
-                      <NuxtLink :to="`/product/${item.slug}`" class="btn btn-sm btn-outline-primary">
-                        {{ t('compare.view_details') || 'عرض التفاصيل' }}
-                      </NuxtLink>
-                    </div>
+ 
                   </div>
                 </th>
               </tr>
             </thead>
-
+            <tbody>
+              <!-- Brand Row -->
+              <tr v-if="hasBrand">
+                <td class="feature-name">{{ t('compare.brand') || 'البراند' }}</td>
+                <td v-for="item in compare.items.value" :key="`brand-${item.id}`" class="product-data">
+                  <span v-if="item.brand" class="brand-name">{{ item.brand }}</span>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Category Row -->
+              <tr v-if="hasCategory">
+                <td class="feature-name">{{ t('compare.category') || 'التصنيف' }}</td>
+                <td v-for="item in compare.items.value" :key="`category-${item.id}`" class="product-data">
+                  <span v-if="item.category" class="category-name">{{ item.category }}</span>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Meta Description Row -->
+              <tr v-if="hasMetaDescription">
+                <td class="feature-name">{{ t('compare.meta_description') || 'الوصف التعريفي' }}</td>
+                <td v-for="item in compare.items.value" :key="`meta-${item.id}`" class="product-data">
+                  <p class="description" v-if="item.meta_description">{{ item.meta_description }}</p>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Colors Row -->
+              <tr v-if="hasColors">
+                <td class="feature-name">{{ t('compare.colors') || 'الألوان المتاحة' }}</td>
+                <td v-for="item in compare.items.value" :key="`colors-${item.id}`" class="product-data">
+                  <div v-if="item.colors && item.colors.length > 0" class="colors-display">
+                    <div 
+                      v-for="(color, index) in item.colors" 
+                      :key="`color-${item.id}-${index}`"
+                      class="color-circle"
+                      :style="{ backgroundColor:'#' + color.hex || '#' + color.code || '#ccc' }"
+                      :title="color.name || color.code"
+                    ></div>
+                  </div>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Variation Row -->
+              <tr v-if="hasVariation">
+                <td class="feature-name">{{ t('compare.variation') || 'المتغيرات' }}</td>
+                <td v-for="item in compare.items.value" :key="`variation-${item.id}`" class="product-data">
+                  <div v-if="item.variation" class="variation-display">
+                    <div v-if="typeof item.variation === 'object'">
+                      <div v-for="(value, key) in item.variation" :key="key" class="variation-item">
+                        <strong>{{ key }}:</strong> {{ value.type }}
+                      </div>
+                    </div>
+                    <span v-else>{{ item.variation }}</span>
+                  </div>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Description Row -->
+              <tr v-if="hasDescription">
+                <td class="feature-name">{{ t('compare.description') || 'الوصف' }}</td>
+                <td v-for="item in compare.items.value" :key="`desc-${item.id}`" class="product-data">
+                  <p class="description" v-if="item.description">{{ item.description }}</p>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+              
+              <!-- Features Row -->
+              <tr v-if="hasFeatures">
+                <td class="feature-name">{{ t('compare.features') || 'المميزات' }}</td>
+                <td v-for="item in compare.items.value" :key="`features-${item.id}`" class="product-data">
+                  <ul v-if="item.features && item.features.length > 0" class="features-list">
+                    <li v-for="(feature, index) in item.features" :key="index">{{ feature }}</li>
+                  </ul>
+                  <span v-else class="text-muted">-</span>
+                </td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </section>
@@ -88,6 +164,36 @@ onMounted(() => {
 // Check if any product has features
 const hasFeatures = computed(() => {
   return compare.items.value.some((item: any) => item.features && item.features.length > 0)
+})
+
+// Check if any product has meta_description
+const hasMetaDescription = computed(() => {
+  return compare.items.value.some((item: any) => item.meta_description && item.meta_description.trim().length > 0)
+})
+
+// Check if any product has colors
+const hasColors = computed(() => {
+  return compare.items.value.some((item: any) => item.colors && Array.isArray(item.colors) && item.colors.length > 0)
+})
+
+// Check if any product has variation
+const hasVariation = computed(() => {
+  return compare.items.value.some((item: any) => item.variation !== null && item.variation !== undefined)
+})
+
+// Check if any product has description
+const hasDescription = computed(() => {
+  return compare.items.value.some((item: any) => item.description && item.description.trim().length > 0)
+})
+
+// Check if any product has brand
+const hasBrand = computed(() => {
+  return compare.items.value.some((item: any) => item.brand && item.brand.trim().length > 0)
+})
+
+// Check if any product has category
+const hasCategory = computed(() => {
+  return compare.items.value.some((item: any) => item.category && item.category.trim().length > 0)
 })
 
 // Currency helper
@@ -136,7 +242,7 @@ const clearOldData = () => {
 useHead({
   title: t('compare.title') || 'مقارنة المنتجات',
   meta: [
-    { name: 'description', content: t('compare.meta_description') || 'قارن بين المنتجات المختلفة واختر الأفضل' }
+    { name: 'description', content: t('compare.meta_description')  }
   ]
 })
 </script>
@@ -286,6 +392,53 @@ useHead({
   margin: 0;
   line-height: 1.5;
   text-align: right;
+}
+
+.colors-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.color-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.color-circle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.variation-display {
+  text-align: right;
+}
+
+.variation-item {
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.variation-item strong {
+  color: #495057;
+  margin-left: 0.5rem;
+}
+
+.brand-name,
+.category-name {
+  font-weight: 500;
+  color: #495057;
+  padding: 0.25rem 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 0.25rem;
+  display: inline-block;
 }
 
 .compare-actions {

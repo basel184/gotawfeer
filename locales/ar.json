@@ -130,8 +130,8 @@
   "compare.empty_description": "أضف منتجات للمقارنة لرؤية الفروقات بينها",
   "compare.browse_products": "تصفح المنتجات",
   "compare.feature": "الميزة",
-  "compare.brand": "العلامة التجارية",
-  "compare.category": "الفئة",
+  "compare.brand": "البراند",
+  "compare.category": "التصنيف",
   "compare.price": "السعر",
   "compare.rating": "التقييم",
   "compare.features": "المميزات",
@@ -141,7 +141,9 @@
   "compare.clear_old_data": "مسح البيانات القديمة",
   "compare.add_more": "إضافة المزيد",
   "compare.confirm_clear": "هل أنت متأكد من مسح جميع المنتجات من المقارنة؟",
-  "compare.meta_description": "قارن بين المنتجات المختلفة واختر الأفضل",
+  "compare.meta_description": "الوصف التعريفي",
+  "compare.colors": "الألوان المتاحة",
+  "compare.variation": "المتغيرات",
   "cart.loading_wait": "يرجى الانتظار قليلاً",
   "cart.retry": "إعادة المحاولة",
   "cart.error_loading": "خطأ في تحميل السلة",
@@ -342,7 +344,8 @@
     "brand": "البراند",
     "categories": "التصنيفات",
     "share": "مشاركة",
-    "changing_image": "جاري تغيير الصورة..."
+    "changing_image": "جاري تغيير الصورة...",
+    "sku": "رمز المنتج"
   },
   "account": {
     "title": "حسابي",

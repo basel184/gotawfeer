@@ -1,6 +1,7 @@
 // Comparison composable using localStorage
 // Nuxt auto-imports defineComponent APIs at runtime; declare ref for TS when types aren't generated
 declare function ref<T = any>(v?: T): { value: T }
+declare function computed<T = any>(fn: () => T): { value: T }
 
 // Singleton state
 const items = ref<any[]>([])
@@ -30,6 +31,9 @@ export function useCompare() {
               rating: item.rating || 0,
               reviews_count: item.reviews_count || 0,
               description: item.description || '',
+              meta_description: item.meta_description || '',
+              colors: item.colors || [],
+              variation: item.variation || null,
               features: item.features || [],
               specifications: item.specifications || {},
               added_at: item.added_at || new Date().toISOString()
@@ -112,6 +116,90 @@ export function useCompare() {
         return `${assetBase}/${path}`
       }
 
+      // Helper function to extract colors from product
+      const extractColors = (product: any): any[] => {
+        // Try colors_formatted first
+        if (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) {
+          return product.colors_formatted.map((color: any) => ({
+            name: color.name || color.code || 'Color',
+            code: color.code || color.name || '',
+            hex: color.hex || color.code || ''
+          }))
+        }
+        
+        // Try nested product.colors_formatted
+        if (product?.product?.colors_formatted && Array.isArray(product.product.colors_formatted) && product.product.colors_formatted.length > 0) {
+          return product.product.colors_formatted.map((color: any) => ({
+            name: color.name || color.code || 'Color',
+            code: color.code || color.name || '',
+            hex: color.hex || color.code || ''
+          }))
+        }
+        
+        // Try simple colors array
+        if (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+          return product.colors.map((color: string | any, index: number) => {
+            if (typeof color === 'string') {
+              return {
+                name: `Color ${index + 1}`,
+                code: color,
+                hex: color
+              }
+            }
+            return {
+              name: color.name || color.code || `Color ${index + 1}`,
+              code: color.code || color.name || color,
+              hex: color.hex || color.code || color
+            }
+          })
+        }
+        
+        // Try nested product.colors
+        if (product?.product?.colors && Array.isArray(product.product.colors) && product.product.colors.length > 0) {
+          return product.product.colors.map((color: string | any, index: number) => {
+            if (typeof color === 'string') {
+              return {
+                name: `Color ${index + 1}`,
+                code: color,
+                hex: color
+              }
+            }
+            return {
+              name: color.name || color.code || `Color ${index + 1}`,
+              code: color.code || color.name || color,
+              hex: color.hex || color.code || color
+            }
+          })
+        }
+        
+        return []
+      }
+
+      // Helper function to extract variation from product
+      const extractVariation = (product: any): any => {
+        // Try variation field directly
+        if (product?.variation) {
+          return product.variation
+        }
+        
+        // Try nested product.variation
+        if (product?.product?.variation) {
+          return product.product.variation
+        }
+        
+        // Try variations array (take first one)
+        if (product?.variations && Array.isArray(product.variations) && product.variations.length > 0) {
+          return product.variations[0]
+        }
+        
+        // Try nested product.variations
+        if (product?.product?.variations && Array.isArray(product.product.variations) && product.product.variations.length > 0) {
+          return product.product.variations[0]
+        }
+        
+        return null
+      }
+
       // Add product with essential data including full image URL
       const compareItem = {
         id: product.id,
@@ -124,6 +212,9 @@ export function useCompare() {
         rating: product.rating || 0,
         reviews_count: product.reviews_count || 0,
         description: product.description || '',
+        meta_description: product.meta_description || product.product?.meta_description || product.seo_description || '',
+        colors: extractColors(product),
+        variation: extractVariation(product),
         features: product.features || [],
         specifications: product.specifications || {},
         added_at: new Date().toISOString()

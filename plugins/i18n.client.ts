@@ -1,17 +1,28 @@
+import { watch } from 'vue'
+
 export default defineNuxtPlugin(() => {
   const { $i18n } = useNuxtApp()
   
-  // Force Arabic locale on client side
+  // Function to update HTML attributes based on locale
+  const updateHtmlAttributes = () => {
+    if (process.client) {
+      const currentLocale = $i18n.locale.value || 'ar'
+      const isArabic = currentLocale === 'ar'
+      const lang = isArabic ? 'ar' : 'en'
+      const dir = isArabic ? 'rtl' : 'ltr'
+      
+      document.documentElement.setAttribute('lang', lang)
+      document.documentElement.setAttribute('dir', dir)
+    }
+  }
+  
+  // Watch for locale changes
+  watch(() => $i18n.locale.value, () => {
+    updateHtmlAttributes()
+  }, { immediate: true })
+  
+  // Initialize on plugin load
   if (process.client) {
-    $i18n.locale.value = 'ar'
-    document.documentElement.setAttribute('lang', 'ar')
-    document.documentElement.setAttribute('dir', 'rtl')
-    
-    // Set cookie to remember the language choice
-    const cookie = useCookie('i18n_redirected', { 
-      default: () => 'ar',
-      sameSite: 'lax'
-    })
-    cookie.value = 'ar'
+    updateHtmlAttributes()
   }
 })

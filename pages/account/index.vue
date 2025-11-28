@@ -1001,7 +1001,7 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <div class="account-page" dir="rtl">
+  <div class="account-page">
     <!-- Success Message -->
     <teleport to="body">
       <div v-if="logoutSuccess" class="global-success-message">

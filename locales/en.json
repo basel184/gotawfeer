@@ -81,7 +81,9 @@
   "compare.clear_old_data": "Clear Old Data",
   "compare.add_more": "Add More",
   "compare.confirm_clear": "Are you sure you want to clear all products from comparison?",
-  "compare.meta_description": "Compare different products and choose the best one",
+  "compare.meta_description": "Meta Description",
+  "compare.colors": "Available Colors",
+  "compare.variation": "Variations",
   "cart.loading_wait": "Please wait a moment",
   "cart.retry": "Retry",
   "cart.error_loading": "Error loading cart",
@@ -280,11 +282,12 @@
          "vendor_reply": "Vendor Reply",
          "select_options": "Select Options",
          "product_details": "Product Details",
-         "brand": "Brand",
-         "categories": "Categories",
-         "share": "Share",
-         "changing_image": "Changing image..."
-       },
+        "brand": "Brand",
+        "categories": "Categories",
+        "share": "Share",
+        "changing_image": "Changing image...",
+        "sku": "Product SKU"
+      },
        "account": {
          "title": "My Account",
          "subtitle": "Manage your personal information and orders",

@@ -10,6 +10,7 @@ import 'swiper/css/navigation'
 import { Navigation } from 'swiper/modules'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
+import { useCompare } from '../../composables/useCompare'
 
 // Register Swiper components globally for this component
 const SwiperComponent = Swiper
@@ -19,6 +20,7 @@ const route = useRoute()
 const { details: getDetails, related: getRelated, filter: filterProducts } = useProducts() as any
 const cart = useCart()
 const wishlist = useWishlist()
+const compare = useCompare()
 
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
@@ -26,6 +28,10 @@ const selectedProductForModal = useState<any>('selectedProductForModal', () => n
 // Wishlist data
 const isInWishlist = ref(false)
 const wishlistLoading = ref(false)
+
+// Compare data
+const isInCompare = ref(false)
+const compareLoading = ref(false)
 
 // Success message state
 const showSuccessMessage = ref(false)
@@ -805,10 +811,12 @@ const currentVariantStock = computed(() => {
 })
 
 const currentVariantSku = computed(() => {
-  if (selectedVariant.value) {
+  if (selectedVariant.value && selectedVariant.value.sku) {
     return selectedVariant.value.sku
   }
-  return ''
+  // Fallback to product SKU if no variant is selected
+  const p: any = product.value || {}
+  return p?.sku || p?.product?.sku || ''
 })
 // Initialize variants when product loads
 const initializeVariants = () => {
@@ -1218,6 +1226,45 @@ async function toggleWishlist() {
   }
 }
 
+// Compare functions
+function checkCompareStatus() {
+  if (!product.value?.id) return
+  
+  const productId = product.value.id || product.value.product_id
+  isInCompare.value = compare.items.value.some((item: any) => item.id === productId)
+}
+
+async function toggleCompare() {
+  if (!product.value) return
+  
+  compareLoading.value = true
+  
+  try {
+    const productId = product.value.id || product.value.product_id
+    
+    if (isInCompare.value) {
+      // Remove from compare
+      compare.remove(productId)
+      isInCompare.value = false
+      showSuccess('تم إزالة المنتج من المقارنة')
+    } else {
+      // Add to compare
+      const success = compare.add(product.value)
+      if (success) {
+        isInCompare.value = true
+        showSuccess('تم إضافة المنتج إلى المقارنة')
+      } else {
+        showSuccess(compare.error.value || 'فشل في إضافة المنتج إلى المقارنة')
+      }
+    }
+  } catch (error: any) {
+    console.error('Error toggling compare:', error)
+    showSuccess('حدث خطأ في المقارنة')
+  } finally {
+    compareLoading.value = false
+  }
+}
+
 function closeLoginModal() {
   showLoginModal.value = false
   loginError.value = ''
@@ -1467,7 +1514,8 @@ onMounted(async () => {
   // Load product first (non-blocking)
   load()
   
-  // Load wishlist and cart in parallel (non-blocking)
+  // Load wishlist, cart, and compare in parallel (non-blocking)
+  compare.init()
   Promise.all([
     wishlist.list().catch(() => {}),
     cart.list().catch(() => {})
@@ -1476,6 +1524,7 @@ onMounted(async () => {
   watch(product, () => {
     if (product.value) {
       checkWishlistStatus()
+      checkCompareStatus()
     }
   }, { immediate: true })
   
@@ -1485,6 +1534,13 @@ onMounted(async () => {
       checkWishlistStatus()
     }
   })
+  
+  // Check compare status when compare items change
+  watch(() => compare.items.value, () => {
+    if (product.value) {
+      checkCompareStatus()
+    }
+  }, { deep: true })
   
   // Add escape key listener for modals
   document.addEventListener('keydown', (e) => {
@@ -1721,7 +1777,7 @@ const handleProductDetails = () => {
 </script>
 
 <template>
-  <div class="wrap" dir="rtl">
+  <div class="wrap">
     <div class="crumbs">
       <NuxtLink to="/">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
@@ -1831,42 +1887,32 @@ const handleProductDetails = () => {
       </div>
       <!-- Info -->
       <div class="info">
-        <!-- Brand & Wishlist -->
+        <!-- Brand -->
         <div class="brand-section">
           <div class="brand-info">
-            <span v-if="brandName" class="brand">{{ brandName }}</span>
+            <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
+              <NuxtLink :to="brandLink" class="text-decoration-none">
+                <picture>
+                  <img 
+                    class="cover-image-class" 
+                    :src="brandImage || '/images/Group 1171274840.png'" 
+                    :alt="brandName"
+                    @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
+                  >
+                </picture>
+              </NuxtLink>
+            </div>
             <span class="original-badge">{{ t('product.original') }}</span>
           </div>
-          <button 
-            class="wishlist-btn" 
-            :class="{ active: isInWishlist }"
-            @click="toggleWishlist"
-            :disabled="wishlistLoading"
-          >
-            <svg v-if="wishlistLoading" width="20" height="20" viewBox="0 0 24 24" class="spinner">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
-                <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
-                <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
-              </circle>
-            </svg>
-            <svg v-else width="20" height="20" viewBox="0 0 24 24" :fill="isInWishlist ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-          </button>
         </div>
-        <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
-          <NuxtLink :to="brandLink" class="text-decoration-none">
-            <picture>
-              <img 
-                class="cover-image-class" 
-                :src="brandImage || '/images/Group 1171274840.png'" 
-                :alt="brandName"
-                @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
-              >
-            </picture>
-          </NuxtLink>
-        </div>
+        
         <h1 class="title">{{ title }}</h1>
+        
+        <!-- Product SKU -->
+        <div v-if="currentVariantSku" class="product-sku">
+          <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
+          <span class="sku-value">{{ currentVariantSku }}</span>
+        </div>
         
         <!-- Rating -->
         <div class="rating-section">
@@ -1941,6 +1987,46 @@ const handleProductDetails = () => {
           </div>
         </div>
 
+
+        <!-- Add to Cart -->
+        <div class="add-to-cart-section">
+          <div class="qty-selector">
+            <button @click="qty = Math.max(1, qty - 1)" :disabled="qty <= 1" class="qty-btn">−</button>
+            <input type="number" v-model.number="qty" min="1" class="qty-input" />
+            <button @click="qty = qty + 1" class="qty-btn">+</button>
+          </div>
+          <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
+            <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
+          </button>
+          <button 
+            class="wishlist-btn" 
+            :class="{ active: isInWishlist }"
+            @click="toggleWishlist"
+            :disabled="wishlistLoading"
+            title="المفضلة"
+          >
+            <svg v-if="wishlistLoading" width="20" height="20" viewBox="0 0 24 24" class="spinner">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+                <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" :fill="isInWishlist ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+          <button 
+            class="compare-btn" 
+            :class="{ active: isInCompare }"
+            @click="toggleCompare"
+            :disabled="compareLoading"
+            title="المقارنة"
+          >
+           <svg v-if="compareLoading" data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
+            <svg v-else data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" :fill="isInCompare ? 'currentColor' : 'none'" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
+          </button>
+        </div>
+        
         <!-- Promotions -->
         <div v-if="hasDiscount" class="promotion-banner">
           <span class="promo-text">{{ t('product.promo_1_plus_1') }}</span>
@@ -1994,19 +2080,6 @@ const handleProductDetails = () => {
             <p class="mb-3">{{ t('product.delivery_jeddah_makkah') }}</p>
             <p class="mb-3">{{ t('product.delivery_all_kingdom') }}</p>
           </div>
-        </div>
-
-        <!-- Add to Cart -->
-        <div class="add-to-cart-section">
-          <div class="qty-selector">
-            <button @click="qty = Math.max(1, qty - 1)" :disabled="qty <= 1" class="qty-btn">−</button>
-            <input type="number" v-model.number="qty" min="1" class="qty-input" />
-            <button @click="qty = qty + 1" class="qty-btn">+</button>
-          </div>
-          <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
-
-            <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
-          </button>
         </div>
         <div class="payment-image mt-4 mb-3 d-flex align-items-center gap-2">
           <strong>{{ t('product.payment_methods') }}:</strong>
@@ -3054,30 +3127,84 @@ const handleProductDetails = () => {
   .brand{ font-size:18px; font-weight:600; color:#6b7280 }
   .original-badge{ background:#e5f7e5; color:#16a34a; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600 }
   .wishlist-btn{ 
-    background:none; 
-    border:none; 
+    background:#fff; 
+    border:2px solid #e5e7eb; 
     cursor:pointer; 
     color:#6b7280; 
     transition:all 0.3s ease;
-    padding: 8px;
-    border-radius: 50%;
+    padding: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
   }
   .wishlist-btn:hover{ 
     color:#ef4444; 
     background: rgba(239, 68, 68, 0.1);
-    transform: scale(1.1);
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
   }
   .wishlist-btn.active {
     color: #ef4444;
     background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
   }
   .wishlist-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+  }
+  
+  /* Wishlist button in add-to-cart section */
+  .add-to-cart-section .wishlist-btn {
+    width: 48px;
+    height: 48px;
+    padding: 12px;
+  }
+  
+  /* Compare button */
+  .compare-btn{ 
+    background:#fff; 
+    border:2px solid #e5e7eb; 
+    cursor:pointer; 
+    color:#6b7280; 
+    transition:all 0.3s ease;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  .compare-btn:hover{ 
+    color:#2563eb; 
+    background: rgba(37, 99, 235, 0.1);
+    border-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  }
+  .compare-btn.active {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.1);
+    border-color: #2563eb;
+  }
+  .compare-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  /* Compare button in add-to-cart section */
+  .add-to-cart-section .compare-btn {
+    width: 48px;
+    height: 48px;
+    padding: 12px;
   }
   .wishlist-btn .spinner {
     animation: spin 1s linear infinite;
@@ -3087,7 +3214,29 @@ const handleProductDetails = () => {
     to { transform: rotate(360deg); }
   }
 
-  .title{ font-size:24px; font-weight:700; color:#111827; margin:0 0 16px; line-height:1.3 }
+  .title{ font-size:24px; font-weight:700; color:#111827; margin:0 0 12px; line-height:1.3 }
+
+  .product-sku{ 
+    display:flex; 
+    align-items:center; 
+    gap:8px; 
+    margin-bottom:16px; 
+    padding:8px 12px; 
+    background:#f9fafb; 
+    border-radius:6px; 
+    border:1px solid #e5e7eb;
+    font-size:14px;
+  }
+  .sku-label{ 
+    color:#6b7280; 
+    font-weight:500;
+  }
+  .sku-value{ 
+    color:#111827; 
+    font-weight:600; 
+    font-family:monospace;
+    letter-spacing:0.5px;
+  }
 
   .rating-section{ display:flex; align-items:center; gap:8px; margin-bottom:16px }
   .stars{ display:flex; gap:2px }
@@ -4322,8 +4471,8 @@ const handleProductDetails = () => {
   }
 
   .brands-popup .cover-image-class {
-    width: 40px;
-    height: 40px;
+    width: 100%;
+    height: 90px;
     object-fit: contain;
     border-radius: 8px;
     border: 1px solid #e5e7eb;

@@ -12,13 +12,46 @@
 </template>
 
 <script setup>
-// Force Arabic locale on app initialization
+import { watch, computed, onMounted } from 'vue'
+
+// Get i18n instance
 const { $i18n } = useNuxtApp()
-if (process.client) {
-  $i18n.locale.value = 'ar'
-  document.documentElement.setAttribute('lang', 'ar')
-  document.documentElement.setAttribute('dir', 'rtl')
+const { locale } = useI18n()
+
+// Function to update HTML attributes based on locale
+const updateHtmlAttributes = () => {
+  if (process.client) {
+    const currentLocale = locale.value || $i18n.locale.value || 'ar'
+    const isArabic = currentLocale === 'ar'
+    const lang = isArabic ? 'ar' : 'en'
+    const dir = isArabic ? 'rtl' : 'ltr'
+    
+    document.documentElement.setAttribute('lang', lang)
+    document.documentElement.setAttribute('dir', dir)
+  }
 }
+
+// Watch for locale changes and update HTML attributes
+watch(() => locale.value || $i18n.locale.value, () => {
+  updateHtmlAttributes()
+}, { immediate: true })
+
+// Also use useHead for SSR support
+useHead({
+  htmlAttrs: computed(() => {
+    const currentLocale = locale.value || $i18n.locale.value || 'ar'
+    const isArabic = currentLocale === 'ar'
+    return {
+      lang: isArabic ? 'ar' : 'en',
+      dir: isArabic ? 'rtl' : 'ltr'
+    }
+  })
+})
+
+// Initialize on mount
+onMounted(() => {
+  updateHtmlAttributes()
+})
 </script>
 
 <style>

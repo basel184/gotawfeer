@@ -39,12 +39,7 @@ export default defineNuxtConfig({
       mode: 'default', // Allow parallel transitions for faster SPA navigation
       duration: 50
     },
-    head: {
-      htmlAttrs: {
-        lang: 'ar',
-        dir: 'rtl'
-      }
-    }
+    // htmlAttrs will be set dynamically in app.vue based on i18n locale
   },
   
   experimental: {

@@ -331,13 +331,24 @@ const initTooltip = (element: any) => {
 
 onMounted(async () => {
   try {
-    await Promise.all([
-      cart.list(true), // Force refresh to ensure cart is loaded
-      wishlist.list()
-    ])
+    // Only load cart if not already loaded (avoid duplicate API calls)
+    // Cart is usually loaded at page level (shop/index.vue, etc.)
+    if (!cart.items.value || cart.items.value.length === 0) {
+      await cart.list().catch(() => {
+        // Silently fail - cart might be loading elsewhere
+      })
+    }
+    
+    // Only load wishlist if not already loaded
+    if (!wishlist.wishlist.value || wishlist.wishlist.value.length === 0) {
+      await wishlist.list().catch(() => {
+        // Silently fail - wishlist might be loading elsewhere
+      })
+    }
+    
     compare.init()
   } catch (error) {
-    console.error('Failed to load cart or wishlist:', error)
+    // Silently handle errors - these are non-critical
   }
 
   // Initialize Bootstrap tooltips
@@ -639,26 +650,88 @@ const currencyImage = computed(() => {
   return '/images/Group 1171274840.png'
 })
 
+// Helper function to convert color name/code to hex
+const colorToHex = (color: string): string => {
+  if (!color) return '#ccc'
+  
+  // If already a hex code, return it
+  if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
+    return color
+  }
+  
+  // Common color name to hex mapping
+  const colorMap: Record<string, string> = {
+    'red': '#FF0000',
+    'green': '#00FF00',
+    'blue': '#0000FF',
+    'yellow': '#FFFF00',
+    'orange': '#FFA500',
+    'purple': '#800080',
+    'pink': '#FFC0CB',
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'gray': '#808080',
+    'grey': '#808080',
+    'brown': '#A52A2A',
+    'cyan': '#00FFFF',
+    'magenta': '#FF00FF',
+    'lime': '#00FF00',
+    'navy': '#000080',
+    'maroon': '#800000',
+    'olive': '#808000',
+    'teal': '#008080',
+    'silver': '#C0C0C0',
+    'gold': '#FFD700',
+    'beige': '#F5F5DC',
+    'ivory': '#FFFFF0',
+    'coral': '#FF7F50',
+    'salmon': '#FA8072',
+    'turquoise': '#40E0D0',
+    'violet': '#EE82EE',
+    'indigo': '#4B0082',
+    'أحمر': '#FF0000',
+    'أخضر': '#00FF00',
+    'أزرق': '#0000FF',
+    'أصفر': '#FFFF00',
+    'برتقالي': '#FFA500',
+    'بنفسجي': '#800080',
+    'وردي': '#FFC0CB',
+    'أسود': '#000000',
+    'أبيض': '#FFFFFF',
+    'رمادي': '#808080',
+    'بني': '#A52A2A'
+  }
+  
+  const normalizedColor = color.toLowerCase().trim()
+  return colorMap[normalizedColor] || color
+}
+
 // Product colors
 const productColors = computed(() => {
   const p: any = props.product || {}
   
   // Try to get colors_formatted first
   if (p?.colors_formatted && Array.isArray(p.colors_formatted) && p.colors_formatted.length > 0) {
-    return p.colors_formatted.map((color: any) => ({
-      name: color.name || color.code || 'Color',
-      code: color.code || color.name || '',
-      hex: color.hex || color.code || ''
-    }))
+    return p.colors_formatted.map((color: any) => {
+      const hex = color.hex || color.code || color.name || ''
+      return {
+        name: color.name || color.code || 'Color',
+        code: color.code || color.name || '',
+        hex: colorToHex(hex)
+      }
+    })
   }
   
   // Try nested product.colors_formatted
   if (p?.product?.colors_formatted && Array.isArray(p.product.colors_formatted) && p.product.colors_formatted.length > 0) {
-    return p.product.colors_formatted.map((color: any) => ({
-      name: color.name || color.code || 'Color',
-      code: color.code || color.name || '',
-      hex: color.hex || color.code || ''
-    }))
+    return p.product.colors_formatted.map((color: any) => {
+      const hex = color.hex || color.code || color.name || ''
+      return {
+        name: color.name || color.code || 'Color',
+        code: color.code || color.name || '',
+        hex: colorToHex(hex)
+      }
+    })
   }
   
   // Try simple colors array
@@ -668,13 +741,14 @@ const productColors = computed(() => {
         return {
           name: `Color ${index + 1}`,
           code: color,
-          hex: color
+          hex: colorToHex(color)
         }
       }
+      const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || `Color ${index + 1}`,
         code: color.code || color.name || color,
-        hex: color.hex || color.code || color
+        hex: colorToHex(hex)
       }
     })
   }
@@ -686,13 +760,14 @@ const productColors = computed(() => {
         return {
           name: `Color ${index + 1}`,
           code: color,
-          hex: color
+          hex: colorToHex(color)
         }
       }
+      const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || `Color ${index + 1}`,
         code: color.code || color.name || color,
-        hex: color.hex || color.code || color
+        hex: colorToHex(hex)
       }
     })
   }
@@ -992,11 +1067,15 @@ const openProductModal = (e: Event) => {
       <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center">
         <div 
           v-for="(color, index) in visibleColors" 
-          :key="index"
+          :key="`color-${index}-${color.hex || color.code || index}`"
           class="color-pallete"
-          :style="{ backgroundColor: color.hex || color.code || '#ccc' }"
-          :title="color.name"
-        ></div>
+          :style="{ 
+            backgroundColor: '#' + color.hex || color.code,
+            borderColor: '#' + color.hex && '#' + color.hex !== '#FFFFFF' && '#' + color.hex !== '#ffffff' ? 'rgba(0,0,0,0.1)' : '#e5e7eb'
+          }"
+          :title="color.name || color.code || `Color ${index + 1}`"
+        >
+      </div>
         <div v-if="remainingColorsCount > 0" class="color-pallete-num">
           <span>{{ remainingColorsCount }}+</span>
         </div>
@@ -1503,6 +1582,9 @@ img {
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   flex-shrink: 0;
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
 }
 
 .color-pallete:hover {

@@ -25,6 +25,127 @@ const sort_by = ref<string>((route.query.sort as string) || 'latest')
 const product_type = ref<string>('')
 const price_min = ref<number | null>(route.query.price_min ? Number(route.query.price_min) : null)
 const price_max = ref<number | null>(route.query.price_max ? Number(route.query.price_max) : null)
+
+// Price range slider configuration
+const priceRangeMin = ref(0)
+const priceRangeMax = ref(10000)
+const priceRangeStep = ref(100)
+
+// Slider values (synced with price_min and price_max)
+const priceSliderMin = ref(0)
+const priceSliderMax = ref(10000)
+
+// Initialize slider values from price_min and price_max
+const initializeSlider = () => {
+  if (price_min.value != null && price_min.value > 0) {
+    priceSliderMin.value = price_min.value
+  } else {
+    priceSliderMin.value = priceRangeMin.value
+  }
+  
+  if (price_max.value != null && price_max.value > 0) {
+    priceSliderMax.value = price_max.value
+  } else {
+    priceSliderMax.value = priceRangeMax.value
+  }
+}
+
+// Debounce timer for slider updates
+let sliderDebounceTimer: any
+
+// Computed values for actual min/max (handles RTL correctly)
+const actualMin = computed(() => Math.min(priceSliderMin.value, priceSliderMax.value))
+const actualMax = computed(() => Math.max(priceSliderMin.value, priceSliderMax.value))
+
+// Handle min slider input
+const handleMinSliderInput = (e: Event) => {
+  const value = Number((e.target as HTMLInputElement).value)
+  priceSliderMin.value = value
+  updatePriceFromSlider()
+}
+
+// Handle max slider input
+const handleMaxSliderInput = (e: Event) => {
+  const value = Number((e.target as HTMLInputElement).value)
+  priceSliderMax.value = value
+  updatePriceFromSlider()
+}
+
+// Update price_min and price_max from slider
+const updatePriceFromSlider = () => {
+  // Get current slider values
+  const currentMin = priceSliderMin.value
+  const currentMax = priceSliderMax.value
+  
+  // Ensure correct min/max order
+  const actualMin = Math.min(currentMin, currentMax)
+  const actualMax = Math.max(currentMin, currentMax)
+  
+  // Update slider values to ensure correct order
+  if (currentMin !== actualMin || currentMax !== actualMax) {
+    priceSliderMin.value = actualMin
+    priceSliderMax.value = actualMax
+  }
+  
+  // Ensure min doesn't exceed max (with minimum gap)
+  const finalMin = Math.min(priceSliderMin.value, priceSliderMax.value)
+  const finalMax = Math.max(priceSliderMin.value, priceSliderMax.value)
+  
+  if (finalMin >= finalMax) {
+    if (finalMin === priceRangeMin.value) {
+      priceSliderMax.value = Math.min(finalMin + priceRangeStep.value, priceRangeMax.value)
+    } else {
+      priceSliderMin.value = Math.max(finalMax - priceRangeStep.value, priceRangeMin.value)
+    }
+    // Recalculate after adjustment
+    const adjustedMin = Math.min(priceSliderMin.value, priceSliderMax.value)
+    const adjustedMax = Math.max(priceSliderMin.value, priceSliderMax.value)
+    
+    price_min.value = adjustedMin > priceRangeMin.value ? adjustedMin : null
+    price_max.value = adjustedMax < priceRangeMax.value ? adjustedMax : null
+    return
+  }
+  
+  // Update price_min and price_max
+  // Set values if they differ from default range
+  // For min: only set if > 0 (not at minimum)
+  // For max: only set if < max range (not at maximum) and > min (if min exists)
+  const newMin = finalMin > priceRangeMin.value ? finalMin : null
+  // For max: must be < max range, and if min exists, must be > min
+  let newMax: number | null = null
+  if (finalMax < priceRangeMax.value) {
+    if (newMin != null) {
+      // If min exists, max must be > min
+      if (finalMax > finalMin) {
+        newMax = finalMax
+      }
+    } else {
+      // If no min, max can be any value < max range
+      newMax = finalMax > priceRangeMin.value ? finalMax : null
+    }
+  }
+  
+  // Only update if values actually changed
+  if (price_min.value !== newMin || price_max.value !== newMax) {
+    price_min.value = newMin
+    price_max.value = newMax
+  }
+}
+
+// Watch price_min and price_max to sync with slider
+watch([price_min, price_max], () => {
+  if (price_min.value != null) {
+    priceSliderMin.value = price_min.value
+  } else {
+    priceSliderMin.value = priceRangeMin.value
+  }
+  
+  if (price_max.value != null) {
+    priceSliderMax.value = price_max.value
+  } else {
+    priceSliderMax.value = priceRangeMax.value
+  }
+}, { deep: true })
 // Initialize category from route query
 const getInitialCategory = (): number[] => {
   const catParam = route.query.category
@@ -130,11 +251,17 @@ const buildBody = () => {
   }
   
   // Only add price filters if they're valid numbers
+  // min_price: must be >= 0 and > priceRangeMin (0)
   if (price_min.value != null && !isNaN(Number(price_min.value)) && Number(price_min.value) > 0) {
-    body.price_min = Number(price_min.value)
+    body.min_price = Number(price_min.value)
   }
+  // max_price: must be > 0, < priceRangeMax, and > min_price (if min_price exists)
   if (price_max.value != null && !isNaN(Number(price_max.value)) && Number(price_max.value) > 0) {
-    body.price_max = Number(price_max.value)
+    const maxValue = Number(price_max.value)
+    // Only add max_price if it's less than the maximum range and greater than min_price (if exists)
+    if (maxValue < priceRangeMax.value && (!price_min.value || maxValue > price_min.value)) {
+      body.max_price = maxValue
+    }
   }
   
   // Only add has_discount if explicitly set
@@ -348,6 +475,9 @@ const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) =>
 
 // Initialize page on mount
 onMounted(async () => {
+  // Initialize price slider
+  initializeSlider()
+  
   // Load initial products
   await loadPage()
   
@@ -870,23 +1000,45 @@ const handleProductDetails = () => {
             </svg>
             {{ t('shop.price') }}
           </div>
-          <div class="price-range">
-            <input 
-              class="price-input" 
-              type="number" 
-              v-model.number="price_min" 
-              :placeholder="t('shop.min_price')"
-            />
-            <span class="price-separator">-</span>
-            <input 
-              class="price-input" 
-              type="number" 
-              v-model.number="price_max" 
-              :placeholder="t('shop.max_price')"
-            />
-          </div>
-          <div class="price-hint" v-if="priceRangeText">
-            {{ t('shop.price_range') }}: {{ priceRangeText }}
+          <div class="price-range-slider-container">
+            <div class="price-range-display">
+              <span class="price-value">{{ formatPrice(actualMin) }}</span>
+              <span class="price-separator">-</span>
+              <span class="price-value">{{ formatPrice(actualMax) }}</span>
+            </div>
+            <div class="price-range-slider-wrapper">
+              <div class="price-range-track">
+                <div 
+                  class="price-range-active" 
+                  :style="{
+                    left: ((actualMin - priceRangeMin) / (priceRangeMax - priceRangeMin) * 100) + '%',
+                    width: ((actualMax - actualMin) / (priceRangeMax - priceRangeMin) * 100) + '%'
+                  }"
+                ></div>
+              </div>
+              <input 
+                type="range" 
+                class="price-range-slider price-range-slider-min"
+                :min="priceRangeMin"
+                :max="priceRangeMax"
+                :step="priceRangeStep"
+                :value="actualMin"
+                @input="handleMinSliderInput"
+              />
+              <input 
+                type="range" 
+                class="price-range-slider price-range-slider-max"
+                :min="priceRangeMin"
+                :max="priceRangeMax"
+                :step="priceRangeStep"
+                :value="actualMax"
+                @input="handleMaxSliderInput"
+              />
+            </div>
+            <div class="price-range-labels">
+              <span class="price-label-min">{{ formatPrice(priceRangeMin) }}</span>
+              <span class="price-label-max">{{ formatPrice(priceRangeMax) }}</span>
+            </div>
           </div>
         </div>
 
@@ -1185,10 +1337,7 @@ const handleProductDetails = () => {
 
 /* Filter Toggle Button */
 .filter-toggle-btn {
-  position: fixed;
-  top: 100px;
   right: 20px;
-  z-index: 999;
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -1255,9 +1404,11 @@ const handleProductDetails = () => {
 }
 
 [dir="rtl"] .filter-drawer.active {
+  right: 0;
+}
+[dir="ltr"] .filter-drawer.active {
   left: 0;
 }
-
 [dir="rtl"] .filter-toggle-btn {
   right: auto;
   left: 20px;
@@ -1404,36 +1555,147 @@ const handleProductDetails = () => {
 }
 
 /* Price Range */
-.price-range {
+/* Price Range Slider Styles */
+.price-range-slider-container {
+  padding: 12px 0;
+}
+
+.price-range-display {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.price-input {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid #e5e7eb;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f9fafb;
   border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  font-weight: 600;
 }
 
-.price-input:focus {
-  outline: none;
-  border-color: #F58040;
-  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
+.price-value {
+  color: #F58040;
+  font-size: 16px;
 }
 
 .price-separator {
   color: #9ca3af;
+  margin: 0 8px;
   font-weight: 500;
 }
 
-.price-hint {
-  margin-top: 8px;
+.price-range-slider-wrapper {
+  position: relative;
+  height: 10px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+}
+
+.price-range-track {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.price-range-active {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #F58040;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.price-range-track {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.price-range-active {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #F58040;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.price-range-slider {
+  position: absolute;
+  width: calc(100% - 20px);
+  left: 10px;
+  height: 6px;
+  background: transparent;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+  z-index: 3;
+  margin: 0;
+}
+
+.price-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #F58040;
+  cursor: pointer;
+  pointer-events: all;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.price-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(245, 128, 64, 0.4);
+}
+
+.price-range-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #F58040;
+  cursor: pointer;
+  pointer-events: all;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.price-range-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(245, 128, 64, 0.4);
+}
+
+
+.price-range-labels {
+  display: flex;
+  justify-content: space-between;
   font-size: 12px;
   color: #6b7280;
+  margin-top: 4px;
+  padding: 0 10px;
+}
+
+.price-label-min,
+.price-label-max {
+  font-weight: 500;
 }
 
 /* Filter Options */

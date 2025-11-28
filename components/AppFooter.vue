@@ -1,5 +1,5 @@
 <template>
-  <footer class="app-footer" dir="rtl">
+  <footer class="app-footer" :dir="dir">
     <div class="footer-container">
       <!-- Main Footer Content -->
       <div class="footer-main">
@@ -127,11 +127,13 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '../composables/useAuth'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const dir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')
 const auth = useAuth()
 const email = ref('')
 
