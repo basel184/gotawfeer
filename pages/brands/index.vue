@@ -190,11 +190,6 @@ const handleImageLoad = (event: Event) => {
                 @error="handleImageError"
                 @load="handleImageLoad"
               />
-              <div class="brand-overlay">
-                <svg width="20" height="20" viewBox="0 0 24 24" class="overlay-icon">
-                  <path fill="currentColor" d="M8.59 16.58L13.17 12L8.59 7.41L10 6l6 6-6 6-1.41-1.42z"/>
-                </svg>
-              </div>
             </div>
 
             <!-- Brand Info -->
@@ -472,7 +467,7 @@ const handleImageLoad = (event: Event) => {
 
 .brand-logo {
   position: relative;
-  height: 80px;
+  height: auto;
   overflow: hidden;
   background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
   border-radius: 12px;
@@ -485,7 +480,7 @@ const handleImageLoad = (event: Event) => {
 .brand-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   transition: transform 0.4s ease, opacity 0.3s ease;
   opacity: 0;
 }
@@ -601,9 +596,6 @@ const handleImageLoad = (event: Event) => {
     gap: 16px;
   }
   
-  .brand-logo {
-    height: 60px;
-  }
   
   .brand-name {
     font-size: 14px;
@@ -631,9 +623,6 @@ const handleImageLoad = (event: Event) => {
   .brand-card {
     padding: 16px;
   }
-  
-  .brand-logo {
-    height: 50px;
-  }
+
 }
 </style>

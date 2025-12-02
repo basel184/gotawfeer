@@ -72,7 +72,58 @@ watch(() => data.value, (newData) => {
   }
 }, { immediate: true })
 
+// Group categories using childes/children from API
+const groupedCategories = computed(() => {
+  const raw = data.value
+  if (!raw) return []
+  
+  let allCategories: any[] = []
+  if (Array.isArray(raw?.data)) allCategories = raw.data
+  else if (Array.isArray(raw)) allCategories = raw
+  else if (Array.isArray(raw?.categories)) allCategories = raw.categories
+  else return []
+  
+  // Get main categories (position = 0 or no position)
+  const mainCategories = allCategories.filter((cat: any) => 
+    cat.position === 0 || cat.position === '0' || !cat.position || cat.position === null
+  )
+  
+  // Available banner files
+  const bannerFiles = [
+    'Mask-Group-45.webp',
+    'Mask-Group-60.webp',
+    'Mask-Group-56.webp',
+    'Mask-Group-54.webp',
+    'Mask-Group-62.webp',
+    'Mask-Group-65.webp',
+    'Mask-Group-63.webp',
+    'Mask-Group-64.webp',
+  ]
+  
+  // Process main categories and extract childes/children
+  return mainCategories.map((mainCat: any, index: number) => {
+    // Get subcategories from childes or children property
+    const subcategories = Array.isArray(mainCat.childes) 
+      ? mainCat.childes 
+      : Array.isArray(mainCat.children) 
+        ? mainCat.children 
+        : Array.isArray(mainCat.subcategories)
+          ? mainCat.subcategories
+          : []
+    
+    // Use index to get banner file (cycling through available banners)
+    const bannerFile = bannerFiles[index % bannerFiles.length]
+    
+    return {
+      ...mainCat,
+      subcategories: subcategories || [],
+      banner: bannerFile ? `/images/banners-categories/${bannerFile}` : null
+    }
+  })
+})
+
 const items = computed(() => {
+  // For backward compatibility, return flat list
   const raw = data.value
   if (!raw) return []
   if (Array.isArray(raw?.data)) return raw.data
@@ -84,7 +135,23 @@ const items = computed(() => {
 // Navigate to shop with category filter
 const goToCategory = (category: any) => {
   // Use navigateTo for SPA navigation
-  const categoryId = String(category.id || category.category_id || '')
+  const categoryId = category.id || category.category_id || null
+  
+  if (!categoryId) {
+    console.warn('[Categories] No category ID found:', category)
+    return
+  }
+  
+  // Log for debugging
+  if (process.client) {
+    console.log('[Categories] Navigating to shop with category:', {
+      id: categoryId,
+      name: category.name || category.title,
+      isSubcategory: category.position === 1 || category.position === '1'
+    })
+  }
+  
+  // Navigate to shop with category filter
   navigateTo(`/shop?category=${categoryId}`)
 }
 
@@ -148,7 +215,60 @@ const handleImageLoad = (event: Event) => {
     <!-- Categories Grid -->
     <div v-else class="categories-container">
       <div class="container">
-        <div class="categories-grid">
+        <!-- Grouped Categories with Subcategories -->
+        <div v-if="groupedCategories.length > 0" class="categories-groups">
+          <div 
+            v-for="(mainCategory, groupIndex) in groupedCategories" 
+            :key="mainCategory?.id || groupIndex" 
+            class="category-group"
+          >
+            <!-- Main Category Card -->
+
+
+            <!-- Banner and Subcategories -->
+            <div v-if="mainCategory.subcategories && mainCategory.subcategories.length > 0" class="subcategories-section">
+              <!-- Banner -->
+              <div v-if="mainCategory.banner" class="category-banner">
+                <img 
+                  :src="mainCategory.banner" 
+                  :alt="mainCategory?.name || 'Banner'"
+                  class="banner-img"
+                  loading="lazy"
+                  @error="(e: any) => { e.target.style.display = 'none' }"
+                />
+              </div>
+
+              <!-- Subcategories Grid -->
+              <div class="subcategories-grid">
+                <div 
+                  v-for="(subcategory, subIndex) in mainCategory.subcategories" 
+                  :key="subcategory?.id || subIndex" 
+                  class="subcategory-card"
+                  @click="goToCategory(subcategory)"
+                >
+                  <div class="subcategory-info">
+                    <h4 class="subcategory-name">
+                      {{ subcategory?.name || subcategory?.title || t('subcategory') || 'تصنيف فرعي' }}
+                    </h4>
+                    <div class="subcategory-meta">
+                      <span class="products-count" v-if="subcategory?.product_count || subcategory?.products_count">
+                        {{ subcategory.product_count || subcategory.products_count }} {{ t('shop.products') || 'منتج' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="subcategory-arrow">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M8.59 16.58L13.17 12L8.59 7.41L10 6l6 6-6 6-1.41-1.42z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback: Simple Grid (if no grouped structure) -->
+        <div v-else class="categories-grid">
           <div 
             v-for="(category, index) in items" 
             :key="category?.id || index" 
@@ -193,7 +313,7 @@ const handleImageLoad = (event: Event) => {
         </div>
 
         <!-- Empty State -->
-        <div v-if="!items || items.length === 0" class="empty-state">
+        <div v-if="(!groupedCategories || groupedCategories.length === 0) && (!items || items.length === 0)" class="empty-state">
           <div class="empty-icon">
             <svg width="64" height="64" viewBox="0 0 24 24">
               <path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/>
@@ -437,9 +557,116 @@ const handleImageLoad = (event: Event) => {
   }
 }
 
-/* Categories Container */
-.categories-container {
-  padding: 60px 0;
+
+/* Categories Groups */
+.categories-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+  margin-top: 40px;
+}
+
+.category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.main-category-wrapper {
+  width: 100%;
+}
+
+.main-category-card {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Subcategories Section */
+.subcategories-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Category Banner */
+.category-banner {
+  width: 100%;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* Subcategories Grid */
+.subcategories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.subcategory-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subcategory-card:hover {
+  border-color: #F58040;
+  background: linear-gradient(135deg, #fff5f0 0%, #fff 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(245, 128, 64, 0.2);
+}
+
+.subcategory-info {
+  flex: 1;
+}
+
+.subcategory-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.subcategory-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subcategory-card .products-count {
+  background: linear-gradient(135deg, #F58040, #ff6b35);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(245, 128, 64, 0.3);
+}
+
+.subcategory-arrow {
+  color: #6b7280;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.subcategory-card:hover .subcategory-arrow {
+  color: #F58040;
+  transform: translateX(-4px);
 }
 
 .categories-grid {
@@ -612,6 +839,25 @@ const handleImageLoad = (event: Event) => {
     font-size: 16px;
   }
   
+  .categories-groups {
+    gap: 40px;
+  }
+  
+  .subcategories-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .subcategory-card {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .subcategory-arrow {
+    align-self: flex-end;
+  }
+  
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
@@ -628,9 +874,18 @@ const handleImageLoad = (event: Event) => {
   .category-name {
     font-size: 18px;
   }
+  
+  .main-category-card {
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
+  .subcategories-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
   .categories-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -643,9 +898,17 @@ const handleImageLoad = (event: Event) => {
   .categories-header {
     padding: 40px 0;
   }
+
+  .categories-groups {
+    gap: 30px;
+  }
   
-  .categories-container {
-    padding: 40px 0;
+  .subcategory-card {
+    padding: 14px;
+  }
+  
+  .subcategory-name {
+    font-size: 14px;
   }
 }
 </style>

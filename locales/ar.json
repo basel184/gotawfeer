@@ -290,6 +290,7 @@
          "your_comment": "تعليقك",
          "write_comment_placeholder": "اكتب تعليقك عن المنتج...",
          "sending": "جاري الإرسال...",
+         "shop": "المتجر",
          "submit_review": "إرسال التقييم",
          "add_reply": "أضف رد",
          "your_reply": "ردك",
@@ -314,6 +315,11 @@
     "delivery_all_kingdom": "مدة التوصيل لكل انحاء المملكة: 5 أيام عمل",
     "add_to_cart": "أضف للسلة",
     "adding": "جاري الإضافة...",
+    "clear_color": "إزالة اختيار اللون",
+    "clear": "إزالة",
+    "select_variation": "اختر المتغير",
+    "clear_variation": "إزالة اختيار المتغير",
+    "sku": "رمز المنتج",
     "payment_methods": "وسائل الدفع",
     "in_stock": "متوفر في المخزون",
     "out_of_stock": "غير متوفر حالياً",
@@ -344,8 +350,7 @@
     "brand": "البراند",
     "categories": "التصنيفات",
     "share": "مشاركة",
-    "changing_image": "جاري تغيير الصورة...",
-    "sku": "رمز المنتج"
+    "changing_image": "جاري تغيير الصورة..."
   },
   "account": {
     "title": "حسابي",

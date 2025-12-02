@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 // Import Swiper Vue.js components
 import { Swiper, SwiperSlide } from 'swiper/vue'
 // Import Swiper styles
 import 'swiper/css'
 import 'swiper/css/navigation'
+import 'swiper/css/thumbs'
 // Import required modules
-import { Navigation } from 'swiper/modules'
+import { Navigation, Thumbs } from 'swiper/modules'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
 import { useCompare } from '../../composables/useCompare'
@@ -258,15 +259,538 @@ const normalize = (s: any): string => {
   return `${assetBase}/${fixPath(v)}`
 }
 
+// Helper to normalize color code for matching
+const normalizeColorCode = (code: string | null | undefined): string => {
+  if (!code) return ''
+  return String(code).toUpperCase().replace(/^#/, '').trim()
+}
+
+// Helper to parse color_image if it's a JSON string
+const parseColorImage = (colorImage: any): any[] | null => {
+  if (!colorImage) return null
+  if (Array.isArray(colorImage)) return colorImage
+  if (typeof colorImage === 'string') {
+    try {
+      const parsed = JSON.parse(colorImage)
+      return Array.isArray(parsed) ? parsed : null
+    } catch (e) {
+      console.warn('[Product] Failed to parse color_image JSON:', e)
+      return null
+    }
+  }
+  return null
+}
+
 const images = computed<string[]>(() => {
   const p: any = product.value || {}
+  
+  // Helper function to extract image path from image object
+  const extractImagePath = (img: any): string | null => {
+    if (!img) return null
+    
+    // Try image_name first - prioritize path if it's a full URL
+    if (img.image_name) {
+      if (typeof img.image_name === 'string') {
+        // If it's already a full URL, return it directly
+        const trimmed = img.image_name.trim()
+        if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+          return trimmed
+        }
+        
+        // If it's a filename (key), search in images_full_url for the matching path
+        const imageKey = trimmed
+        if (p?.images_full_url && Array.isArray(p.images_full_url)) {
+          const matchedImage = p.images_full_url.find((fullImg: any) => {
+            if (fullImg.key && fullImg.key === imageKey) {
+              return true
+            }
+            // Also check if key is in path
+            if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+              return true
+            }
+            return false
+          })
+          
+          if (matchedImage && matchedImage.path) {
+            const pathStr = String(matchedImage.path).trim()
+            if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+              return pathStr
+            }
+            return normalize(matchedImage.path)
+          }
+        }
+        
+        // Fallback to normalize the string
+        return normalize(trimmed)
+      } else if (img.image_name.path) {
+        // If path is a full URL, return it directly (this is the preferred source)
+        const pathStr = String(img.image_name.path).trim()
+        if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+          return pathStr
+        }
+        return normalize(img.image_name.path)
+      } else if (img.image_name.key) {
+        // Search in images_full_url for the matching path using key
+        const imageKey = img.image_name.key
+        if (p?.images_full_url && Array.isArray(p.images_full_url)) {
+          const matchedImage = p.images_full_url.find((fullImg: any) => {
+            if (fullImg.key && fullImg.key === imageKey) {
+              return true
+            }
+            // Also check if key is in path
+            if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+              return true
+            }
+            return false
+          })
+          
+          if (matchedImage && matchedImage.path) {
+            const pathStr = String(matchedImage.path).trim()
+            if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+              return pathStr
+            }
+            return normalize(matchedImage.path)
+          }
+        }
+        // Fallback to normalize the key
+        return normalize(img.image_name.key)
+      }
+    }
+    
+    // Try direct image fields
+    if (img.image) {
+      if (typeof img.image === 'string') {
+        const trimmed = img.image.trim()
+        if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+          return trimmed
+        }
+        return normalize(trimmed)
+      } else if (img.image.path) {
+        const pathStr = String(img.image.path).trim()
+        if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+          return pathStr
+        }
+        return normalize(img.image.path)
+      } else if (img.image.key) {
+        return normalize(img.image.key)
+      }
+    }
+    
+    // Try path or key directly
+    if (img.path) {
+      const pathStr = String(img.path).trim()
+      if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+        return pathStr
+      }
+      return normalize(img.path)
+    }
+    if (img.key) return normalize(img.key)
+    
+    return null
+  }
+  
+  // If a variation is selected (with or without color), filter images by variation
+  if (selectedVariation.value) {
+    console.log('[Product] Filtering images by selected variation:', {
+      selectedVariation: selectedVariation.value,
+      selectedColor: selectedColor.value
+    })
+    
+    // Check if variations are linked to colors by examining variation.type
+    let variationsLinkedToColors = false
+    if (p?.variation && Array.isArray(p.variation)) {
+      variationsLinkedToColors = p.variation.some((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const parts = v.type.split('-')
+          if (parts.length >= 2) {
+            const lastPart = parts[parts.length - 1].trim()
+            const sizeOption = p?.choice_options?.find((option: any) => 
+              option.title === 'Size' || option.name === 'choice_2'
+            )
+            if (sizeOption && sizeOption.options && sizeOption.options.includes(lastPart)) {
+              return true
+            }
+          }
+        }
+        return false
+      })
+    }
+    
+    // Build the variation_types pattern to match
+    let variationPatternsToMatch: string[] = []
+    
+    // If color is selected and variations are linked to colors, create color-variation pattern
+    if (selectedColor.value && selectedVariation.value && variationsLinkedToColors) {
+      const selectedColorName = selectedColor.value
+      
+      // Check if the selected color is a hex code (from colors array) or a color name (from variation.type)
+      const isHexColor = /^#?[0-9A-Fa-f]{6}$/.test(selectedColorName.replace('#', ''))
+      
+      if (isHexColor) {
+        // If it's a hex color from colors array, use selectedVariant.type if available
+        // This ensures we use the exact variant type (e.g., "WARM PEACH 004-100ml")
+        if (selectedVariant.value && selectedVariant.value.type) {
+          // Use the exact variant type for filtering images
+          variationPatternsToMatch = [selectedVariant.value.type]
+        } else {
+          // If no variant selected yet, try to find variant that matches the variation
+          if (p?.variation && Array.isArray(p.variation)) {
+            const matchingVariant = p.variation.find((v: any) => {
+              if (v.type && typeof v.type === 'string') {
+                const parts = v.type.split('-')
+                if (parts.length >= 2) {
+                  const lastPart = parts[parts.length - 1].trim()
+                  return lastPart === selectedVariation.value && v.qty > 0
+                }
+              }
+              return false
+            })
+            
+            if (matchingVariant && matchingVariant.type) {
+              // Use the exact variant type (e.g., "WARM PEACH 004-100ml")
+              variationPatternsToMatch = [matchingVariant.type]
+            } else {
+              variationPatternsToMatch = [selectedVariation.value]
+            }
+          } else {
+            variationPatternsToMatch = [selectedVariation.value]
+          }
+        }
+      } else {
+        // If it's a color name (from variation.type), use it directly to create exact pattern
+        // e.g., "WARM PEACH 004-100ml" or "VERY BERRY 005-100ml"
+        const colorVariationPattern = `${selectedColorName}-${selectedVariation.value}`
+        variationPatternsToMatch = [colorVariationPattern]
+      }
+    } else if (selectedVariation.value) {
+      // If only variation is selected (no color), use just the variation
+      variationPatternsToMatch = [selectedVariation.value]
+    }
+    
+    console.log('[Product] Variation patterns to match:', variationPatternsToMatch)
+    
+    let variationImages: string[] = []
+    
+    // First, check color_image (singular) field - parse if it's a JSON string
+    // This is where variation_types is stored
+    const parsedColorImage = parseColorImage(p?.color_image)
+    if (parsedColorImage && Array.isArray(parsedColorImage)) {
+      // Filter images that match the variation patterns
+      const matchingColorImages = parsedColorImage.filter((img: any) => {
+        // Check if variation_types matches any of the patterns
+        if (img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
+          const matchesVariation = variationPatternsToMatch.some((pattern) => 
+            img.variation_types.includes(pattern)
+          )
+          
+          // If color is also selected and variations are NOT linked to colors, check color match too
+          if (selectedColor.value && !variationsLinkedToColors) {
+            const selectedColorObjForVariation = availableColors.value.find((c: any) => c.name === selectedColor.value)
+            const colorCodeToMatchForVariation = selectedColorObjForVariation?.code || normalizeColorCode(selectedColor.value)
+            const imgColorNormalized = normalizeColorCode(img.color)
+            return matchesVariation && imgColorNormalized === colorCodeToMatchForVariation
+          }
+          
+          // If variations are linked to colors, the pattern already includes the color
+          // If no color selected, just check variation
+          return matchesVariation
+        }
+        return false
+      })
+      
+      // Now extract image paths from matching images
+      // For each matching image, find the corresponding path in color_images_full_url or images_full_url
+      matchingColorImages.forEach((img: any) => {
+        const imageName = img.image_name
+        
+        // If image_name is a string, search for it in color_images_full_url or images_full_url
+        if (typeof imageName === 'string') {
+          const imageKey = imageName.trim()
+          
+          // First, try to find in color_images_full_url
+          if (p?.color_images_full_url && Array.isArray(p.color_images_full_url)) {
+            const matchedImage = p.color_images_full_url.find((fullImg: any) => {
+              if (fullImg.image_name) {
+                if (typeof fullImg.image_name === 'string' && fullImg.image_name.trim() === imageKey) {
+                  return true
+                }
+                if (fullImg.image_name.key && fullImg.image_name.key === imageKey) {
+                  return true
+                }
+              }
+              return false
+            })
+            
+            if (matchedImage) {
+              const extractedPath = extractImagePath(matchedImage)
+              if (extractedPath) {
+                variationImages.push(extractedPath)
+              }
+            }
+          }
+          
+          // If not found in color_images_full_url, try images_full_url
+          if (p?.images_full_url && Array.isArray(p.images_full_url)) {
+            const matchedImage = p.images_full_url.find((fullImg: any) => {
+              if (fullImg.key && fullImg.key === imageKey) {
+                return true
+              }
+              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+                return true
+              }
+              return false
+            })
+            
+            if (matchedImage && matchedImage.path) {
+              const pathStr = String(matchedImage.path).trim()
+              if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+                variationImages.push(pathStr)
+              } else {
+                variationImages.push(normalize(matchedImage.path))
+              }
+            }
+          }
+        } else {
+          // If image_name is an object, use extractImagePath directly
+          const extractedPath = extractImagePath(img)
+          if (extractedPath) {
+            variationImages.push(extractedPath)
+          }
+        }
+      })
+    }
+    
+    // Note: color_images_full_url does NOT contain variation_types
+    // variation_types is only in color_image, so we don't need to check color_images_full_url for variation_types
+    
+    if (variationImages.length > 0) {
+      // Remove duplicates by extracting filename and comparing
+      const getFilename = (url: string) => {
+        try {
+          const urlObj = new URL(url)
+          const pathParts = urlObj.pathname.split('/')
+          return pathParts[pathParts.length - 1] || url
+        } catch {
+          const parts = url.split('/')
+          return parts[parts.length - 1].split('?')[0] || url
+        }
+      }
+      
+      // Use Set to track seen filenames for better duplicate removal
+      const seenFilenames = new Set<string>()
+      const uniqueImages = variationImages.filter((img) => {
+        const filename = getFilename(img)
+        if (seenFilenames.has(filename)) {
+          return false
+        }
+        seenFilenames.add(filename)
+        return true
+      })
+      
+      // Final pass: keep only the one with the most complete path
+      const finalImages: string[] = []
+      const seenFilenamesFinal = new Set<string>()
+      
+      for (const img of uniqueImages) {
+        const filename = getFilename(img)
+        if (!seenFilenamesFinal.has(filename)) {
+          seenFilenamesFinal.add(filename)
+          finalImages.push(img)
+        } else {
+          const existingIndex = finalImages.findIndex((other) => getFilename(other) === filename)
+          if (existingIndex !== -1 && img.length > finalImages[existingIndex].length) {
+            finalImages[existingIndex] = img
+          }
+        }
+      }
+      
+      console.log('[Product] Found variation-specific images:', finalImages.length, 'from', variationImages.length, 'total', finalImages)
+      return finalImages
+    } else {
+      console.log('[Product] No variation-specific images found, checking color filter')
+    }
+  }
+  
+  // If a color is selected (but no variation), filter images by color
+  if (selectedColor.value) {
+    // Find the selected color object to get its normalized code
+    const selectedColorObj = availableColors.value.find((c: any) => c.name === selectedColor.value)
+    const colorCodeToMatch = selectedColorObj?.code || normalizeColorCode(selectedColor.value)
+    
+    console.log('[Product] Filtering images by selected color:', {
+      selectedColor: selectedColor.value,
+      colorCodeToMatch: colorCodeToMatch,
+      availableColors: availableColors.value
+    })
+    
+    // Check color_images_full_url
+    let colorImages: string[] = []
+    if (p?.color_images_full_url && Array.isArray(p.color_images_full_url)) {
+      colorImages = p.color_images_full_url
+        .filter((img: any) => {
+          const imgColorNormalized = normalizeColorCode(img.color)
+          return imgColorNormalized === colorCodeToMatch
+        })
+        .map(extractImagePath)
+        .filter((x: string | null): x is string => typeof x === 'string' && x !== null)
+    }
+    
+    // Also check color_image (singular) field - parse if it's a JSON string
+    const parsedColorImageForColor = parseColorImage(p?.color_image)
+    if (parsedColorImageForColor && Array.isArray(parsedColorImageForColor)) {
+      const colorImageFromSingle = parsedColorImageForColor
+        .filter((img: any) => {
+          const imgColorNormalized = normalizeColorCode(img.color)
+          // Exclude images that have variation_types (those should be filtered by variation)
+          if (img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
+            return false // Skip images with variation_types when filtering by color only
+          }
+          return imgColorNormalized === colorCodeToMatch
+        })
+        .map(extractImagePath)
+        .filter((x: string | null): x is string => typeof x === 'string' && x !== null)
+      
+      colorImages = [...colorImages, ...colorImageFromSingle]
+    }
+    
+    if (colorImages.length > 0) {
+      // Remove duplicates by extracting filename and comparing
+      // This handles cases where same image appears with different paths
+      const uniqueImages = colorImages.filter((img, index, self) => {
+        // Extract filename from URL (everything after last slash)
+        const getFilename = (url: string) => {
+          try {
+            const urlObj = new URL(url)
+            const pathParts = urlObj.pathname.split('/')
+            return pathParts[pathParts.length - 1] || url
+          } catch {
+            // If URL parsing fails, extract from string
+            const parts = url.split('/')
+            return parts[parts.length - 1].split('?')[0] || url
+          }
+        }
+        
+        const filename = getFilename(img)
+        // Check if this filename already exists in the array
+        const firstIndex = self.findIndex((other) => {
+          const otherFilename = getFilename(other)
+          return otherFilename === filename
+        })
+        
+        // Only keep the first occurrence, prefer the one with full path
+        if (firstIndex === index) {
+          return true
+        }
+        // If same filename exists earlier, prefer the one with longer path (more complete)
+        if (firstIndex < index) {
+          const earlierImg = self[firstIndex]
+          // Keep the one with longer path (more complete URL)
+          if (img.length > earlierImg.length) {
+            // Replace the earlier one with this one (but we can't modify array in filter)
+            // So we'll keep the first one and skip this one
+            return false
+          }
+          return false
+        }
+        return true
+      })
+      
+      // Final pass: if we have duplicates by filename, keep only the one with the most complete path
+      const finalImages: string[] = []
+      const seenFilenames = new Set<string>()
+      
+      for (const img of uniqueImages) {
+        const getFilename = (url: string) => {
+          try {
+            const urlObj = new URL(url)
+            const pathParts = urlObj.pathname.split('/')
+            return pathParts[pathParts.length - 1] || url
+          } catch {
+            const parts = url.split('/')
+            return parts[parts.length - 1].split('?')[0] || url
+          }
+        }
+        
+        const filename = getFilename(img)
+        if (!seenFilenames.has(filename)) {
+          seenFilenames.add(filename)
+          finalImages.push(img)
+        } else {
+          // If we've seen this filename, check if current image has a more complete path
+          const existingIndex = finalImages.findIndex((other) => getFilename(other) === filename)
+          if (existingIndex !== -1 && img.length > finalImages[existingIndex].length) {
+            finalImages[existingIndex] = img // Replace with more complete path
+          }
+        }
+      }
+      
+      console.log('[Product] Found color-specific images:', finalImages.length, 'from', colorImages.length, 'total', finalImages)
+      return finalImages
+    } else {
+      console.log('[Product] No color-specific images found, showing all images')
+    }
+  }
+  
+  // If no color selected or no color-specific images, show all images
   const raw = p?.images_full_url || p?.images || p?.gallery_images || p?.product?.images_full_url || p?.product?.images || p?.product?.gallery_images || []
   const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' && raw.trim().startsWith('[') ? (JSON.parse(raw) as any[]) : (raw ? [raw] : []))
-  const norm = arr.map((x: any) => normalize(x)).filter(Boolean)
+  
+  // Extract images from images_full_url - prioritize path if it's a full URL
+  const norm: string[] = arr.map((x: any): string | null => {
+    if (!x) return null
+    
+    // If it's already a string URL, return it
+    if (typeof x === 'string') {
+      const trimmed = x.trim()
+      if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+        return trimmed
+      }
+      return normalize(trimmed)
+    }
+    
+    // If it's an object with path (full URL), use it directly
+    if (typeof x === 'object' && x.path) {
+      const pathStr = String(x.path).trim()
+      if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+        return pathStr
+      }
+      return normalize(x.path)
+    }
+    
+    // Otherwise, use normalize which will handle key or other formats
+    return normalize(x)
+  }).filter((x): x is string => typeof x === 'string' && Boolean(x))
+  
+  // Also include images without color (color: null) from color_images_full_url when no color is selected
+  // But exclude images that have variation_types if a variation is selected (those should be filtered by variation)
+  if (!selectedColor.value && p?.color_images_full_url && Array.isArray(p.color_images_full_url)) {
+    const noColorImages: string[] = p.color_images_full_url
+      .filter((img: any) => {
+        // Only include images without color
+        if (img.color && img.color !== null && img.color !== '') {
+          return false
+        }
+        // If variation is selected, exclude images with variation_types (they should be filtered by variation)
+        if (selectedVariation.value && img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
+          return false
+        }
+        // If no variation selected but image has variation_types, include it (show all)
+        return true
+      })
+      .map((img: any): string | null => {
+      // Use extractImagePath helper function
+      return extractImagePath(img)
+      })
+      .filter((x: string | null): x is string => typeof x === 'string' && x !== null)
+    norm.push(...noColorImages)
+  }
+  
   // Handle thumbnail specifically
   const thumbnailData = p?.thumbnail_full_url || p?.image_full_url || p?.photo_full_url || p?.thumbnail || p?.image || p?.photo || p?.product?.thumbnail_full_url || p?.product?.image_full_url || p?.product?.thumbnail || p?.product?.image
   const thumb = normalize(thumbnailData)
-  return [...new Set([thumb, ...norm].filter(Boolean))]
+  const finalImages = [...new Set([thumb, ...norm].filter(Boolean))]
+  console.log('[Product] Final images array (no color selected):', finalImages.length, finalImages)
+  return finalImages
 })
 const mainIndex = ref(0)
 const mainImage = computed(() => images.value[mainIndex.value] || '')
@@ -279,13 +803,57 @@ const onImgErr = (e: Event) => {
 }
 
 // Swiper configuration
-const mainSwiper = ref(null)
+const mainSwiper = ref<any>(null)
+const thumbnailSwiper = ref<any>(null)
 const setMainSwiper = (swiper: any) => {
-  if (swiper && swiper.el) {
-    mainSwiper.value = swiper
+  try {
+    // Verify swiper and element exist and are in the DOM
+    if (swiper && swiper.el && swiper.el.classList && document.body.contains(swiper.el)) {
+      mainSwiper.value = swiper
+      // Link thumbnails to main swiper (only if both exist and are in DOM)
+      if (thumbnailSwiper.value && 
+          thumbnailSwiper.value.el && 
+          thumbnailSwiper.value.el.classList && 
+          document.body.contains(thumbnailSwiper.value.el) &&
+          swiper && 
+          (swiper as any).controller) {
+        (swiper as any).controller.control = thumbnailSwiper.value
+        if ((thumbnailSwiper.value as any).controller) {
+          (thumbnailSwiper.value as any).controller.control = swiper
+        }
+      }
+    } else {
+      console.warn('[Product] Main swiper element not ready or not in DOM')
+    }
+  } catch (e) {
+    console.warn('[Product] Error setting main swiper:', e)
   }
 }
-const modules = [Navigation]
+const setThumbnailSwiper = (swiper: any) => {
+  try {
+    // Verify swiper and element exist and are in the DOM
+    if (swiper && swiper.el && swiper.el.classList && document.body.contains(swiper.el)) {
+      thumbnailSwiper.value = swiper
+      // Link main to thumbnails (only if both exist and are in DOM)
+      if (mainSwiper.value && 
+          mainSwiper.value.el && 
+          mainSwiper.value.el.classList && 
+          document.body.contains(mainSwiper.value.el) &&
+          swiper && 
+          (swiper as any).controller) {
+        (swiper as any).controller.control = mainSwiper.value
+        if ((mainSwiper.value as any).controller) {
+          (mainSwiper.value as any).controller.control = swiper
+        }
+      }
+    } else {
+      console.warn('[Product] Thumbnail swiper element not ready or not in DOM')
+    }
+  } catch (e) {
+    console.warn('[Product] Error setting thumbnail swiper:', e)
+  }
+}
+const modules = [Navigation, Thumbs]
 
 // Ensure Swiper is only initialized when images are available and product is loaded
 const shouldShowSwiper = computed(() => {
@@ -296,10 +864,17 @@ const shouldShowSwiper = computed(() => {
 const swiperReady = ref(false)
 watch(shouldShowSwiper, async (newVal) => {
   if (newVal) {
+    // Ensure Swiper instances are cleared
+    mainSwiper.value = null
+    thumbnailSwiper.value = null
     await nextTick()
+    // Wait a bit longer to ensure DOM is fully ready
     setTimeout(() => {
+      // Double-check that images are still available
+      if (images.value && images.value.length > 0) {
       swiperReady.value = true
-    }, 100)
+      }
+    }, 200)
   } else {
     swiperReady.value = false
   }
@@ -758,10 +1333,12 @@ const busy = ref(false)
 // Variant selection
 const selectedColor = ref('')
 const selectedSize = ref('')
+const selectedVariation = ref('') // New: selected variation type (e.g., "100ml", "WARM PEACH 004-100ml")
 const selectedVariant = ref<any>(null)
 const availableVariants = ref<any[]>([])
 const availableColors = ref<any[]>([])
 const availableSizes = ref<any[]>([])
+const availableVariations = ref<string[]>([]) // New: available variation types
 const imageChanging = ref(false)
 
 
@@ -818,46 +1395,194 @@ const currentVariantSku = computed(() => {
   const p: any = product.value || {}
   return p?.sku || p?.product?.sku || ''
 })
+
 // Initialize variants when product loads
 const initializeVariants = () => {
   if (!product.value) return
   
+  // Parse color_image if it's a JSON string
+  const parsedColorImage = parseColorImage(product.value.color_image)
+  
+  console.log('[Product] Initializing variants:', {
+    hasColorsFormatted: !!product.value.colors_formatted,
+    hasColors: !!product.value.colors,
+    hasColorImage: !!product.value.color_image,
+    colorImageType: typeof product.value.color_image,
+    parsedColorImageLength: parsedColorImage?.length || 0,
+    colorsFormatted: product.value.colors_formatted,
+    colors: product.value.colors,
+    colorImagesFullUrl: product.value.color_images_full_url
+  })
+  
   // Initialize colors with proper image mapping
-  if (product.value.colors_formatted && Array.isArray(product.value.colors_formatted)) {
+  if (product.value.colors_formatted && Array.isArray(product.value.colors_formatted) && product.value.colors_formatted.length > 0) {
     availableColors.value = product.value.colors_formatted.map((color: any) => {
-      // Find corresponding image from color_images_full_url
-      const colorImage = product.value.color_images_full_url?.find((img: any) => 
-        img.color === color.code
-      )
+      // Normalize color code for matching
+      const colorCodeNormalized = normalizeColorCode(color.code)
       
-      const colorData = {
-        name: color.name,
-        code: color.code,
-        image: colorImage?.image_name?.path || color.image || '',
-        originalImage: colorImage?.image_name?.key || color.image || '',
-        imageName: colorImage?.image_name?.key || color.image || ''
+      // Find corresponding image from color_images_full_url
+      const colorImage = product.value.color_images_full_url?.find((img: any) => {
+        const imgColorNormalized = normalizeColorCode(img.color)
+        return imgColorNormalized === colorCodeNormalized
+      })
+      
+      // Also check color_image field (singular) if it exists
+      let colorImageFromSingle = null
+      if (parsedColorImage && Array.isArray(parsedColorImage)) {
+        colorImageFromSingle = parsedColorImage.find((img: any) => {
+          const imgColorNormalized = normalizeColorCode(img.color)
+          return imgColorNormalized === colorCodeNormalized
+        })
       }
       
+      // Use the found image (prefer color_images_full_url, fallback to color_image)
+      const foundImage = colorImage || colorImageFromSingle
+      
+      // Extract image path properly
+      let imagePath = ''
+      if (foundImage?.image_name) {
+        if (typeof foundImage.image_name === 'string') {
+          // Search in images_full_url for the matching path
+          const imageKey = foundImage.image_name.trim()
+          if (product.value.images_full_url && Array.isArray(product.value.images_full_url)) {
+            const matchedImage = product.value.images_full_url.find((fullImg: any) => {
+              if (fullImg.key && fullImg.key === imageKey) {
+                return true
+              }
+              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+                return true
+              }
+              return false
+            })
+            if (matchedImage && matchedImage.path) {
+              imagePath = matchedImage.path
+            } else {
+              imagePath = foundImage.image_name
+            }
+          } else {
+            imagePath = foundImage.image_name
+          }
+        } else if (foundImage.image_name.path) {
+          imagePath = foundImage.image_name.path
+        } else if (foundImage.image_name.key) {
+          // Search in images_full_url for the matching path using key
+          const imageKey = foundImage.image_name.key
+          if (product.value.images_full_url && Array.isArray(product.value.images_full_url)) {
+            const matchedImage = product.value.images_full_url.find((fullImg: any) => {
+              if (fullImg.key && fullImg.key === imageKey) {
+                return true
+              }
+              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+                return true
+              }
+              return false
+            })
+            if (matchedImage && matchedImage.path) {
+              imagePath = matchedImage.path
+            } else {
+              imagePath = foundImage.image_name.key
+            }
+          } else {
+            imagePath = foundImage.image_name.key
+          }
+        }
+      }
+      
+      // Ensure color code is stored without # for matching
+      const codeForMatching = normalizeColorCode(color.code)
+      // Ensure hex code has # for display
+      const hexCode = color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : (color.code?.toUpperCase() || '')
+      
+      const colorData = {
+        name: color.name || hexCode || codeForMatching,
+        code: codeForMatching, // Store normalized code without # for matching
+        hexCode: hexCode, // Store with # for CSS display
+        image: imagePath ? normalize(imagePath) : (color.image ? normalize(color.image) : ''),
+        originalImage: foundImage?.image_name?.key || color.image || '',
+        imageName: foundImage?.image_name?.key || color.image || ''
+      }
+      
+      console.log('[Product] Color data (from colors_formatted):', {
+        originalColor: color,
+        colorData: colorData,
+        foundImage: !!foundImage,
+        imagePath: imagePath
+      })
       return colorData
     })
   } else if (product.value.colors && Array.isArray(product.value.colors)) {
-    availableColors.value = product.value.colors.map((color: string, index: number) => {
-      // Find corresponding image from color_images_full_url
-      const colorImage = product.value.color_images_full_url?.find((img: any) => 
-        img.color === color
-      )
+    // Get unique colors
+    const uniqueColors = [...new Set(product.value.colors as string[])]
+    
+    availableColors.value = uniqueColors.map((color: string, index: number) => {
+      // Normalize color for matching
+      const colorNormalized = normalizeColorCode(color)
       
-      const colorData = {
-        name: `Color ${index + 1}`,
-        code: color,
-        image: colorImage?.image_name?.path || '',
-        originalImage: colorImage?.image_name?.key || '',
-        imageName: colorImage?.image_name?.key || ''
+      // Find first corresponding image from color_images_full_url
+      const colorImage = product.value.color_images_full_url?.find((img: any) => {
+        const imgColorNormalized = normalizeColorCode(img.color)
+        return imgColorNormalized === colorNormalized
+      })
+      
+      // Also check color_image field (singular) if it exists (parse if needed)
+      let colorImageFromSingle = null
+      const parsedColorImageForColors = parseColorImage(product.value.color_image)
+      if (parsedColorImageForColors && Array.isArray(parsedColorImageForColors)) {
+        colorImageFromSingle = parsedColorImageForColors.find((img: any) => {
+          const imgColorNormalized = normalizeColorCode(img.color)
+          return imgColorNormalized === colorNormalized
+        })
       }
       
+      // Use the found image (prefer color_images_full_url, fallback to color_image)
+      const foundImage = colorImage || colorImageFromSingle
+      
+      // Extract image path
+      let imagePath = ''
+      if (foundImage?.image_name) {
+        if (typeof foundImage.image_name === 'string') {
+          imagePath = foundImage.image_name
+        } else if (foundImage.image_name.path) {
+          imagePath = foundImage.image_name.path
+        } else if (foundImage.image_name.key) {
+          imagePath = foundImage.image_name.key
+        }
+      }
+      
+      // Normalize color code (ensure it's uppercase and has # prefix for display)
+      const normalizedColor = color.toUpperCase().startsWith('#') ? color.toUpperCase() : `#${color.toUpperCase()}`
+      
+      const colorData = {
+        name: normalizedColor, // Use hex code as name
+        code: colorNormalized, // Store normalized code without # for matching
+        hexCode: normalizedColor, // Store with # for CSS
+        image: imagePath ? normalize(imagePath) : '',
+        originalImage: foundImage?.image_name?.key || '',
+        imageName: foundImage?.image_name?.key || ''
+      }
+      
+      console.log('[Product] Color data (from colors array):', {
+        originalColor: color,
+        colorData: colorData,
+        foundImage: !!foundImage,
+        imagePath: imagePath
+      })
       return colorData
     })
+    
+    console.log('[Product] Total unique colors found:', availableColors.value.length)
+  } else {
+    // If no colors found, log for debugging
+    console.warn('[Product] No colors found in product:', {
+      hasColorsFormatted: !!product.value.colors_formatted,
+      hasColors: !!product.value.colors,
+      hasColorImage: !!product.value.color_image,
+      productKeys: Object.keys(product.value || {})
+    })
   }
+  
+  console.log('[Product] Available colors:', availableColors.value)
+  console.log('[Product] Available colors length:', availableColors.value.length)
   
   // Initialize sizes from choice_options
   if (product.value.choice_options && Array.isArray(product.value.choice_options)) {
@@ -872,11 +1597,133 @@ const initializeVariants = () => {
     }
   }
   
-  // Set initial selections
-  if (availableColors.value.length > 0) {
-    selectedColor.value = availableColors.value[0].name
+  // Initialize variations from variation.type and variation_types
+  const variationsSet = new Set<string>()
+  const variationColorsMap = new Map<string, Set<string>>() // Map variation -> Set of color names
+  
+  // First, check if variations are linked to colors by examining variation.type
+  // If variation.type contains "-" (e.g., "WARM PEACH 004-100ml"), variations are linked to colors
+  let variationsLinkedToColors = false
+  if (product.value.variation && Array.isArray(product.value.variation)) {
+    const hasLinkedVariations = product.value.variation.some((v: any) => {
+      if (v.type && typeof v.type === 'string') {
+        // Check if type contains a dash and has both color name and size
+        const parts = v.type.split('-')
+        if (parts.length >= 2) {
+          // Last part should be a size (e.g., "100ml", "200ml")
+          const lastPart = parts[parts.length - 1].trim()
+          const sizeOption = product.value.choice_options?.find((option: any) => 
+            option.title === 'Size' || option.name === 'choice_2'
+          )
+          if (sizeOption && sizeOption.options && sizeOption.options.includes(lastPart)) {
+            variationsLinkedToColors = true
+            // Extract color name (everything before last part)
+            const colorName = parts.slice(0, -1).join('-').trim()
+            // Extract variation (size)
+            const variation = lastPart
+            
+            // Store mapping: variation -> color names
+            if (!variationColorsMap.has(variation)) {
+              variationColorsMap.set(variation, new Set())
+            }
+            variationColorsMap.get(variation)!.add(colorName)
+            
+            // Add variation to set
+            variationsSet.add(variation)
+          }
+        }
+      }
+      return false
+    })
   }
-  if (availableSizes.value.length > 0) {
+  
+  // If variations are NOT linked to colors, extract simple variations from variation_types
+  if (!variationsLinkedToColors) {
+    // Extract from color_images_full_url
+    if (product.value.color_images_full_url && Array.isArray(product.value.color_images_full_url)) {
+      product.value.color_images_full_url.forEach((img: any) => {
+        if (img.variation_types && Array.isArray(img.variation_types)) {
+          img.variation_types.forEach((v: string) => {
+            if (v && typeof v === 'string' && v.trim()) {
+              // Only add simple variations (like "100ml", "200ml"), not color-linked ones
+              const trimmed = v.trim()
+              // Check if it's a simple variation (doesn't contain color name pattern)
+              if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+                variationsSet.add(trimmed)
+              }
+            }
+          })
+        }
+      })
+    }
+    
+    // Extract from color_image (parse if needed)
+    if (parsedColorImage && Array.isArray(parsedColorImage)) {
+      parsedColorImage.forEach((img: any) => {
+        if (img.variation_types && Array.isArray(img.variation_types)) {
+          img.variation_types.forEach((v: string) => {
+            if (v && typeof v === 'string' && v.trim()) {
+              const trimmed = v.trim()
+              // Only add simple variations
+              if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+                variationsSet.add(trimmed)
+              }
+            }
+          })
+        }
+      })
+    }
+    
+    // Also check if color_image is a string and needs parsing
+    if (product.value.color_image && typeof product.value.color_image === 'string') {
+      try {
+        const parsed = JSON.parse(product.value.color_image)
+        if (Array.isArray(parsed)) {
+          parsed.forEach((img: any) => {
+            if (img.variation_types && Array.isArray(img.variation_types)) {
+              img.variation_types.forEach((v: string) => {
+                if (v && typeof v === 'string' && v.trim()) {
+                  const trimmed = v.trim()
+                  // Only add simple variations
+                  if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+                    variationsSet.add(trimmed)
+                  }
+                }
+              })
+            }
+          })
+        }
+      } catch (e) {
+        // Already parsed or invalid JSON, ignore
+      }
+    }
+  }
+  
+  // Note: We don't add colors from variation.type to availableColors
+  // Only colors from colors array or colors_formatted should be shown
+  // The variation.type colors (like "WARM PEACH 004") are used only for filtering images
+  // and matching with variation.type, but they shouldn't appear as selectable colors
+  // unless they're already in the colors array
+  
+  availableVariations.value = Array.from(variationsSet).sort()
+  console.log('[Product] Available variations:', availableVariations.value)
+  console.log('[Product] Variations linked to colors:', variationsLinkedToColors)
+  console.log('[Product] Variation colors map:', Object.fromEntries(variationColorsMap))
+  
+  // Don't auto-select first color - let user choose
+  // Only set initial selections if no color is already selected
+  if (availableColors.value.length > 0 && !selectedColor.value) {
+    // Don't auto-select - let user choose
+    // selectedColor.value = availableColors.value[0].name
+  }
+  
+  // Auto-select first variation if available
+  if (availableVariations.value.length > 0 && !selectedVariation.value) {
+    selectedVariation.value = availableVariations.value[0]
+  }
+  
+  // Auto-select first size if available
+  if (availableSizes.value.length > 0 && !selectedSize.value) {
     selectedSize.value = availableSizes.value[0].value
   }
   
@@ -886,64 +1733,503 @@ const initializeVariants = () => {
 
 // Update selected variant based on current selections
 const updateSelectedVariant = () => {
-  if (!product.value?.variation) return
+  if (!product.value?.variation) {
+    console.log('[Product] No variation data available')
+    selectedVariant.value = null
+    return
+  }
   
+  console.log('[Product] Updating selected variant:', {
+    selectedColor: selectedColor.value,
+    selectedVariation: selectedVariation.value,
+    availableVariations: availableVariations.value,
+    availableColors: availableColors.value.map((c: any) => c.name)
+  })
   
   let variant = null
   
-  // If product has no colors, search by size directly
-  if (!selectedColor.value || availableColors.value.length === 0) {
-    if (selectedSize.value) {
-      variant = product.value.variation.find((v: any) => 
-        v.type === selectedSize.value || v.type === String(selectedSize.value)
-      )
+  // Check if variations are linked to colors by examining variation.type
+  let variationsLinkedToColors = false
+  if (product.value.variation && Array.isArray(product.value.variation)) {
+    variationsLinkedToColors = product.value.variation.some((v: any) => {
+      if (v.type && typeof v.type === 'string') {
+        const parts = v.type.split('-')
+        if (parts.length >= 2) {
+          const lastPart = parts[parts.length - 1].trim()
+          const sizeOption = product.value.choice_options?.find((option: any) => 
+            option.title === 'Size' || option.name === 'choice_2'
+          )
+          if (sizeOption && sizeOption.options && sizeOption.options.includes(lastPart)) {
+            return true
+          }
+        }
+      }
+      return false
+    })
+  }
+  
+  console.log('[Product] Variations linked to colors:', variationsLinkedToColors)
+  
+  // If variations are linked to colors, use color-variation combination
+  if (variationsLinkedToColors) {
+    if (selectedColor.value && selectedVariation.value) {
+      // Check if selected color is hex or color name
+      const isHexColor = /^#?[0-9A-Fa-f]{6}$/i.test(selectedColor.value.replace('#', ''))
+      
+      if (isHexColor) {
+        // If it's a hex color, we need to find which color name from variation.type matches this hex
+        // Strategy: Find all variants with the selected variation, then check which one has images
+        // that match the selected hex color in color_image
+        const normalizedHex = normalizeColorCode(selectedColor.value)
+        console.log('[Product] Hex color selected, searching for matching color name:', normalizedHex)
+        
+        // First, get all variants with the selected variation
+        const variantsWithVariation = product.value.variation.filter((v: any) => {
+          if (v.type && typeof v.type === 'string') {
+            const parts = v.type.split('-')
+            if (parts.length >= 2) {
+              const lastPart = parts[parts.length - 1].trim()
+              return lastPart === selectedVariation.value && v.qty > 0
+            }
+          }
+          return false
+        })
+        
+        console.log('[Product] Variants with selected variation:', variantsWithVariation.map((v: any) => v.type))
+        
+        // Parse color_image to find which color name matches the hex
+        const parsedColorImageForMatching = parseColorImage(product.value.color_image)
+        if (parsedColorImageForMatching && Array.isArray(parsedColorImageForMatching)) {
+          // Find color_image entries that match the hex color
+          const matchingColorImages = parsedColorImageForMatching.filter((img: any) => {
+            const imgColorNormalized = normalizeColorCode(img.color)
+            return imgColorNormalized === normalizedHex
+          })
+          
+          console.log('[Product] Color images matching hex:', matchingColorImages.length)
+          
+          // For each variant, check if it has variation_types that match images with this hex color
+          for (const v of variantsWithVariation) {
+            // Check if any color_image with this hex has variation_types matching this variant
+            const hasMatchingImage = matchingColorImages.some((img: any) => {
+              if (img.variation_types && Array.isArray(img.variation_types)) {
+                return img.variation_types.includes(v.type)
+              }
+              return false
+            })
+            
+            if (hasMatchingImage) {
+              console.log('[Product] Found matching variant for hex color:', v.type)
+              variant = v
+              break
+            }
+          }
+        }
+        
+        // If not found, try to find color name from colors_formatted if available
+        if (!variant) {
+          let colorNameFromHex = null
+          if (product.value.colors_formatted && Array.isArray(product.value.colors_formatted)) {
+            const colorFormatted = product.value.colors_formatted.find((c: any) => {
+              const colorCodeNormalized = normalizeColorCode(c.code)
+              return colorCodeNormalized === normalizedHex
+            })
+            if (colorFormatted && colorFormatted.name) {
+              colorNameFromHex = colorFormatted.name
+            }
+          }
+          
+          // If we found a color name, use it to search for variant
+          if (colorNameFromHex) {
+            const colorVariationPattern = `${colorNameFromHex}-${selectedVariation.value}`
+            console.log('[Product] Found color name from colors_formatted, searching for:', colorVariationPattern)
+            variant = product.value.variation.find((v: any) => 
+              v.type === colorVariationPattern && v.qty > 0
+            )
+          }
+        }
+        
+        // If still not found, search by variation only (will find first variant with this variation)
+        if (!variant) {
+          console.log('[Product] Color name not found, searching by variation only')
+          variant = variantsWithVariation[0] || null
+        }
+      } else {
+        // If it's a color name (from variation.type), use it directly
+        const colorVariationPattern = `${selectedColor.value}-${selectedVariation.value}`
+        console.log('[Product] Searching for variant with pattern:', colorVariationPattern)
+        variant = product.value.variation.find((v: any) => 
+          v.type === colorVariationPattern && v.qty > 0
+        )
+      }
+      
+      // If not found or qty is 0, try to find any available variant with same variation
+      if (!variant || (variant.qty !== undefined && variant.qty <= 0)) {
+        variant = product.value.variation.find((v: any) => {
+          if (v.type && typeof v.type === 'string') {
+            const parts = v.type.split('-')
+            if (parts.length >= 2) {
+              const lastPart = parts[parts.length - 1].trim()
+              return lastPart === selectedVariation.value && v.qty > 0
+            }
+          }
+          return false
+        })
+      }
+    } else if (selectedVariation.value) {
+      // If only variation is selected, find first available variant with that variation
+      variant = product.value.variation.find((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const parts = v.type.split('-')
+          if (parts.length >= 2) {
+            const lastPart = parts[parts.length - 1].trim()
+            return lastPart === selectedVariation.value && v.qty > 0
+          }
+        }
+        return false
+      })
     }
   } else {
-    // If product has colors, search by color-size combination
-    // Try different search patterns
-    variant = product.value.variation.find((v: any) => 
-      v.type === `${selectedColor.value}-${selectedSize.value}`
-    )
-    
-    // If not found, try with different separators
-    if (!variant) {
+    // If variations are NOT linked to colors, use old logic
+    // If product has no colors, search by size directly
+    if (!selectedColor.value || availableColors.value.length === 0) {
+      if (selectedSize.value) {
+        variant = product.value.variation.find((v: any) => 
+          (v.type === selectedSize.value || v.type === String(selectedSize.value)) && v.qty > 0
+        )
+      } else if (selectedVariation.value) {
+        variant = product.value.variation.find((v: any) => 
+          (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
+        )
+      }
+    } else {
+      // If product has colors, search by color-size combination
+      // Try different search patterns (only if qty > 0)
       variant = product.value.variation.find((v: any) => 
-        v.type === `${selectedColor.value}_${selectedSize.value}` ||
-        v.type === `${selectedColor.value} ${selectedSize.value}` ||
-        v.type === `${selectedColor.value}/${selectedSize.value}`
+        v.type === `${selectedColor.value}-${selectedSize.value}` && v.qty > 0
       )
+      
+      // If not found, try with different separators
+      if (!variant) {
+        variant = product.value.variation.find((v: any) => 
+          (v.type === `${selectedColor.value}_${selectedSize.value}` ||
+          v.type === `${selectedColor.value} ${selectedSize.value}` ||
+          v.type === `${selectedColor.value}/${selectedSize.value}`) && v.qty > 0
+        )
+      }
+      
+      // If still not found, try partial matches
+      if (!variant) {
+        variant = product.value.variation.find((v: any) => 
+          v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value) && v.qty > 0
+        )
+      }
     }
-    
-    // If still not found, try partial matches
-    if (!variant) {
-      variant = product.value.variation.find((v: any) => 
-        v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value)
-      )
+  }
+  
+  // If variant found, check if it's available (qty > 0)
+  if (variant && variant.qty !== undefined && variant.qty !== null) {
+    if (variant.qty <= 0) {
+      // If variant is not available, try to find another available variant
+      // with the same color and variation
+      if (variationsLinkedToColors && selectedColor.value && selectedVariation.value) {
+        // Try to find any available variant with same variation
+        const availableVariant = product.value.variation.find((v: any) => {
+          if (v.type && typeof v.type === 'string') {
+            const parts = v.type.split('-')
+            if (parts.length >= 2) {
+              const lastPart = parts[parts.length - 1].trim()
+              return lastPart === selectedVariation.value && v.qty > 0
+            }
+          }
+          return false
+        })
+        if (availableVariant) {
+          variant = availableVariant
+        } else {
+          variant = null
+        }
+      } else if (selectedVariation.value) {
+        // Try to find any available variant with same variation
+        const availableVariant = product.value.variation.find((v: any) => {
+          return (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
+        })
+        if (availableVariant) {
+          variant = availableVariant
+        } else {
+          variant = null
+        }
+      } else {
+        variant = null
+      }
     }
   }
   
   selectedVariant.value = variant || null
+  
+  // Log for debugging
+  if (selectedVariant.value) {
+    console.log('[Product] ✅ Selected variant:', {
+      type: selectedVariant.value.type,
+      price: selectedVariant.value.price,
+      qty: selectedVariant.value.qty,
+      sku: selectedVariant.value.sku
+    })
+  } else {
+    console.log('[Product] ❌ No variant selected')
+    console.log('[Product] Available variants:', product.value.variation?.map((v: any) => ({
+      type: v.type,
+      qty: v.qty
+    })))
+  }
+}
+
+// Helper function to get color value (for CSS background)
+const getColorValue = (colorCode: string): string => {
+  if (!colorCode) return '#cccccc'
+  
+  // If color code is a valid hex code with #, return it
+  if (/^#([0-9A-F]{3}){1,2}$/i.test(colorCode)) {
+    return colorCode
+  }
+  
+  // If color code is a valid hex code without #, add # and return
+  if (/^([0-9A-F]{3}){1,2}$/i.test(colorCode)) {
+    return `#${colorCode}`
+  }
+  
+  // If it's a named color like "red", "blue", etc.
+  if (/^[a-z]+$/i.test(colorCode) && colorCode.length < 20) {
+    return colorCode
+  }
+  
+  // Default fallback color
+  return '#cccccc'
 }
 
 // Handle color selection
-const selectColor = (color: any) => {
+const selectColor = async (color: any) => {
+  console.log('[Product] Selecting color:', color.name)
+  
+  // Destroy existing Swiper instances before changing color
+  try {
+    if (mainSwiper.value && mainSwiper.value.destroy) {
+      mainSwiper.value.destroy(true, true)
+      mainSwiper.value = null
+    }
+    if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+      thumbnailSwiper.value.destroy(true, true)
+      thumbnailSwiper.value = null
+    }
+  } catch (e) {
+    console.warn('[Product] Error destroying swiper:', e)
+  }
+  
+  // Reset swiperReady to force re-initialization
+  swiperReady.value = false
+  
+  // Update color selection
   selectedColor.value = color.name
+  
+  // Auto-select first variation if no variation is selected
+  if (!selectedVariation.value && availableVariations.value.length > 0) {
+    selectedVariation.value = availableVariations.value[0]
+  }
+  
   updateSelectedVariant()
   
-  // Update main image if color has specific image
-  if (color.imageName || color.originalImage) {
-    const targetImageName = color.imageName || color.originalImage
-    const imageIndex = findImageIndexByName(targetImageName)
-    
-    if (imageIndex !== -1) {
-      imageChanging.value = true
-      mainIndex.value = imageIndex
+  // Reset main image index when color changes
+  mainIndex.value = 0
+  
+  // Wait for images to update (they will be filtered by the images computed property)
+  await nextTick()
+  
+  // Wait a bit more to ensure images computed has updated
+  setTimeout(() => {
+    console.log('[Product] After color selection, images count:', images.value.length)
+    if (images.value && images.value.length > 0 && shouldShowSwiper.value) {
+      console.log('[Product] Re-enabling swiper after color selection')
+      swiperReady.value = true
+    }
+  }, 300) // Wait for images to be filtered and DOM to update
+}
+
+// Clear color selection
+const clearColorSelection = async () => {
+  console.log('[Product] Clearing color selection')
+  
+  // Destroy existing Swiper instances before clearing color
+  try {
+    if (mainSwiper.value && mainSwiper.value.destroy) {
+      mainSwiper.value.destroy(true, true)
+      mainSwiper.value = null
+    }
+    if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+      thumbnailSwiper.value.destroy(true, true)
+      thumbnailSwiper.value = null
+    }
+  } catch (e) {
+    console.warn('[Product] Error destroying swiper:', e)
+  }
+  
+  // Reset swiperReady to force re-initialization
+  swiperReady.value = false
+  
+  // Clear color and variation selection
+  selectedColor.value = ''
+  selectedVariation.value = ''
+  mainIndex.value = 0
+  updateSelectedVariant()
+  
+  // Wait for images to update
+  await nextTick()
+  
+  // Wait a bit more to ensure images computed has updated
+  setTimeout(() => {
+    console.log('[Product] After clearing color, images count:', images.value.length)
+    if (images.value && images.value.length > 0 && shouldShowSwiper.value) {
+      console.log('[Product] Re-enabling swiper after clearing color')
+      swiperReady.value = true
+    }
+  }, 300) // Wait for images to be updated and DOM to update
+}
+
+// Handle variation selection
+const selectVariation = async (variation: string) => {
+  console.log('[Product] Selecting variation:', variation)
+  
+  // Destroy existing Swiper instances before changing variation
+  try {
+    if (mainSwiper.value && mainSwiper.value.destroy) {
+      mainSwiper.value.destroy(true, true)
+      mainSwiper.value = null
+    }
+    if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+      thumbnailSwiper.value.destroy(true, true)
+      thumbnailSwiper.value = null
+    }
+  } catch (e) {
+    console.warn('[Product] Error destroying swiper:', e)
+  }
+  
+  // Reset swiperReady to force re-initialization
+  swiperReady.value = false
+  
+  // Update variation selection
+  selectedVariation.value = variation
+  
+  // Auto-select first color if no color is selected
+  if (!selectedColor.value && availableColors.value.length > 0) {
+    selectedColor.value = availableColors.value[0].name
+  }
+  
+  updateSelectedVariant()
+  
+  // Reset main image index when variation changes
+  mainIndex.value = 0
+  
+  // Wait for images to update (they will be filtered by the images computed property)
+  await nextTick()
+  
+  // Wait a bit more to ensure images computed has updated
+  setTimeout(() => {
+    console.log('[Product] After variation selection, images count:', images.value.length)
+    if (images.value && images.value.length > 0 && shouldShowSwiper.value) {
+      console.log('[Product] Re-enabling swiper after variation selection')
+      swiperReady.value = true
+    }
+  }, 300) // Wait for images to be filtered and DOM to update
+}
+
+// Clear variation selection
+const clearVariationSelection = async () => {
+  console.log('[Product] Clearing variation selection')
+  
+  // Destroy existing Swiper instances before clearing variation
+  try {
+    if (mainSwiper.value && mainSwiper.value.destroy) {
+      mainSwiper.value.destroy(true, true)
+      mainSwiper.value = null
+    }
+    if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+      thumbnailSwiper.value.destroy(true, true)
+      thumbnailSwiper.value = null
+    }
+  } catch (e) {
+    console.warn('[Product] Error destroying swiper:', e)
+  }
+  
+  // Reset swiperReady to force re-initialization
+  swiperReady.value = false
+  
+  // Clear variation and color selection
+  selectedVariation.value = ''
+  selectedColor.value = ''
+  mainIndex.value = 0
+  updateSelectedVariant()
+  
+  // Wait for images to update
+  await nextTick()
+  
+  // Wait a bit more to ensure images computed has updated
+  setTimeout(() => {
+    console.log('[Product] After clearing variation, images count:', images.value.length)
+    if (images.value && images.value.length > 0 && shouldShowSwiper.value) {
+      console.log('[Product] Re-enabling swiper after clearing variation')
+      swiperReady.value = true
+    }
+  }, 300) // Wait for images to be updated and DOM to update
+}
+
+// Watch selectedColor and selectedVariation to update variant
+watch([selectedColor, selectedVariation], () => {
+  console.log('[Product] Color or variation changed, updating variant')
+  updateSelectedVariant()
+}, { deep: true })
+
+// Watch images to reset swiper when they change (e.g., when color is selected/cleared)
+watch(images, async (newImages, oldImages) => {
+  // Only reset if images actually changed (not just on initial load)
+  if (oldImages && oldImages.length > 0 && newImages.length > 0) {
+    // Check if images array changed
+    if (JSON.stringify(newImages) !== JSON.stringify(oldImages)) {
+      console.log('[Product] Images changed, resetting swiper:', {
+        oldCount: oldImages.length,
+        newCount: newImages.length,
+        oldImages: oldImages.slice(0, 2),
+        newImages: newImages.slice(0, 2)
+      })
+      
+      mainIndex.value = 0
+      
+      // Destroy existing Swiper instances
+      try {
+        if (mainSwiper.value && mainSwiper.value.destroy) {
+          mainSwiper.value.destroy(true, true)
+          mainSwiper.value = null
+        }
+        if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+          thumbnailSwiper.value.destroy(true, true)
+          thumbnailSwiper.value = null
+        }
+      } catch (e) {
+        console.warn('[Product] Error destroying swiper on images change:', e)
+      }
+      
+      // Reset swiperReady to force re-initialization
+      swiperReady.value = false
+      
+      // Wait for DOM to update, then re-enable swiper
+      await nextTick()
       setTimeout(() => {
-        imageChanging.value = false
-      }, 300)
+        if (newImages && newImages.length > 0 && shouldShowSwiper.value) {
+          console.log('[Product] Re-enabling swiper after images change')
+          swiperReady.value = true
+        }
+      }, 250) // Slightly longer delay to ensure DOM is ready
     }
   }
-}
+}, { deep: true })
 
 // Handle size selection
 const selectSize = (size: any) => {
@@ -1447,11 +2733,20 @@ const load = async () => {
     console.log('[Product] Loading product with slug:', slug.value)
     const res = await getDetails(slug.value)
     console.log('[Product] Product loaded successfully:', res?.name || res?.product?.name)
+    console.log('[Product] Product data:', {
+      hasColors: !!res?.colors,
+      colors: res?.colors,
+      hasColorsFormatted: !!res?.colors_formatted,
+      colorsFormatted: res?.colors_formatted,
+      hasColorImages: !!res?.color_images_full_url,
+      colorImagesCount: res?.color_images_full_url?.length || 0
+    })
     product.value = res
     loadingProgress.value = 50
     
     // Initialize variants after product is loaded
     initializeVariants()
+    console.log('[Product] After initializeVariants, availableColors:', availableColors.value)
     loadingProgress.value = 70
     
     // Wait for DOM to be ready before initializing Swiper
@@ -1555,6 +2850,23 @@ onMounted(async () => {
     }
   })
 })
+
+// Cleanup Swiper instances on unmount
+onBeforeUnmount(() => {
+  try {
+    if (mainSwiper.value && mainSwiper.value.destroy) {
+      mainSwiper.value.destroy(true, true)
+      mainSwiper.value = null
+    }
+    if (thumbnailSwiper.value && thumbnailSwiper.value.destroy) {
+      thumbnailSwiper.value.destroy(true, true)
+      thumbnailSwiper.value = null
+    }
+  } catch (e) {
+    console.warn('[Product] Error cleaning up swiper:', e)
+  }
+})
+
 watch(slug, () => { mainIndex.value = 0; load() })
 
 // Watch for mainIndex changes and update Swiper
@@ -1838,20 +3150,40 @@ const handleProductDetails = () => {
       <!-- Gallery -->
       <div class="gallery">
         <div class="gallery-container">
-
+          <!-- Thumbnail Swiper (Side) -->
+          <div v-if="swiperReady && images.length > 1" class="thumbnail-swiper-container">
+            <SwiperComponent
+              :key="`thumb-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
+              :space-between="10"
+              :slides-per-view="4"
+              :direction="'vertical'"
+              :modules="modules"
+              :loop="false"
+              :watch-slides-progress="true"
+              @swiper="setThumbnailSwiper"
+              class="mySwiper"
+            >
+              <SwiperSlideComponent v-for="(img, i) in images" :key="`thumb-${i}-${img}`">
+                <div class="thumbnail-image-wrapper">
+                  <img :src="img" :alt="`${title} - ${i + 1}`" @error="onImgErr" />
         </div>
+              </SwiperSlideComponent>
+            </SwiperComponent>
+          </div>
+          
         <!-- Main Swiper Gallery -->
+          <div class="main-swiper-container">
         <div v-if="!shouldShowSwiper" class="no-images">
           <div class="no-images-content">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
             </svg>
-            <p>{{ t('product.no_images') }}</p>
+                <p>{{ t('product.no_images') }}</p>
           </div>
         </div>
         <SwiperComponent
           v-if="swiperReady"
-          :key="`main-swiper-${images.length}`"
+                :key="`main-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
           :style="{
             '--swiper-navigation-color': '#fff',
             '--swiper-pagination-color': '#fff',
@@ -1859,7 +3191,8 @@ const handleProductDetails = () => {
           :space-between="10"
           :navigation="images.length > 1"
           :modules="modules"
-          :loop="false"
+                :loop="false"
+                :thumbs="{ swiper: thumbnailSwiper }"
           @swiper="setMainSwiper"
           class="mySwiper2"
         >
@@ -1868,13 +3201,49 @@ const handleProductDetails = () => {
               <img :src="img" :alt="title" @error="onImgErr" />
               <div v-if="imageChanging && i === mainIndex" class="image-loading">
                 <div class="loading-spinner"></div>
-                <span>{{ t('product.changing_image') }}</span>
+                    <span>{{ t('product.changing_image') }}</span>
               </div>
             </div>
           </SwiperSlideComponent>
         </SwiperComponent>
+          </div>
+        </div>
+        
           <div class="product-description">
-            <h3>{{ title }}</h3>
+            <!-- Brand -->
+            <div class="brand-section search-box-mobile">
+              <div class="brand-info">
+                <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
+                  <NuxtLink :to="brandLink" class="text-decoration-none">
+                    <picture>
+                      <img 
+                        class="cover-image-class" 
+                        :src="brandImage || '/images/Group 1171274840.png'" 
+                        :alt="brandName"
+                        @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
+                      >
+                    </picture>
+                  </NuxtLink>
+                </div>
+                <span class="original-badge">{{ t('product.original') }}</span>
+              </div>
+            </div>
+            
+            <h1 class="title search-box-mobile">{{ title }}</h1>
+            
+            <!-- Product SKU -->
+            <div v-if="currentVariantSku" class="product-sku search-box-mobile">
+              <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
+              <span class="sku-value">{{ currentVariantSku }}</span>
+            </div>
+            
+            <!-- Rating -->
+            <div class="rating-section search-box-mobile">
+              <div class="stars">
+                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(rating) }">★</span>
+              </div>
+              <span class="rating-text">({{ reviewsCount }}) {{ t('product.reviews') }}</span>
+            </div>
             <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
           </div>
           <div class="specifications">
@@ -1888,34 +3257,34 @@ const handleProductDetails = () => {
       <!-- Info -->
       <div class="info">
         <!-- Brand -->
-        <div class="brand-section">
+        <div class="brand-section  search-box-desktop">
           <div class="brand-info">
-            <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
-              <NuxtLink :to="brandLink" class="text-decoration-none">
-                <picture>
-                  <img 
-                    class="cover-image-class" 
-                    :src="brandImage || '/images/Group 1171274840.png'" 
-                    :alt="brandName"
-                    @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
-                  >
-                </picture>
-              </NuxtLink>
-            </div>
+        <div v-if="brandName" class="brands-popup d-flex align-items-center gap-2">
+          <NuxtLink :to="brandLink" class="text-decoration-none">
+            <picture>
+              <img 
+                class="cover-image-class" 
+                :src="brandImage || '/images/Group 1171274840.png'" 
+                :alt="brandName"
+                @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }"
+              >
+            </picture>
+          </NuxtLink>
+        </div>
             <span class="original-badge">{{ t('product.original') }}</span>
           </div>
         </div>
         
-        <h1 class="title">{{ title }}</h1>
+        <h1 class="title search-box-desktop">{{ title }}</h1>
         
         <!-- Product SKU -->
-        <div v-if="currentVariantSku" class="product-sku">
+        <div v-if="currentVariantSku" class="product-sku search-box-desktop">
           <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
           <span class="sku-value">{{ currentVariantSku }}</span>
         </div>
         
         <!-- Rating -->
-        <div class="rating-section">
+        <div class="rating-section search-box-desktop">
           <div class="stars">
             <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(rating) }">★</span>
           </div>
@@ -1931,12 +3300,25 @@ const handleProductDetails = () => {
 
         <!-- Color Selection -->
         <div v-if="availableColors.length > 0" class="variant-section">
+          <div class="variant-title-wrapper">
           <h4 class="variant-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            {{ t('product.select_color') }}
+              {{ t('product.select_color') }}
           </h4>
+            <button 
+              v-if="selectedColor" 
+              class="clear-color-btn"
+              @click="clearColorSelection"
+              :title="t('product.clear_color') || 'إزالة اختيار اللون'"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+              <span>{{ t('product.clear') || 'إزالة' }}</span>
+            </button>
+          </div>
           <div class="color-options">
             <div
               v-for="color in availableColors"
@@ -1947,17 +3329,46 @@ const handleProductDetails = () => {
               <button
                 class="color-option"
                 :class="{ active: selectedColor === color.name }"
-                :style="{ backgroundColor: color.code }"
+                :style="{ backgroundColor: color.hexCode || getColorValue(color.code) }"
                 @click="selectColor(color)"
                 :title="color.name"
               >
-                <div v-if="color.image" class="color-image">
-                  <img :src="color.image" :alt="color.name" @error="onImgErr" />
-                </div>
-                <div v-else class="color-circle" :style="{ backgroundColor: color.code }"></div>
-                <span class="color-name">{{ color.name }}</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Variation Selection -->
+        <div v-if="availableVariations.length > 0" class="variant-section">
+          <div class="variant-title-wrapper">
+            <h4 class="variant-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              {{ t('product.select_variation') }}
+            </h4>
+            <button 
+              v-if="selectedVariation" 
+              class="clear-color-btn"
+              @click="clearVariationSelection"
+              :title="t('product.clear_variation') || 'إزالة اختيار المتغير'"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+              <span>{{ t('product.clear') || 'إزالة' }}</span>
+            </button>
+          </div>
+          <div class="size-options">
+            <button
+              v-for="variation in availableVariations"
+              :key="variation"
+              class="size-option"
+              :class="{ active: selectedVariation === variation }"
+              @click="selectVariation(variation)"
+            >
+              <span class="size-value">{{ variation }}</span>
+            </button>
           </div>
         </div>
 
@@ -2026,7 +3437,7 @@ const handleProductDetails = () => {
             <svg v-else data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" :fill="isInCompare ? 'currentColor' : 'none'" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
           </button>
         </div>
-        
+
         <!-- Promotions -->
         <div v-if="hasDiscount" class="promotion-banner">
           <span class="promo-text">{{ t('product.promo_1_plus_1') }}</span>
@@ -2126,8 +3537,8 @@ const handleProductDetails = () => {
                 <div class="offer-product-card-content">
                   <h6 class="text-black">{{ getProductTitle(offerProduct) }}</h6>
                   <div class="offer-product-card-price d-flex align-items-center gap-3">
-                    <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
-                    <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
                   </div>
                 </div>
               </NuxtLink>
@@ -3018,6 +4429,23 @@ const handleProductDetails = () => {
     margin:0; 
     font-size:16px;
   }
+
+  .gallery-container {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .thumbnail-swiper-container {
+    flex-shrink: 0;
+    width: 80px;
+  }
+
+  .main-swiper-container {
+    flex: 1;
+    min-width: 0;
+  }
+
   .mySwiper2{ 
     background:#fafafa; 
     border:1px solid #eee; 
@@ -3075,26 +4503,43 @@ const handleProductDetails = () => {
     100%{ transform:rotate(360deg); } 
   }
   .mySwiper{ 
-    height:80px; 
+    height:400px;
     box-sizing:border-box; 
-    padding:10px 0;
+    padding:0;
+    width: 100%;
+  }
+  .thumbnail-image-wrapper {
+    width: 100%;
+    height: 100%;
+    padding: 4px;
+    border-radius: 8px;
+    border: 2px solid #eee;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: #fff;
+  }
+  .thumbnail-image-wrapper:hover {
+    border-color: #F58040;
+  }
+  .mySwiper .swiper-slide-thumb-active .thumbnail-image-wrapper {
+    border-color: #F58040;
+    box-shadow: 0 0 0 2px rgba(245, 128, 64, 0.2);
   }
   .mySwiper img{ 
     width:100%; 
     height:100%; 
     object-fit:cover; 
-    border-radius:8px;
-    border:2px solid #eee;
-    transition:border-color 0.2s;
-  }
-  .mySwiper .swiper-slide-thumb-active img{ 
-    border-color:#2563eb; 
-    box-shadow:0 0 0 2px rgba(37, 99, 235, 0.1);
+    border-radius:6px;
+    display: block;
   }
   .mySwiper .swiper-slide{ 
-    width:60px !important; 
-    height:60px; 
+    width: 100% !important; 
+    height: 80px !important; 
+    margin-bottom: 10px;
     cursor:pointer;
+  }
+  .mySwiper .swiper-slide:last-child {
+    margin-bottom: 0;
   }
 
   /* Responsive Swiper Gallery */
@@ -3105,6 +4550,17 @@ const handleProductDetails = () => {
     .product {
       flex-direction: column;
     }
+    .gallery-container {
+      flex-direction: column;
+    }
+    .thumbnail-swiper-container {
+      width: 100%;
+      order: 2;
+    }
+    .main-swiper-container {
+      order: 1;
+      width: 100%;
+    }
     .mySwiper2{ 
       min-height:300px;
     }
@@ -3112,11 +4568,16 @@ const handleProductDetails = () => {
       max-height:300px;
     }
     .mySwiper{ 
-      height:70px;
+      height: auto;
+      max-height: 100px;
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
     }
     .mySwiper .swiper-slide{ 
-      width:50px; 
-      height:50px; 
+      width: 80px !important; 
+      height: 80px !important; 
+      margin-bottom: 8px;
     }
   }
 
@@ -3328,11 +4789,17 @@ const handleProductDetails = () => {
     border-radius:12px; 
     border:1px solid #e5e7eb;
   }
+  .variant-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
   .variant-title{ 
     font-size:16px; 
     font-weight:600; 
     color:#111827; 
-    margin:0 0 16px; 
+    margin:0;
     display:flex; 
     align-items:center; 
     gap:8px;
@@ -3340,6 +4807,29 @@ const handleProductDetails = () => {
   .variant-title svg{ 
     color:#2563eb; 
     flex-shrink:0;
+  }
+  .clear-color-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .clear-color-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+  }
+  .clear-color-btn svg {
+    width: 14px;
+    height: 14px;
   }
   
   .color-options{ 
@@ -3355,10 +4845,10 @@ const handleProductDetails = () => {
     transform:translateY(-2px);
   }
   .color-option{ 
-    width:60px; 
-    height:60px; 
+    width:35px; 
+    height:35px; 
     border:3px solid #e5e7eb; 
-    border-radius:12px; 
+    border-radius:50%; 
     cursor:pointer; 
     position:relative; 
     transition:all 0.3s ease;
@@ -3396,6 +4886,17 @@ const handleProductDetails = () => {
     height:32px; 
     border-radius:50%; 
     border:2px solid rgba(255,255,255,0.3);
+  }
+  .color-placeholder {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 50%;
+    color: #9ca3af;
+    flex-shrink: 0;
   }
   .color-name{ 
     font-size:10px; 
@@ -3736,6 +5237,10 @@ const handleProductDetails = () => {
 
    /* Responsive Reviews */
    @media (max-width: 768px) {
+    .payment-image-container , .add-to-cart-section {
+      display: flex !important;
+      flex-wrap: wrap !important;
+    }
      .reviews-header{ 
        flex-direction:column; 
        gap:16px; 

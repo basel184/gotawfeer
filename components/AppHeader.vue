@@ -242,6 +242,8 @@ const loadingSearch = ref(false)
 const suggestions = ref<string[]>([])
 const products = ref<any[]>([])
 const showLang = ref(false)
+const showDesktopSuggestions = ref(false)
+const showMobileSuggestions = ref(false)
 const loginModalOpen = useState('loginModalOpen', () => false)
 const hoveredCategory = ref<any>(null)
 const hoveredMegaCategory = ref<any>(null)
@@ -623,13 +625,24 @@ async function fetchSearch(term: string) {
           : (Array.isArray(r) ? r : [])
     console.log('[header] Raw list:', rawList)
     // Normalize product fields used in UI
-    const list = rawList.map((p: any) => ({
-      ...p,
-      name: p?.name || p?.product_name || p?.title || '',
-      slug: p?.slug || p?.id,
-      image_full_url: p?.image_full_url || p?.thumbnail || p?.image || p?.image_url,
-      price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
-    }))
+    const list = rawList.map((p: any) => {
+      // Extract image URL from object or string
+      const getImageUrl = (img: any) => {
+        if (!img) return null
+        if (typeof img === 'string') return img
+        if (img?.path) return img.path
+        return null
+      }
+      
+      return {
+        ...p,
+        name: p?.name || p?.product_name || p?.title || '',
+        slug: p?.slug || p?.id,
+        image_full_url: getImageUrl(p?.image_full_url) || getImageUrl(p?.thumbnail_full_url) || p?.thumbnail || p?.image || p?.image_url,
+        thumbnail_full_url: getImageUrl(p?.thumbnail_full_url) || getImageUrl(p?.image_full_url) || p?.thumbnail || p?.image,
+        price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
+      }
+    })
     // Collect names for future suggestions
     recentNames.value = [
       ...new Set([
@@ -654,11 +667,20 @@ async function fetchSearch(term: string) {
           : Array.isArray(r?.products?.data)
             ? r.products.data
             : (Array.isArray(r) ? r : [])
+      // Extract image URL from object or string
+      const getImageUrl = (img: any) => {
+        if (!img) return null
+        if (typeof img === 'string') return img
+        if (img?.path) return img.path
+        return null
+      }
+      
       const list = rawList.map((p: any) => ({
         ...p,
         name: p?.name || p?.product_name || p?.title || '',
         slug: p?.slug || p?.id,
-        image_full_url: p?.image_full_url || p?.thumbnail || p?.image || p?.image_url,
+        image_full_url: getImageUrl(p?.image_full_url) || getImageUrl(p?.thumbnail_full_url) || p?.thumbnail || p?.image || p?.image_url,
+        thumbnail_full_url: getImageUrl(p?.thumbnail_full_url) || getImageUrl(p?.image_full_url) || p?.thumbnail || p?.image,
         price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
       }))
       products.value = list.slice(0, 20)
@@ -677,6 +699,14 @@ async function fetchSearch(term: string) {
 let timer: any
 watch(q, (val) => {
   clearTimeout(timer)
+  // Show suggestions automatically when typing (after 2 characters)
+  if (val && val.trim().length >= 2) {
+    showDesktopSuggestions.value = true
+    showMobileSuggestions.value = true
+  } else {
+    showDesktopSuggestions.value = false
+    showMobileSuggestions.value = false
+  }
   timer = setTimeout(() => fetchSearch(val), 250)
 })
 
@@ -696,9 +726,27 @@ function goSearch(term?: string) {
   navigateTo(`/shop?q=${encodeURIComponent(finalQ)}`)
   
   // Complete loading after navigation
-  setTimeout(() => {
-    completeGlobalLoading(progressInterval)
-  }, 1000)
+  if (process.client) {
+    setTimeout(() => {
+      completeGlobalLoading(progressInterval)
+    }, 1000)
+  }
+}
+
+function handleDesktopSearchBlur() {
+  if (process.client) {
+    setTimeout(() => {
+      showDesktopSuggestions.value = false
+    }, 200)
+  }
+}
+
+function handleMobileSearchBlur() {
+  if (process.client) {
+    setTimeout(() => {
+      showMobileSuggestions.value = false
+    }, 200)
+  }
 }
 
 function goCategory(cat: Cat) {
@@ -1045,13 +1093,36 @@ async function handleRegisterSubmit() {
               <!-- Search Section -->
               <div class="search-section">
                 <div class="search-container">
-                  <div class="search-box search-box-desktop p-0 border 0">
+                  <div class="search-box search-box-desktop p-0 border 0" @click.stop>
                     <div class="so-search border-0">
                                 <svg  width="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-                                <input v-model="q" type="text" :placeholder="t('search.placeholder')" @keyup.enter="goSearch()" autofocus />
+                                <input v-model="q" type="text" :placeholder="t('search.placeholder')" @keyup.enter="goSearch()" @focus="showDesktopSuggestions = true" @blur="handleDesktopSearchBlur" />
                     </div>
                   </div>
-
+                  <!-- Desktop Search Suggestions - Outside search-box, absolute positioned -->
+                  <div v-if="showDesktopSuggestions && q && q.length >= 2 && (suggestions.length > 0 || products.length > 0)" class="header-search-suggestions desktop-suggestions">
+                    <div v-if="loadingSearch" class="suggestions-loading">
+                      <div class="loading-spinner-small"></div>
+                      <span>{{ t('search.searching') || 'جاري البحث...' }}</span>
+                    </div>
+                    <div v-else>
+                      <!-- Products -->
+                      <div v-if="products.length > 0" class="products-section">
+                        <div class="suggestions-title">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 4v2h10V4H7zm0 4v2h10V8H7zm0 4v2h7v-2H7zm13-1.59L17.59 12l-2.29 2.29 1.41 1.41L19 13.41z"/>
+                          </svg>
+                          {{ t('search.products') || 'المنتجات' }} ({{ products.length }})
+                        </div>
+                        <NuxtLink class="product-suggestion-item" v-for="(p, i) in products.slice(0, 5)" :key="i" :to="{ path: '/product/' + (p?.slug || p?.id), query: { from: 'search' } }" @click="showDesktopSuggestions = false">
+                          <img :src="p?.image_full_url || p?.thumbnail_full_url || '/images/product-placeholder.jpg'" :alt="p?.name" class="product-suggestion-image" />
+                          <div class="product-suggestion-info">
+                            <div class="product-suggestion-name">{{ p?.name || p?.product_name || t('search.product') }}</div>
+                          </div>
+                        </NuxtLink>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="logo-section logo-mobile">
@@ -1117,9 +1188,33 @@ async function handleRegisterSubmit() {
           </div>
       </div>
       <div class="search-box-container">
-        <div class="search-box search-box-mobile w-75 m-auto ">
+        <div class="search-box search-box-mobile w-75 m-auto" @click.stop>
             <svg width="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-            <input type="text" :placeholder="t('search.placeholder')" readonly class="search-input" />
+            <input v-model="q" type="text" :placeholder="t('search.placeholder')" @focus="showMobileSuggestions = true" @blur="handleMobileSearchBlur" @keyup.enter="goSearch()" />
+        </div>
+        <!-- Mobile Search Suggestions - Outside search-box, absolute positioned -->
+        <div v-if="showMobileSuggestions && q && q.length >= 2 && (suggestions.length > 0 || products.length > 0)" class="header-search-suggestions mobile-suggestions">
+          <div v-if="loadingSearch" class="suggestions-loading">
+            <div class="loading-spinner-small"></div>
+            <span>{{ t('search.searching') || 'جاري البحث...' }}</span>
+          </div>
+          <div v-else>
+            <!-- Products -->
+            <div v-if="products.length > 0" class="products-section">
+              <div class="suggestions-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 4v2h10V4H7zm0 4v2h10V8H7zm0 4v2h7v-2H7zm13-1.59L17.59 12l-2.29 2.29 1.41 1.41L19 13.41z"/>
+                </svg>
+                {{ t('search.products') || 'المنتجات' }} ({{ products.length }})
+              </div>
+              <NuxtLink class="product-suggestion-item" v-for="(p, i) in products.slice(0, 5)" :key="i" :to="{ path: '/product/' + (p?.slug || p?.id), query: { from: 'search' } }" @click="showMobileSuggestions = false">
+                <img :src="p?.image_full_url || p?.thumbnail_full_url || p?.thumbnail || '/images/product-placeholder.jpg'" :alt="p?.name" class="product-suggestion-image" />
+                <div class="product-suggestion-info">
+                  <div class="product-suggestion-name">{{ p?.name || p?.product_name || t('search.product') }}</div>
+                </div>
+              </NuxtLink>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1547,7 +1642,8 @@ async function handleRegisterSubmit() {
 
         <div class="so-body">
 
-          <div class="suggest" v-if="q && (suggestions.length || products.length)">
+          <!-- Hide suggestions in desktop and mobile search boxes -->
+          <div class="suggest" v-if="false">
             <div class="s-col">
               <div class="s-title">{{ t('search.suggestions_title') }}</div>
               <div class="s-item" v-for="(s,i) in suggestions" :key="i" @click="goSearch(s)">
@@ -1558,7 +1654,7 @@ async function handleRegisterSubmit() {
             <div class="s-col">
               <div class="s-title">{{ t('search.products') }} ({{ products.length }})</div>
               <NuxtLink class="p-item" v-for="(p,i) in products" :key="i" :to="{ path:'/product/'+(p?.slug || p?.id), query: { from: 'search' } }" @click="handleProductClick">
-                <img :src="p?.thumbnail_full_url?.path|| p?.thumbnail || 'https://dummyimage.com/56x56/f0f0f0/aaa'" alt="p" />
+                <img :src="p?.thumbnail_full_url || p?.image_full_url || p?.thumbnail || 'https://dummyimage.com/56x56/f0f0f0/aaa'" alt="p" />
                 <div class="p-info">
                   <div class="p-name">{{ p?.name || p?.product_name || t('search.product') }}</div>
                   <div class="p-price" v-if="p?.price">
@@ -2041,6 +2137,11 @@ body {
 
 .search-container {
   width: 100%;
+  position: relative;
+}
+
+.search-box-container {
+  position: relative;
 }
 
 .search-box {
@@ -2830,6 +2931,179 @@ body {
 .p-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 1px solid #eee; }
 .p-name { font-size: 14px; line-height: 1.3; }
 .p-price { color: #e91e63; }
+
+/* Header Search Suggestions - Absolute positioned below search box */
+.header-search-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 2px solid #F58040;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.header-search-suggestions.desktop-suggestions {
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+}
+
+.header-search-suggestions.mobile-suggestions {
+  position: absolute;
+  top: auto;
+}
+
+.header-search-suggestions::-webkit-scrollbar {
+  width: 6px;
+}
+
+.header-search-suggestions::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 0 12px 12px 0;
+}
+
+.header-search-suggestions::-webkit-scrollbar-thumb {
+  background: #F58040;
+  border-radius: 3px;
+}
+.mobile-suggestions {
+  display: none;
+}
+@media (max-width: 768px) {
+  .desktop-suggestions {
+    display: none;
+  }
+  .mobile-suggestions {
+    display: block;
+  }
+} 
+.suggestions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #F58040;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.suggestions-section,
+.products-section {
+  padding: 12px 0;
+}
+
+.suggestions-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+
+.suggestions-title svg {
+  opacity: 0.6;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #374151;
+  font-size: 14px;
+}
+
+.suggestion-item:hover {
+  background: #f9fafb;
+  color: #F58040;
+}
+
+.suggestion-item svg {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.suggestion-item:hover svg {
+  opacity: 1;
+}
+
+.product-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+  text-decoration: none;
+  color: inherit;
+}
+
+.product-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.product-suggestion-item:hover {
+  background: #f9fafb;
+}
+
+.product-suggestion-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.product-suggestion-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-suggestion-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-suggestion-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: #F58040;
+}
 
 .bottom-nav { position: fixed; bottom: 0; inset-inline: 0; background: #fff; border-top: 1px solid #eee; display: none; justify-content: space-around; padding: 6px 0; z-index: 45; }
 .bn-item { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: #444; text-decoration: none; font-size: 12px; background: none; border: none; cursor: pointer; }

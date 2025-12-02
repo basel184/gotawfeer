@@ -7,6 +7,7 @@ import { useCatalog } from '../../composables/useCatalog'
 import { useProducts } from '../../composables/useProducts'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
+import { useApi } from '../../composables/useApi'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -18,6 +19,13 @@ const wishlist = useWishlist()
 
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
+
+// Search suggestions state
+const searchSuggestions = ref<string[]>([])
+const searchProducts = ref<any[]>([])
+const showSuggestions = ref(false)
+const searchLoading = ref(false)
+const recentSearches = ref<string[]>([])
 
 // Filter state - initialized from route query for SSR
 const q = ref<string>((route.query.q as string) || '')
@@ -150,10 +158,25 @@ watch([price_min, price_max], () => {
 const getInitialCategory = (): number[] => {
   const catParam = route.query.category
   if (Array.isArray(catParam)) {
-    return catParam.map(v => Number(v)).filter(n => !isNaN(n))
+    const result = catParam.map(v => Number(v)).filter(n => !isNaN(n))
+    if (process.client && process.env.NODE_ENV === 'development') {
+      console.log('[shop] Initial category from route (array):', result)
+    }
+    return result
   } else if (typeof catParam === 'string' && catParam) {
     const n = Number(catParam)
-    return !isNaN(n) ? [n] : []
+    const result = !isNaN(n) ? [n] : []
+    if (process.client && process.env.NODE_ENV === 'development') {
+      console.log('[shop] Initial category from route (string):', {
+        param: catParam,
+        parsed: n,
+        result: result
+      })
+    }
+    return result
+  }
+  if (process.client && process.env.NODE_ENV === 'development') {
+    console.log('[shop] No category in route query')
   }
   return []
 }
@@ -218,6 +241,154 @@ const brandsList = computed(() => {
   return []
 })
 
+// Helper function to encode string to base64 (works in both browser and SSR)
+const encodeToBase64 = (str: string): string => {
+  try {
+    if (process.client && typeof btoa !== 'undefined') {
+      // Browser environment - encode UTF-8 properly
+      // btoa doesn't handle UTF-8 well, so we need to encode it first
+      return btoa(unescape(encodeURIComponent(str)))
+    } else {
+      // Node.js environment (SSR) - use Buffer
+      return Buffer.from(str, 'utf8').toString('base64')
+    }
+  } catch (e) {
+    console.warn('[shop] Base64 encoding failed:', e)
+    // Fallback: return original string (backend might handle it)
+    return str
+  }
+}
+
+// Fetch search suggestions
+const fetchSearchSuggestions = async (term: string) => {
+  if (!term || term.trim().length < 2) {
+    searchSuggestions.value = []
+    searchProducts.value = []
+    showSuggestions.value = false
+    return
+  }
+  
+  searchLoading.value = true
+  showSuggestions.value = true
+  
+  try {
+    const { $post } = useApi()
+    const body = {
+      name: term.trim(),
+      limit: 8,
+      offset: 1
+    }
+    
+    const res: any = await $post('v1/products/search', body)
+    
+    // Extract products
+    const rawList = Array.isArray(res?.products)
+      ? res.products
+      : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.products?.data)
+          ? res.products.data
+          : (Array.isArray(res) ? res : [])
+    
+    // Normalize products
+    const list = rawList.map((p: any) => ({
+      ...p,
+      name: p?.name || p?.product_name || p?.title || '',
+      slug: p?.slug || p?.id,
+      image_full_url: p?.image_full_url || p?.thumbnail || p?.image || p?.image_url,
+      price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
+    }))
+    
+    searchProducts.value = list.slice(0, 5)
+    
+    // Generate suggestions from product names
+    const productNames = list
+      .map((p: any) => p.name)
+      .filter((name: string) => name && name.toLowerCase().includes(term.toLowerCase()))
+      .slice(0, 3)
+    
+    // Add recent searches that match
+    const matchingRecent = recentSearches.value
+      .filter((s: string) => s.toLowerCase().includes(term.toLowerCase()))
+      .slice(0, 2)
+    
+    searchSuggestions.value = Array.from(new Set([
+      term.trim(),
+      ...productNames,
+      ...matchingRecent
+    ])).slice(0, 5)
+    
+  } catch (e) {
+    console.warn('[shop] Search suggestions failed:', e)
+    searchSuggestions.value = []
+    searchProducts.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+// Debounced search suggestions
+let suggestionsDebounceTimer: any
+const handleSearchInput = () => {
+  clearTimeout(suggestionsDebounceTimer)
+  suggestionsDebounceTimer = setTimeout(() => {
+    if (q.value?.trim() && q.value.trim().length >= 2) {
+      fetchSearchSuggestions(q.value.trim())
+    } else {
+      showSuggestions.value = false
+      searchSuggestions.value = []
+      searchProducts.value = []
+    }
+  }, 300)
+}
+
+// Handle search blur with delay
+const handleSearchBlur = () => {
+  if (process.client) {
+    setTimeout(() => {
+      showSuggestions.value = false
+    }, 200)
+  }
+}
+
+// Select suggestion
+const selectSuggestion = (suggestion: string) => {
+  q.value = suggestion
+  showSuggestions.value = false
+  // Trigger search
+  router.replace({ path: route.path, query: { ...route.query, q: suggestion } })
+  resetAndFetch()
+  
+  // Save to recent searches
+  if (process.client) {
+    recentSearches.value = [
+      suggestion,
+      ...recentSearches.value.filter((s: string) => s !== suggestion)
+    ].slice(0, 10)
+    localStorage.setItem('shop_recent_searches', JSON.stringify(recentSearches.value))
+  }
+}
+
+// Select product from suggestions
+const selectProduct = (product: any) => {
+  showSuggestions.value = false
+  navigateTo(`/product/${product.slug || product.id}`)
+}
+
+// Load recent searches from localStorage
+onMounted(() => {
+  if (process.client) {
+    try {
+      const stored = localStorage.getItem('shop_recent_searches')
+      if (stored) {
+        recentSearches.value = JSON.parse(stored)
+      }
+    } catch (e) {
+      console.warn('[shop] Failed to load recent searches:', e)
+    }
+  }
+})
+
 // Build filter body for API
 const buildBody = () => {
   const body: any = {
@@ -225,14 +396,22 @@ const buildBody = () => {
     offset: offset.value || 1,
   }
   
-  // Only add search if query exists
+  // Only add search if query exists (with base64 encoding as expected by backend)
   if (q.value?.trim()) {
-    body.search = q.value.trim()
+    // Backend expects base64 encoded search string
+    body.search = encodeToBase64(q.value.trim())
   }
   
   // Only add category if array has items
   if (Array.isArray(category.value) && category.value.length > 0) {
     body.category = JSON.stringify(category.value)
+    // Log for debugging
+    if (process.client && process.env.NODE_ENV === 'development') {
+      console.log('[shop] Category filter:', {
+        categoryIds: category.value,
+        stringified: body.category
+      })
+    }
   }
   
   // Only add brand if array has items
@@ -290,7 +469,17 @@ const loadPage = async () => {
     let res: any
     
     if (q.value?.trim()) {
-      res = await search(q.value.trim(), limit.value, offset.value)
+      // Use filter endpoint with search parameter (base64 encoded in buildBody)
+      // This is more reliable and supports all filters including search
+      const body = buildBody()
+      
+      // Log search query for debugging
+      if (process.client) {
+        console.log('[shop] Searching for:', q.value.trim())
+        console.log('[shop] Search body:', { search: body.search, hasSearch: !!body.search })
+      }
+      
+      res = await filter(body)
     } else {
       const body = buildBody()
       
@@ -299,9 +488,21 @@ const loadPage = async () => {
         console.warn('[shop] Invalid filter body:', body)
         res = { products: [], total_size: 0, offset: 1 }
       } else if (body.limit && body.offset !== undefined) {
-        // Log body for debugging (only in development)
-        if (process.env.NODE_ENV === 'development') {
+        // Log body for debugging
+        if (process.client) {
           console.log('[shop] Filter body:', JSON.stringify(body, null, 2))
+          if (body.search) {
+            console.log('[shop] Search details:', {
+              originalQuery: q.value,
+              base64Encoded: body.search,
+              decoded: process.client && typeof atob !== 'undefined' ? atob(body.search) : 'N/A (SSR)'
+            })
+          }
+          console.log('[shop] Category filter details:', {
+            categoryValue: category.value,
+            categoryInBody: body.category,
+            categoryParsed: body.category ? JSON.parse(body.category) : null
+          })
         }
         res = await filter(body)
       } else {
@@ -318,6 +519,16 @@ const loadPage = async () => {
     items.value = items.value.concat(list)
     total.value = Number(res?.total_size || res?.total || 0)
     offset.value = offset.value + 1
+    
+    // Log response for debugging
+    if (process.client) {
+      console.log('[shop] API Response:', {
+        productsCount: list.length,
+        totalSize: total.value,
+        categoryFilter: category.value,
+        responseTotal: res?.total_size || res?.total
+      })
+    }
     
     loadingProgress.value = 100
     clearInterval(progressInterval)
@@ -403,8 +614,70 @@ const watchFilters = () => {
   }, 300)
 }
 
-// Watch filter values - single optimized watcher
-watch([q, sort_by, product_type, price_min, price_max, category, brand], () => {
+// Watch route.query.category directly to ensure it's synced
+watch(() => route.query.category, (newCategoryParam) => {
+  if (process.client) {
+    const catParam = newCategoryParam
+    let newCategory: number[] = []
+    
+    if (Array.isArray(catParam)) {
+      newCategory = catParam.map(v => Number(v)).filter(n => !isNaN(n))
+    } else if (typeof catParam === 'string' && catParam) {
+      const n = Number(catParam)
+      newCategory = !isNaN(n) ? [n] : []
+    }
+    
+    // Only update if different to avoid infinite loops
+    const currentCategoryStr = JSON.stringify(category.value.sort())
+    const newCategoryStr = JSON.stringify(newCategory.sort())
+    
+    if (currentCategoryStr !== newCategoryStr) {
+      category.value = newCategory
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[shop] Category synced from route.query:', {
+          from: category.value,
+          to: newCategory
+        })
+      }
+    }
+  }
+}, { immediate: true })
+
+// Separate watcher for search with longer debounce for better UX
+let searchDebounceTimer: any
+watch(q, (newQ) => {
+  // Clear existing timer
+  clearTimeout(searchDebounceTimer)
+  
+  // If search is cleared, reset immediately
+  if (!newQ?.trim()) {
+    const query = { ...route.query }
+    delete query.q
+    router.replace({ path: route.path, query })
+    resetAndFetch()
+    return
+  }
+  
+  // Debounce search input (longer delay for better UX)
+  searchDebounceTimer = setTimeout(() => {
+    // Update URL with search query
+    const query = { ...route.query }
+    if (newQ?.trim()) {
+      query.q = newQ.trim()
+    } else {
+      delete query.q
+    }
+    
+    // Navigate with new query (SPA navigation)
+    router.replace({ path: route.path, query })
+    
+    // Reset and fetch with new search
+    resetAndFetch()
+  }, 500) // 500ms debounce for search
+}, { immediate: false })
+
+// Watch filter values - single optimized watcher (excluding q which has its own watcher)
+watch([sort_by, product_type, price_min, price_max, category, brand], () => {
   watchFilters()
 }, { deep: true })
 
@@ -443,6 +716,15 @@ const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) =>
       category.value = !isNaN(n) ? [n] : []
     } else {
       category.value = []
+    }
+    
+    // Log for debugging
+    if (process.client && process.env.NODE_ENV === 'development') {
+      console.log('[shop] Category updated from route:', {
+        queryParam: catParam,
+        categoryValue: category.value,
+        willSendToAPI: category.value.length > 0 ? JSON.stringify(category.value) : 'none'
+      })
     }
     
     // Update brand
@@ -962,16 +1244,86 @@ const handleProductDetails = () => {
             </svg>
             {{ t('search.title') }}
           </div>
-          <div class="search-wrapper">
+          <div class="search-wrapper" @click.stop>
             <input 
               v-model="q" 
               type="search" 
               :placeholder="t('shop.search_placeholder')" 
               class="search-input"
+              @input="handleSearchInput"
+              @focus="q && q.length >= 2 && (showSuggestions = true)"
+              @blur="handleSearchBlur"
             />
             <svg class="search-icon" fill="currentColor" viewBox="0 0 24 24">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
+            
+            <!-- Search Suggestions Dropdown -->
+            <div v-if="showSuggestions && (searchSuggestions.length > 0 || searchProducts.length > 0)" class="search-suggestions">
+              <!-- Loading State -->
+              <div v-if="searchLoading" class="suggestions-loading">
+                <div class="loading-spinner-small"></div>
+                <span>{{ t('shop.searching') || 'جاري البحث...' }}</span>
+              </div>
+              
+              <!-- Suggestions List -->
+              <div v-if="!searchLoading && searchSuggestions.length > 0" class="suggestions-section">
+                <div class="suggestions-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.6-.58 3.07-1.54 4.2l.2.2h.84l5 5l-1.5 1.5l-5-5v-.84l-.2-.2A6.516 6.516 0 0 1 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3Z"/>
+                  </svg>
+                  {{ t('shop.suggestions') || 'مقترحات البحث' }}
+                </div>
+                <div 
+                  v-for="(suggestion, index) in searchSuggestions" 
+                  :key="`suggestion-${index}`"
+                  class="suggestion-item"
+                  @click="selectSuggestion(suggestion)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.6-.58 3.07-1.54 4.2l.2.2h.84l5 5l-1.5 1.5l-5-5v-.84l-.2-.2A6.516 6.516 0 0 1 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3Z"/>
+                  </svg>
+                  <span>{{ suggestion }}</span>
+                </div>
+              </div>
+              
+              <!-- Products List -->
+              <div v-if="!searchLoading && searchProducts.length > 0" class="products-section">
+                <div class="suggestions-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 4v2h10V4H7zm0 4v2h10V8H7zm0 4v2h7v-2H7zm13-1.59L17.59 12l-2.29 2.29 1.41 1.41L19 13.41z"/>
+                  </svg>
+                  {{ t('shop.products') || 'المنتجات' }}
+                </div>
+                <div 
+                  v-for="product in searchProducts" 
+                  :key="product.id || product.slug"
+                  class="product-suggestion-item"
+                  @click="selectProduct(product)"
+                >
+                  <img 
+                    :src="product.image_full_url || '/images/product-placeholder.jpg'" 
+                    :alt="product.name"
+                    class="product-suggestion-image"
+                    @error="(e: any) => { e.target.src = '/images/product-placeholder.jpg' }"
+                  />
+                  <div class="product-suggestion-info">
+                    <div class="product-suggestion-name">{{ product.name }}</div>
+                    <div class="product-suggestion-price" v-if="product.price">
+                      {{ formatPrice(product.price) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- No Results -->
+              <div v-if="!searchLoading && searchSuggestions.length === 0 && searchProducts.length === 0" class="no-suggestions">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span>{{ t('shop.no_suggestions') || 'لا توجد نتائج' }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1534,6 +1886,170 @@ const handleProductDetails = () => {
   outline: none;
   border-color: #F58040;
   box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
+}
+
+/* Search Suggestions */
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 2px solid #F58040;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 500px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.search-suggestions::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-suggestions::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 0 12px 12px 0;
+}
+
+.search-suggestions::-webkit-scrollbar-thumb {
+  background: #F58040;
+  border-radius: 3px;
+}
+
+.suggestions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #F58040;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.suggestions-section,
+.products-section {
+  padding: 12px 0;
+}
+
+.suggestions-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+
+.suggestions-title svg {
+  opacity: 0.6;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #374151;
+  font-size: 14px;
+}
+
+.suggestion-item:hover {
+  background: #f9fafb;
+  color: #F58040;
+}
+
+.suggestion-item svg {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.suggestion-item:hover svg {
+  opacity: 1;
+}
+
+.product-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.product-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.product-suggestion-item:hover {
+  background: #f9fafb;
+}
+
+.product-suggestion-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.product-suggestion-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-suggestion-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-suggestion-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: #F58040;
+}
+
+.no-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.no-suggestions svg {
+  opacity: 0.5;
 }
 
 /* Sort Select */

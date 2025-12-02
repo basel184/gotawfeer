@@ -17,7 +17,14 @@ export function useProducts() {
   const byBrand = (brandId: string | number) => $get(`v1/brands/products/${brandId}`)
 
   // Search & filter
-  const search = (q: string, limit = 24, offset = 1) => $get(`v1/products/search?name=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`)
+  const search = (q: string, limit = 24, offset = 1) => {
+    // Use POST request with body as expected by backend
+    return $post('v1/products/search', {
+      name: q,
+      limit: limit,
+      offset: offset
+    })
+  }
   const filter = (body: any) => $post('v1/products/filter', body)
 
   // Details and related
