@@ -193,8 +193,8 @@ const fallbackCats: Cat[] = [
 
 const { data: catRes } = await useAsyncData<any>('header-cats', async () => {
   try {
-    // Try a few common shapes
-    const r = await $get('v1/categories')
+    // Try a few common shapes with shorter timeout (3 seconds)
+    const r = await $get('v1/categories', { timeout: 3000 })
     return r
   } catch (e) {
     return null

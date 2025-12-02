@@ -1,16 +1,38 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Navigation, Pagination, Autoplay } from 'swiper/modules'
-import 'swiper/css'
-import 'swiper/css/navigation'
-import 'swiper/css/pagination'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
 import 'assets/css/custom.css'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 
-// Swiper modules
-const swiperModules = [Navigation, Pagination, Autoplay]
+// Lazy load Swiper components for better performance
+const Swiper = defineAsyncComponent(() => import('swiper/vue').then(m => m.Swiper))
+const SwiperSlide = defineAsyncComponent(() => import('swiper/vue').then(m => m.SwiperSlide))
+
+// Lazy load Swiper modules and CSS
+let swiperModules: any[] = []
+let swiperStylesLoaded = false
+
+const loadSwiperModules = async () => {
+  if (swiperStylesLoaded) return
+  
+  // Load CSS dynamically
+  if (process.client) {
+    const loadCSS = (href: string) => {
+      if (document.querySelector(`link[href="${href}"]`)) return
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = href
+      document.head.appendChild(link)
+    }
+    
+    loadCSS('https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css')
+  }
+  
+  // Load modules
+  const { Navigation, Pagination, Autoplay } = await import('swiper/modules')
+  swiperModules = [Navigation, Pagination, Autoplay]
+  swiperStylesLoaded = true
+}
 
 // Active slide state for testimonials
 const activeTestimonialSlide = ref(0)
@@ -71,6 +93,12 @@ onBeforeUnmount(() => {
   // Remove scroll listener
   if (process.client) {
     window.removeEventListener('scroll', handleScroll)
+    
+    // Disconnect intersection observer
+    if (sectionObserver) {
+      sectionObserver.disconnect()
+      sectionObserver = null
+    }
   }
 })
 
@@ -80,13 +108,11 @@ const formatCountdown = (num: number): string => {
 }
 
 const { $get } = useApi()
-// Load config with lazy loading to allow page to render immediately
-// Using lazy: true ensures page renders first, then data loads
-const { data: cfg, pending: cfgPending } = await useAsyncData('cfg', () => $get('v1/config'))
+// Config - load client-side only (non-critical)
+const cfg = ref<any>(null)
+const cfgPending = ref(false)
 
-// Loading state
-const pageLoading = ref(true)
-const loadingProgress = ref(0)
+// No page loading - AppLoading handles it globally
 
 // Load wishlist and cart on page load
 const wishlist = useWishlist()
@@ -112,26 +138,102 @@ const handleScroll = () => {
   }
 }
 
+// Lazy load sections on scroll
+const visibleSections = ref<Set<number>>(new Set())
+const sectionsLoading = ref<Set<number>>(new Set())
+
+// Intersection Observer for lazy loading sections
+let sectionObserver: IntersectionObserver | null = null
+
 onMounted(async () => {
-  // Don't block page rendering - show page immediately
-  pageLoading.value = false
+  // Load Swiper modules in background (non-blocking)
+  loadSwiperModules().catch(() => {})
   
   // Load cart and wishlist in parallel (non-blocking)
+  // Silently handle errors (404 is expected if user is not authenticated)
   Promise.all([
-    wishlist.list().catch(() => {}),
+    wishlist.list().catch(() => {}), // Silently handle errors (404 is normal for guests)
     cart.list(true).catch(() => {}) // Force refresh to ensure cart is loaded
-  ]).catch(error => {
-    console.error('Failed to load wishlist or cart:', error)
+  ]).catch(() => {
+    // All errors are already handled silently
   })
+  
+  // Load config (non-blocking)
+  cfgPending.value = true
+  $get('v1/config').then((data: any) => {
+    cfg.value = data
+  }).catch(() => {
+    cfg.value = null
+  }).finally(() => {
+    cfgPending.value = false
+  })
+  
+  // Load home sections (critical - load immediately with shorter timeout)
+  sectionsPending.value = true
+  try {
+    // Use shorter timeout (3 seconds) for home sections
+    const data = await $get('v1/home-sections', { timeout: 3000 })
+    const sections = Array.isArray(data) ? data : (data?.data || data?.items || data?.products || [])
+    homeSections.value = sections
+    
+    // Mark ALL sections as visible immediately (show all sections after load)
+    sections.forEach((_: any, idx: number) => {
+      visibleSections.value.add(idx)
+    })
+  } catch (error) {
+    console.error('Error loading home sections:', error)
+    homeSections.value = []
+  } finally {
+    sectionsPending.value = false
+    
+    // After sections load, ensure DOM is updated
+    await nextTick()
+    
+    // Setup intersection observer after data is loaded
+    if (process.client && sectionObserver) {
+      requestAnimationFrame(() => {
+        const sections = document.querySelectorAll('[data-section-index]')
+        sections.forEach((section) => {
+          sectionObserver?.observe(section)
+        })
+      })
+    }
+  }
   
   // Initialize countdown
   initializeCountdown()
   
   // Setup scroll listener for scroll to top button
   if (process.client) {
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     // Check initial scroll position
     handleScroll()
+    
+    // Setup Intersection Observer for lazy loading sections
+    sectionObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sectionIndex = parseInt(entry.target.getAttribute('data-section-index') || '0')
+          if (!visibleSections.value.has(sectionIndex)) {
+            visibleSections.value.add(sectionIndex)
+            // Mark section as visible - it will load when rendered
+          }
+        }
+      })
+    }, {
+      rootMargin: '300px', // Start loading 300px before section comes into view (increased for better UX)
+      threshold: 0.01 // Lower threshold for earlier loading
+    })
+    
+    // Observe all sections after DOM is ready
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        const sections = document.querySelectorAll('[data-section-index]')
+        sections.forEach((section) => {
+          sectionObserver?.observe(section)
+        })
+      })
+    })
   }
 })
 
@@ -425,8 +527,9 @@ const handleProductDetails = () => {
 }
 
 // Admin-defined Home Sections (Collections)
-// Load home sections with lazy loading for faster initial render
-const { data: homeSections } = await useAsyncData('home-sections', () => $get('v1/home-sections'))
+// Load home sections - will be loaded in onMounted for faster initial render
+const homeSections = ref<any[]>([])
+const sectionsPending = ref(true)
 
 
 
@@ -683,28 +786,7 @@ const onImgErr = (e: any) => {
 
 <template>
   <div>
-    <!-- Loading Overlay -->
-    <teleport to="body">
-      <div v-if="pageLoading" class="page-loading-overlay">
-        <div class="page-loading-container">
-          <div class="page-loading-spinner">
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-          </div>
-          
-          <div class="page-loading-progress">
-            <div class="progress-bar" :style="{ width: loadingProgress + '%' }"></div>
-          </div>
-          
-          <div class="page-loading-message">
-            جاري التحميل...
-          </div>
-        </div>
-      </div>
-    </teleport>
-
-    <main class="home" dir="rtl" :class="{ 'loading-content': pageLoading }">
+    <main class="home" dir="rtl">
     <!-- Whatsapp -->
      <a 
       v-show="showScrollTop"
@@ -721,9 +803,19 @@ const onImgErr = (e: any) => {
     </a>
 
     <!-- Dynamic Home Sections from Admin -->
-    <section v-if="hasSectionItems" class="section ">
-      <div v-for="(s, idx) in (sectionItems as any)" :key="s?.id || idx" 
-           :class="['section', 'card', { 'special-layout': s?.sort_order === 2 }]">
+    <!-- Show loading state while sections are loading (only if no data yet) -->
+    <div v-if="sectionsPending && !hasSectionItems" class="sections-loading text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">جاري التحميل...</span>
+      </div>
+    </div>
+    <section v-else-if="hasSectionItems" class="section ">
+      <div 
+        v-for="(s, idx) in (sectionItems as any)" 
+        :key="s?.id || idx" 
+        :data-section-index="idx"
+        :class="['section', 'card', { 'special-layout': s?.sort_order === 2 }]"
+      >
         <div class="container">
           <!-- Section Header for Products with View All link -->
           <div class="section-header" v-if="s?.type === 'products' && (s?.feed_type === 'category' ? s?.feed_category_id : s?.slug) && s?.show_title !== false">
@@ -1728,124 +1820,7 @@ const onImgErr = (e: any) => {
   }
 }
 
-/* Page Loading Overlay */
-.page-loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
-.page-loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-}
-
-.page-loading-spinner {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-
-.page-loading-spinner .spinner-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 4px solid transparent;
-  border-radius: 50%;
-  animation: spin 1.5s linear infinite;
-}
-
-.page-loading-spinner .spinner-ring:nth-child(1) {
-  border-top-color: #F58040;
-  animation-delay: 0s;
-}
-
-.page-loading-spinner .spinner-ring:nth-child(2) {
-  border-right-color: #667eea;
-  animation-delay: 0.5s;
-}
-
-.page-loading-spinner .spinner-ring:nth-child(3) {
-  border-bottom-color: #764ba2;
-  animation-delay: 1s;
-}
-
-.page-loading-progress {
-  width: 300px;
-  height: 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.page-loading-progress .progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #F58040, #667eea, #764ba2);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  position: relative;
-}
-
-.page-loading-progress .progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-  animation: shimmer 1.5s infinite;
-}
-
-.page-loading-message {
-  font-size: 16px;
-  font-weight: 600;
-  color: #666;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.loading-content {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 @media (max-width: 768px) {
-  .page-loading-progress {
-    width: 250px;
-  }
-  
-  .page-loading-spinner {
-    width: 60px;
-    height: 60px;
-  }
-  
   .countdown-item {
     min-width: 50px;
     padding: 6px 8px;
@@ -1881,5 +1856,19 @@ const onImgErr = (e: any) => {
   .promo-banner {
     display: none;
   }
+}
+
+/* Sections Loading Spinner */
+.sections-loading {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sections-loading .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3em;
 }
 </style>

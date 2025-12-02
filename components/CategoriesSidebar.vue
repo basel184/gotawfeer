@@ -298,7 +298,8 @@ const loadCategories = async () => {
   try {
     loading.value = true
     const { $get } = useApi()
-    const response = await $get('v1/categories/')
+    // Use shorter timeout (3 seconds) for categories
+    const response = await $get('v1/categories/', { timeout: 3000 })
     
     if (response && Array.isArray(response)) {
       categories.value = response

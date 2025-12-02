@@ -1,6 +1,7 @@
 
 <template>
   <div>
+    <AppLoading />
     <NuxtLayout>
       <NuxtPage :transition="{
         name: 'page',

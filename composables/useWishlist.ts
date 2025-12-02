@@ -30,8 +30,10 @@ const list = async (force = false) => {
     error.value = ''
     
     const { $get } = useApi()
-    const response = await $get('v1/customer/wish-list')
+    // Use silent mode to suppress 404 errors in console
+    const response = await $get('v1/customer/wish-list', { silent: true })
     
+    // Response will be null for 404 errors in silent mode
     if (response && Array.isArray(response)) {
       wishlist.value = response
     } else {
@@ -41,6 +43,7 @@ const list = async (force = false) => {
     lastFetch.value = now
     // console.log('Wishlist loaded:', wishlist.value.length, 'items')
   } catch (err: any) {
+    // This catch block should rarely be reached for 404s (they return null in silent mode)
     const statusCode = err?.statusCode || err?.status || err?.response?.status
     
     // Handle 404 errors silently (endpoint may not exist or user not authenticated)
@@ -48,9 +51,7 @@ const list = async (force = false) => {
       wishlist.value = []
       error.value = ''
       // Don't log 404 errors - they're expected if endpoint doesn't exist or user is not logged in
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[Wishlist] Endpoint not found (404) - this is normal if user is not authenticated')
-      }
+      return wishlist.value
     } else {
       // Only log non-404 errors
       console.error('Error loading wishlist:', err)

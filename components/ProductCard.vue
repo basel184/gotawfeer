@@ -351,16 +351,18 @@ onMounted(async () => {
     // Silently handle errors - these are non-critical
   }
 
-  // Initialize Bootstrap tooltips
+  // Initialize Bootstrap tooltips - use requestAnimationFrame for better performance
   if (process.client && (window as any).bootstrap) {
     await nextTick()
-    // Use setTimeout to ensure DOM is fully rendered
-    setTimeout(() => {
-      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-      tooltipTriggerList.forEach((tooltipTriggerEl: any) => {
-        initTooltip(tooltipTriggerEl)
+    // Use requestAnimationFrame instead of setTimeout for better performance
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        tooltipTriggerList.forEach((tooltipTriggerEl: any) => {
+          initTooltip(tooltipTriggerEl)
+        })
       })
-    }, 100)
+    })
   }
 })
 
@@ -933,7 +935,7 @@ const inStock = computed<boolean>(() => {
 })
 
 // Open product modal function
-const openProductModal = (e: Event) => {
+const openProductModal = async (e: Event) => {
   e.preventDefault()
   e.stopPropagation()
   
@@ -943,8 +945,9 @@ const openProductModal = (e: Event) => {
   
   // Open the modal using Bootstrap
   if (process.client) {
-    // Use setTimeout to ensure state is updated before opening modal
-    setTimeout(() => {
+    // Use requestAnimationFrame instead of setTimeout for better performance
+    await nextTick()
+    requestAnimationFrame(() => {
       const modalElement = document.getElementById('exampleModal')
       if (modalElement) {
         const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
@@ -956,7 +959,7 @@ const openProductModal = (e: Event) => {
           bsModal.show()
         }
       }
-    }, 50)
+    })
   }
 }
 </script>

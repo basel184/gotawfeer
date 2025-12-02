@@ -76,14 +76,52 @@ export function useApi() {
   const $get = async (path: string, opts: any = {}) => {
     const url = buildUrl(path)
     const headers = { ...authHeader, lang: localeValue() || 'sa', ...(opts.headers||{}) }
-    console.log('[API:$get]', url, headers, { guestId: guestId?.value, guestCookie: guestCookie?.value })
+    const silent = opts.silent !== false // Default to silent for 404 errors
+    if (!silent) {
+      console.log('[API:$get]', url, headers, { guestId: guestId?.value, guestCookie: guestCookie?.value })
+    }
     // Add timeout to prevent hanging requests
-    return await $fetch(url, { 
-      credentials: 'include', 
-      headers, 
-      timeout: opts.timeout || 10000, // 10 seconds default timeout
-      ...opts 
-    })
+    try {
+      // Suppress console errors for 404 in silent mode
+      // Use shorter timeout for better UX (3 seconds for critical, 5 seconds for normal)
+      const defaultTimeout = opts.timeout || 5000 // 5 seconds default timeout (reduced from 10)
+      const fetchOptions: any = {
+        credentials: 'include', 
+        headers, 
+        timeout: defaultTimeout,
+        ...opts
+      }
+      
+      // For silent mode, intercept and suppress 404 errors
+      if (silent) {
+        // Store original onResponseError if exists
+        const originalOnResponseError = opts.onResponseError
+        
+        // Override onResponseError to completely suppress 404 errors
+        fetchOptions.onResponseError = ({ response }: any) => {
+          // Completely suppress 404 errors - don't log to console
+          if (response.status === 404) {
+            // Return without throwing to prevent console logging
+            return
+          }
+          // Call original handler for non-404 errors
+          if (originalOnResponseError) {
+            originalOnResponseError({ response })
+          }
+        }
+      }
+      
+      return await $fetch(url, fetchOptions)
+    } catch (err: any) {
+      // Silently handle 404 errors if silent mode is enabled
+      const is404 = err?.status === 404 || err?.statusCode === 404 || err?.response?.status === 404
+      if (is404 && silent) {
+        // Completely suppress 404 errors - return null instead of throwing
+        // This prevents any console logging
+        return null
+      }
+      throw err
+    }
   }
 
   const $post = async (path: string, body?: any, opts: any = {}) => {

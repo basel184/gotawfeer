@@ -214,17 +214,37 @@ const isBestSelling = computed(() => {
   return sort_by.value === 'best_selling' || route.query.sort === 'best_selling'
 })
 
-// SSR-friendly data fetching using useAsyncData
-// This ensures data is fetched on server and hydrated on client
-const { data: categoriesData } = await useAsyncData(
-  'shop-categories',
-  () => categories().catch(() => [])
-)
+// SSR-friendly data fetching - load in background (non-blocking)
+// This ensures page renders first, then data loads
+const categoriesData = ref<any[]>([])
+const brandsData = ref<any>({ total_size: 0, brands: [] })
 
-const { data: brandsData } = await useAsyncData(
-  'shop-brands',
-  () => brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))
-)
+// Load data in background (non-blocking)
+if (process.client) {
+  categories().then((data: any) => {
+    categoriesData.value = Array.isArray(data) ? data : []
+  }).catch(() => {
+    categoriesData.value = []
+  })
+  
+  brands({ limit: 100, offset: 1 }).then((data: any) => {
+    brandsData.value = data || { total_size: 0, brands: [] }
+  }).catch(() => {
+    brandsData.value = { total_size: 0, brands: [] }
+  })
+} else {
+  // SSR: use useAsyncData but don't await (let page render)
+  useAsyncData('shop-categories', () => categories().catch(() => [])).then((result: any) => {
+    if (result?.data?.value) {
+      categoriesData.value = Array.isArray(result.data.value) ? result.data.value : []
+    }
+  })
+  useAsyncData('shop-brands', () => brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))).then((result: any) => {
+    if (result?.data?.value) {
+      brandsData.value = result.data.value || { total_size: 0, brands: [] }
+    }
+  })
+}
 
 // Normalize categories and brands data
 const cats = computed(() => {
@@ -757,15 +777,16 @@ const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) =>
 
 // Initialize page on mount
 onMounted(async () => {
-  // Initialize price slider
+  // Initialize price slider (non-blocking)
   initializeSlider()
   
-  // Load initial products
-  await loadPage()
+  // Load initial products (non-blocking - page renders first)
+  loadPage().catch(() => {})
   
-  // Setup infinite scroll after products load
-  await nextTick()
-  setupInfiniteScroll()
+  // Setup infinite scroll after products load (non-blocking)
+  nextTick().then(() => {
+    setupInfiniteScroll()
+  })
   
   // Load cart and wishlist in background (non-blocking)
   // Use silent error handling to prevent console spam

@@ -12,14 +12,14 @@ const cart = useCart()
 const wishlist = useWishlist()
 
 onMounted(async () => {
-  try {
-    await Promise.all([
-      cart.list(),
-      wishlist.list()
-    ])
-  } catch (error) {
-    console.error('Failed to load cart or wishlist:', error)
-  }
+  // Load cart and wishlist in background (non-blocking)
+  // Silently handle errors (404 is expected if user is not authenticated)
+  Promise.all([
+    cart.list().catch(() => {}), // Silently handle errors
+    wishlist.list().catch(() => {}) // Silently handle errors (404 is normal for guests)
+  ]).catch(() => {
+    // All errors are already handled silently
+  })
 })
 // Per-product busy map to avoid global loader
 const busy: any = ref<Record<string, boolean>>({})

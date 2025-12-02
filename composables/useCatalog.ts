@@ -5,7 +5,8 @@ export function useCatalog() {
   // Categories: tree with childes; used to render filter lists
   const categories = (params: any = {}) => {
     const qs = new URLSearchParams(params).toString()
-    return $get(`v1/categories${qs ? `?${qs}` : ''}`)
+    // Use shorter timeout (3 seconds) for categories to prevent long waits
+    return $get(`v1/categories${qs ? `?${qs}` : ''}`, { timeout: 3000 })
   }
 
   // Brands: returns { total_size, limit, offset, brands: [] }
@@ -13,7 +14,8 @@ export function useCatalog() {
     const defaults = { limit: 200, offset: 1 }
     const merged = { ...defaults, ...params }
     const qs = new URLSearchParams(merged as Record<string, string>).toString()
-    const response = await $get(`v1/brands?${qs}`)
+    // Use shorter timeout (3 seconds) for brands to prevent long waits
+    const response = await $get(`v1/brands?${qs}`, { timeout: 3000 })
     
     console.log('[useCatalog] Brands API response:', response)
     
