@@ -1601,6 +1601,29 @@ const initializeVariants = () => {
   const variationsSet = new Set<string>()
   const variationColorsMap = new Map<string, Set<string>>() // Map variation -> Set of color names
   
+  // Check if product has actual variations using choice_options
+  // If choice_options is empty or doesn't contain Size option, there are no variations
+  let hasActualVariations = false
+  if (product.value.choice_options && Array.isArray(product.value.choice_options) && product.value.choice_options.length > 0) {
+    // Check if there's a Size option in choice_options
+    const sizeOption = product.value.choice_options.find((option: any) => 
+      option.title === 'Size' || option.name === 'choice_2'
+    )
+    hasActualVariations = !!(sizeOption && sizeOption.options && sizeOption.options.length > 0)
+  }
+  
+  // Also check variation.type as fallback (for products with variations only, e.g., "100ml", "200ml")
+  // vs color names (e.g., "WARM PEACH 004")
+  if (!hasActualVariations && product.value.variation && Array.isArray(product.value.variation) && product.value.variation.length > 0) {
+    hasActualVariations = product.value.variation.some((v: any) => {
+      if (!v.type) return false
+      const typeStr = String(v.type).trim()
+      // Check if it's a simple variation (like "100ml", "200ml") - usually short, no spaces or dashes
+      // Color names usually have spaces and are longer
+      return typeStr.length <= 10 && !typeStr.includes(' ') && !/^[A-Z]/.test(typeStr)
+    })
+  }
+  
   // First, check if variations are linked to colors by examining variation.type
   // If variation.type contains "-" (e.g., "WARM PEACH 004-100ml"), variations are linked to colors
   let variationsLinkedToColors = false
@@ -1637,8 +1660,26 @@ const initializeVariants = () => {
     })
   }
   
-  // If variations are NOT linked to colors, extract simple variations from variation_types
-  if (!variationsLinkedToColors) {
+  // If variations are NOT linked to colors, extract simple variations
+  // But only if product has actual variations (not just color names)
+  if (!variationsLinkedToColors && hasActualVariations) {
+    // Extract from variation.type directly (for products with variations only, e.g., "100ml", "200ml")
+    if (product.value.variation && Array.isArray(product.value.variation)) {
+      product.value.variation.forEach((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const typeStr = v.type.trim()
+          // Only add if it looks like a variation (short, no spaces, not a color name)
+          if (typeStr.length <= 10 && !typeStr.includes(' ') && !/^[A-Z]/.test(typeStr)) {
+            variationsSet.add(typeStr)
+          }
+        }
+      })
+    }
+  }
+  
+  // If variations are NOT linked to colors and we haven't found variations yet, extract from variation_types
+  // But only if product has actual variations in variation array (not just color names)
+  if (!variationsLinkedToColors && variationsSet.size === 0 && hasActualVariations) {
     // Extract from color_images_full_url
     if (product.value.color_images_full_url && Array.isArray(product.value.color_images_full_url)) {
       product.value.color_images_full_url.forEach((img: any) => {
@@ -1648,7 +1689,8 @@ const initializeVariants = () => {
               // Only add simple variations (like "100ml", "200ml"), not color-linked ones
               const trimmed = v.trim()
               // Check if it's a simple variation (doesn't contain color name pattern)
-              if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+              // Simple variations are usually short (<= 10 chars) and don't contain spaces
+              if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
                 variationsSet.add(trimmed)
               }
             }
@@ -1665,7 +1707,7 @@ const initializeVariants = () => {
             if (v && typeof v === 'string' && v.trim()) {
               const trimmed = v.trim()
               // Only add simple variations
-              if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+              if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
                 variationsSet.add(trimmed)
               }
             }
@@ -1685,7 +1727,7 @@ const initializeVariants = () => {
                 if (v && typeof v === 'string' && v.trim()) {
                   const trimmed = v.trim()
                   // Only add simple variations
-                  if (!trimmed.includes(' ') || trimmed.split(' ').length <= 2) {
+                  if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
                     variationsSet.add(trimmed)
                   }
                 }
@@ -1699,11 +1741,111 @@ const initializeVariants = () => {
     }
   }
   
-  // Note: We don't add colors from variation.type to availableColors
-  // Only colors from colors array or colors_formatted should be shown
-  // The variation.type colors (like "WARM PEACH 004") are used only for filtering images
-  // and matching with variation.type, but they shouldn't appear as selectable colors
-  // unless they're already in the colors array
+  // Create a mapping from hex colors to color names from variation.type
+  // This allows us to map #D06A66 -> "WARM PEACH 004" and #A76570 -> "VERY BERRY 005"
+  // Strategy: If variations are NOT linked to colors, variation.type contains color names directly
+  // So we can map hex colors to color names by order
+  const hexToColorNameMap = new Map<string, string>()
+  
+  // Check if variations contain color names directly (not linked to sizes)
+  const hasDirectColorNames = !variationsLinkedToColors && 
+                               product.value.variation && 
+                               Array.isArray(product.value.variation) &&
+                               product.value.variation.length > 0 &&
+                               product.value.variation.every((v: any) => {
+                                 if (!v.type) return false
+                                 // Check if type doesn't contain a dash followed by a size
+                                 const parts = v.type.split('-')
+                                 if (parts.length === 1) return true // Single word, likely a color name
+                                 // Check if last part is NOT a size
+                                 const lastPart = parts[parts.length - 1].trim()
+                                 const sizeOption = product.value.choice_options?.find((option: any) => 
+                                   option.title === 'Size' || option.name === 'choice_2'
+                                 )
+                                 return !sizeOption || !sizeOption.options || !sizeOption.options.includes(lastPart)
+                               })
+  
+  if (hasDirectColorNames) {
+    // Get unique hex colors from availableColors
+    const hexColorsArray = availableColors.value.map((c: any) => normalizeColorCode(c.code || c.hexCode || c.name))
+    
+    // Get color names from variation.type
+    const colorNamesArray = product.value.variation.map((v: any) => v.type).filter((t: string) => t)
+    
+    console.log('[Product] Direct color names mode:', {
+      hexColors: hexColorsArray,
+      colorNames: colorNamesArray
+    })
+    
+    // Map hex colors to color names by order
+    if (hexColorsArray.length === colorNamesArray.length && hexColorsArray.length > 0) {
+      hexColorsArray.forEach((hexColor: string, index: number) => {
+        if (index < colorNamesArray.length) {
+          hexToColorNameMap.set(hexColor, colorNamesArray[index])
+          console.log('[Product] Mapped hex color to color name (direct):', hexColor, '->', colorNamesArray[index])
+        }
+      })
+    }
+  } else if (variationsLinkedToColors && product.value.variation && Array.isArray(product.value.variation)) {
+    // If variations are linked to colors, use the previous logic
+    // Get unique hex colors from color_images_full_url
+    if (product.value.color_images_full_url && Array.isArray(product.value.color_images_full_url)) {
+      const uniqueHexColors = new Set<string>()
+      product.value.color_images_full_url.forEach((img: any) => {
+        if (img.color) {
+          const imgColorNormalized = normalizeColorCode(img.color)
+          uniqueHexColors.add(imgColorNormalized)
+        }
+      })
+      
+      console.log('[Product] Unique hex colors from color_images_full_url:', Array.from(uniqueHexColors))
+      
+      // Get all unique color names from variants
+      const colorNamesFromVariants = new Set<string>()
+      product.value.variation.forEach((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const parts = v.type.split('-')
+          if (parts.length >= 2) {
+            const colorName = parts.slice(0, -1).join('-').trim()
+            colorNamesFromVariants.add(colorName)
+          }
+        }
+      })
+      
+      // Simple mapping: if we have 2 hex colors and 2 color names, map them by order
+      const hexColorsArray = Array.from(uniqueHexColors)
+      const colorNamesArray = Array.from(colorNamesFromVariants)
+      
+      if (hexColorsArray.length === colorNamesArray.length && hexColorsArray.length > 0) {
+        hexColorsArray.forEach((hexColor: string, index: number) => {
+          if (index < colorNamesArray.length) {
+            hexToColorNameMap.set(hexColor, colorNamesArray[index])
+            console.log('[Product] Mapped hex color to color name (by order):', hexColor, '->', colorNamesArray[index])
+          }
+        })
+      }
+    }
+  }
+  
+  // Store the mapping in a ref so we can use it later
+  const hexToColorNameMapping = hexToColorNameMap
+  console.log('[Product] Hex to color name mapping:', Object.fromEntries(hexToColorNameMapping))
+  
+  // Add colorName to each color in availableColors if we have a mapping
+  if (hexToColorNameMapping.size > 0) {
+    availableColors.value = availableColors.value.map((color: any) => {
+      const colorCodeNormalized = normalizeColorCode(color.code || color.hexCode || color.name)
+      const colorName = hexToColorNameMapping.get(colorCodeNormalized)
+      if (colorName) {
+        return {
+          ...color,
+          colorName: colorName, // Store the color name from variation.type
+          displayName: colorName // Use color name for display if available
+        }
+      }
+      return color
+    })
+  }
   
   availableVariations.value = Array.from(variationsSet).sort()
   console.log('[Product] Available variations:', availableVariations.value)
@@ -1743,7 +1885,8 @@ const updateSelectedVariant = () => {
     selectedColor: selectedColor.value,
     selectedVariation: selectedVariation.value,
     availableVariations: availableVariations.value,
-    availableColors: availableColors.value.map((c: any) => c.name)
+    availableColors: availableColors.value.map((c: any) => c.name),
+    allVariants: product.value.variation?.map((v: any) => ({ type: v.type, price: v.price, qty: v.qty }))
   })
   
   let variant = null
@@ -1797,33 +1940,21 @@ const updateSelectedVariant = () => {
         
         console.log('[Product] Variants with selected variation:', variantsWithVariation.map((v: any) => v.type))
         
-        // Parse color_image to find which color name matches the hex
-        const parsedColorImageForMatching = parseColorImage(product.value.color_image)
-        if (parsedColorImageForMatching && Array.isArray(parsedColorImageForMatching)) {
-          // Find color_image entries that match the hex color
-          const matchingColorImages = parsedColorImageForMatching.filter((img: any) => {
-            const imgColorNormalized = normalizeColorCode(img.color)
-            return imgColorNormalized === normalizedHex
-          })
-          
-          console.log('[Product] Color images matching hex:', matchingColorImages.length)
-          
-          // For each variant, check if it has variation_types that match images with this hex color
-          for (const v of variantsWithVariation) {
-            // Check if any color_image with this hex has variation_types matching this variant
-            const hasMatchingImage = matchingColorImages.some((img: any) => {
-              if (img.variation_types && Array.isArray(img.variation_types)) {
-                return img.variation_types.includes(v.type)
-              }
-              return false
-            })
-            
-            if (hasMatchingImage) {
-              console.log('[Product] Found matching variant for hex color:', v.type)
-              variant = v
-              break
-            }
-          }
+        // Find the color name from availableColors mapping
+        const selectedColorObj = availableColors.value.find((c: any) => {
+          const cCodeNormalized = normalizeColorCode(c.code || c.hexCode || c.name)
+          return cCodeNormalized === normalizedHex
+        })
+        
+        const colorName = selectedColorObj?.colorName || selectedColorObj?.displayName
+        
+        if (colorName) {
+          // Use the color name to search for variant
+          const colorVariationPattern = `${colorName}-${selectedVariation.value}`
+          console.log('[Product] Found color name from mapping, searching for:', colorVariationPattern)
+          variant = product.value.variation.find((v: any) => 
+            v.type === colorVariationPattern && v.qty > 0
+          )
         }
         
         // If not found, try to find color name from colors_formatted if available
@@ -1878,15 +2009,29 @@ const updateSelectedVariant = () => {
       }
     } else if (selectedVariation.value) {
       // If only variation is selected, find first available variant with that variation
-      variant = product.value.variation.find((v: any) => {
-        if (v.type && typeof v.type === 'string') {
-          const parts = v.type.split('-')
-          if (parts.length >= 2) {
-            const lastPart = parts[parts.length - 1].trim()
-            return lastPart === selectedVariation.value && v.qty > 0
+      // First, try exact match (for products with variations only, e.g., "100ml", "200ml")
+      variant = product.value.variation.find((v: any) => 
+        (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
+      )
+      
+      // If not found, try matching the last part (for products with color-variation pattern)
+      if (!variant) {
+        variant = product.value.variation.find((v: any) => {
+          if (v.type && typeof v.type === 'string') {
+            const parts = v.type.split('-')
+            if (parts.length >= 2) {
+              const lastPart = parts[parts.length - 1].trim()
+              return lastPart === selectedVariation.value && v.qty > 0
+            }
           }
-        }
-        return false
+          return false
+        })
+      }
+      
+      console.log('[Product] Searching for variant by variation only:', {
+        selectedVariation: selectedVariation.value,
+        foundVariant: variant?.type || null,
+        foundPrice: variant?.price || null
       })
     }
   } else {
@@ -1898,41 +2043,240 @@ const updateSelectedVariant = () => {
           (v.type === selectedSize.value || v.type === String(selectedSize.value)) && v.qty > 0
         )
       } else if (selectedVariation.value) {
-        variant = product.value.variation.find((v: any) => 
-          (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
-        )
+        // Search for variant by variation only (exact match first)
+        console.log('[Product] Before searching - all variants:', product.value.variation?.map((v: any) => ({ 
+          type: v.type, 
+          qty: v.qty, 
+          price: v.price,
+          matches: v.type === selectedVariation.value || v.type === String(selectedVariation.value)
+        })))
+        
+        variant = product.value.variation.find((v: any) => {
+          const matches = (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
+          if (matches) {
+            console.log('[Product] Found matching variant:', { type: v.type, price: v.price, qty: v.qty })
+          }
+          return matches
+        })
+        
+        console.log('[Product] Searching for variant by variation only (no colors):', {
+          selectedVariation: selectedVariation.value,
+          selectedVariationType: typeof selectedVariation.value,
+          allVariants: product.value.variation?.map((v: any) => ({ 
+            type: v.type, 
+            typeType: typeof v.type,
+            qty: v.qty, 
+            price: v.price,
+            matches: v.type === selectedVariation.value || v.type === String(selectedVariation.value)
+          })),
+          foundVariant: variant?.type || null,
+          foundPrice: variant?.price || null,
+          variantMatches: variant ? (variant.type === selectedVariation.value) : false
+        })
       }
     } else {
-      // If product has colors, search by color-size combination
-      // Try different search patterns (only if qty > 0)
-      variant = product.value.variation.find((v: any) => 
-        v.type === `${selectedColor.value}-${selectedSize.value}` && v.qty > 0
-      )
+      // If product has colors, check if there are variations/sizes
+      const hasVariations = availableVariations.value.length > 0
+      const hasSizes = availableSizes.value.length > 0
       
-      // If not found, try with different separators
-      if (!variant) {
+      // If product has colors only (no variations or sizes), search by color only
+      if (!hasVariations && !hasSizes) {
+        // Search for variant that matches the color
+        // First, try to get color name from availableColors mapping (colorName or displayName)
+        const selectedColorObj = availableColors.value.find((c: any) => {
+          const cCodeNormalized = normalizeColorCode(c.code || c.hexCode || c.name)
+          const selectedColorNormalized = normalizeColorCode(selectedColor.value)
+          return cCodeNormalized === selectedColorNormalized || c.name === selectedColor.value
+        })
+        
+        const colorNameToSearch = selectedColorObj?.colorName || selectedColorObj?.displayName || selectedColorObj?.name || selectedColor.value
+        
+        console.log('[Product] Searching for variant by color only:', {
+          selectedColor: selectedColor.value,
+          colorNameToSearch: colorNameToSearch,
+          selectedColorObj: selectedColorObj,
+          allVariants: product.value.variation?.map((v: any) => ({ type: v.type, price: v.price, qty: v.qty }))
+        })
+        
+        // Check if selectedColor is a hex color
+        const isHexColor = /^#?[0-9A-Fa-f]{6}$/i.test(selectedColor.value.replace('#', ''))
+        
+        if (isHexColor) {
+          // If it's a hex color, we need to find which color name from variation.type matches this hex
+          // Strategy: Use the colorName from availableColors mapping if available
+          const normalizedHex = normalizeColorCode(selectedColor.value)
+          
+          // First, try using colorName from mapping
+          if (selectedColorObj?.colorName) {
+            variant = product.value.variation.find((v: any) => 
+              v.type === selectedColorObj.colorName && v.qty > 0
+            )
+            console.log('[Product] Trying colorName from mapping:', selectedColorObj.colorName, '->', variant?.type || 'not found')
+          }
+          
+          // If not found, try to match hex color with color names by order
+          if (!variant) {
+            // Get all unique color names from variation.type
+            const colorNamesFromVariants = new Set<string>()
+            product.value.variation.forEach((v: any) => {
+              if (v.type) {
+                colorNamesFromVariants.add(v.type)
+              }
+            })
+            
+            // Try to match hex color with color names by checking availableColors
+            // If we have 2 hex colors and 2 color names, map them by order
+            const hexColorsArray = availableColors.value.map((c: any) => normalizeColorCode(c.code || c.hexCode || c.name))
+            const colorNamesArray = Array.from(colorNamesFromVariants)
+            
+            console.log('[Product] Hex color mapping attempt:', {
+              hexColorsArray,
+              colorNamesArray,
+              selectedColorNormalized: normalizedHex
+            })
+            
+            if (hexColorsArray.length === colorNamesArray.length && hexColorsArray.length > 0) {
+              const index = hexColorsArray.indexOf(normalizedHex)
+              if (index >= 0 && index < colorNamesArray.length) {
+                const mappedColorName = colorNamesArray[index]
+                variant = product.value.variation.find((v: any) => 
+                  v.type === mappedColorName && v.qty > 0
+                )
+                console.log('[Product] Mapped hex color to color name by order:', selectedColor.value, '->', mappedColorName, '->', variant?.type || 'not found')
+              }
+            }
+          }
+        } else {
+          // If it's a color name (not hex), search directly
+          // Try exact match first
+          variant = product.value.variation.find((v: any) => {
+            if (!v.type) return false
+            return v.type === colorNameToSearch && v.qty > 0
+          })
+          
+          // If not found, try case-insensitive match
+          if (!variant) {
+            variant = product.value.variation.find((v: any) => {
+              if (!v.type) return false
+              return v.type.toLowerCase() === colorNameToSearch.toLowerCase() && v.qty > 0
+            })
+          }
+          
+          // If still not found, try if variant.type contains color name
+          if (!variant) {
+            variant = product.value.variation.find((v: any) => {
+              if (!v.type) return false
+              return v.type.includes(colorNameToSearch) && v.qty > 0
+            })
+          }
+        }
+        
+        console.log('[Product] Found variant by color only:', {
+          selectedColor: selectedColor.value,
+          colorNameToSearch: colorNameToSearch,
+          foundVariant: variant?.type || null,
+          foundPrice: variant?.price || null,
+          foundQty: variant?.qty || null
+        })
+      } else if (selectedSize.value) {
+        // If product has colors and sizes, search by color-size combination
+        // Try different search patterns (only if qty > 0)
         variant = product.value.variation.find((v: any) => 
-          (v.type === `${selectedColor.value}_${selectedSize.value}` ||
-          v.type === `${selectedColor.value} ${selectedSize.value}` ||
-          v.type === `${selectedColor.value}/${selectedSize.value}`) && v.qty > 0
+          v.type === `${selectedColor.value}-${selectedSize.value}` && v.qty > 0
         )
-      }
-      
-      // If still not found, try partial matches
-      if (!variant) {
+        
+        // If not found, try with different separators
+        if (!variant) {
+          variant = product.value.variation.find((v: any) => 
+            (v.type === `${selectedColor.value}_${selectedSize.value}` ||
+            v.type === `${selectedColor.value} ${selectedSize.value}` ||
+            v.type === `${selectedColor.value}/${selectedSize.value}`) && v.qty > 0
+          )
+        }
+        
+        // If still not found, try partial matches
+        if (!variant) {
+          variant = product.value.variation.find((v: any) => 
+            v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value) && v.qty > 0
+          )
+        }
+      } else if (selectedVariation.value) {
+        // If product has colors and variations, search by color-variation combination
         variant = product.value.variation.find((v: any) => 
-          v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value) && v.qty > 0
+          v.type === `${selectedColor.value}-${selectedVariation.value}` && v.qty > 0
         )
+        
+        // If not found, try with different separators
+        if (!variant) {
+          variant = product.value.variation.find((v: any) => 
+            (v.type === `${selectedColor.value}_${selectedVariation.value}` ||
+            v.type === `${selectedColor.value} ${selectedVariation.value}` ||
+            v.type === `${selectedColor.value}/${selectedVariation.value}`) && v.qty > 0
+          )
+        }
       }
     }
   }
   
   // If variant found, check if it's available (qty > 0)
-  if (variant && variant.qty !== undefined && variant.qty !== null) {
-    if (variant.qty <= 0) {
-      // If variant is not available, try to find another available variant
-      // with the same color and variation
-      if (variationsLinkedToColors && selectedColor.value && selectedVariation.value) {
+  // Only override if variant is not available (qty <= 0) OR if variant doesn't match selectedVariation
+  // BUT: If product has colors only (no variations), don't check selectedVariation
+  if (variant) {
+    // Check if product has colors only (no variations or sizes)
+    const hasVariations = availableVariations.value.length > 0
+    const hasSizes = availableSizes.value.length > 0
+    const colorsOnly = !hasVariations && !hasSizes && availableColors.value.length > 0
+    
+    // For products with colors only, variant matches if it's available (qty > 0)
+    // For products with variations, variant must match selectedVariation
+    let variantMatches = true
+    if (!colorsOnly && selectedVariation.value) {
+      // Only check variantMatches if we have variations and a selectedVariation
+      variantMatches = variant.type === selectedVariation.value || variant.type === String(selectedVariation.value)
+    }
+    
+    const variantIsAvailable = variant.qty !== undefined && variant.qty !== null && variant.qty > 0
+    
+    console.log('[Product] Checking variant before final assignment:', {
+      variantType: variant.type,
+      selectedVariation: selectedVariation.value,
+      selectedColor: selectedColor.value,
+      colorsOnly: colorsOnly,
+      variantMatches: variantMatches,
+      variantIsAvailable: variantIsAvailable,
+      willOverride: !variantMatches || !variantIsAvailable
+    })
+    
+    // If variant doesn't match or is not available, try to find correct one
+    if (!variantMatches || !variantIsAvailable) {
+      if (colorsOnly && selectedColor.value) {
+        // For products with colors only, if variant is not available, try to find another variant for this color
+        // Don't override if variant is available - it should match the color
+        if (!variantIsAvailable) {
+          // Try to find another available variant for this color
+          const selectedColorObj = availableColors.value.find((c: any) => {
+            const cCodeNormalized = normalizeColorCode(c.code || c.hexCode || c.name)
+            const selectedColorNormalized = normalizeColorCode(selectedColor.value)
+            return cCodeNormalized === selectedColorNormalized || c.name === selectedColor.value
+          })
+          
+          const colorNameToSearch = selectedColorObj?.colorName || selectedColorObj?.displayName || selectedColorObj?.name || selectedColor.value
+          
+          const availableVariant = product.value.variation.find((v: any) => {
+            if (!v.type) return false
+            return (v.type === colorNameToSearch || v.type.toLowerCase() === colorNameToSearch.toLowerCase()) && v.qty > 0
+          })
+          
+          if (availableVariant) {
+            variant = availableVariant
+          } else {
+            variant = null
+          }
+        } else {
+          // Variant is available and matches color, keep it
+          console.log('[Product] Keeping variant (matches color and is available):', variant.type)
+        }
+      } else if (variationsLinkedToColors && selectedColor.value && selectedVariation.value) {
         // Try to find any available variant with same variation
         const availableVariant = product.value.variation.find((v: any) => {
           if (v.type && typeof v.type === 'string') {
@@ -1949,17 +2293,23 @@ const updateSelectedVariant = () => {
         } else {
           variant = null
         }
-      } else if (selectedVariation.value) {
-        // Try to find any available variant with same variation
+      } else if (selectedVariation.value && (!selectedColor.value || availableColors.value.length === 0)) {
+        // If only variation is selected (no colors), try to find exact match
         const availableVariant = product.value.variation.find((v: any) => {
           return (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
         })
         if (availableVariant) {
+          console.log('[Product] Overriding variant (didn\'t match or qty was 0):', {
+            originalVariant: variant?.type,
+            newVariant: availableVariant.type,
+            selectedVariation: selectedVariation.value
+          })
           variant = availableVariant
         } else {
           variant = null
         }
-      } else {
+      } else if (!colorsOnly) {
+        // Only set to null if not colors-only product
         variant = null
       }
     }
@@ -3372,31 +3722,6 @@ const handleProductDetails = () => {
           </div>
         </div>
 
-        <!-- Size Selection -->
-        <div v-if="availableSizes.length > 0" class="variant-section">
-          <h4 class="variant-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            {{ t('product.select_size') }}
-          </h4>
-          <div class="size-options">
-            <button
-              v-for="size in availableSizes"
-              :key="size.value"
-              class="size-option"
-              :class="{ 
-                active: selectedSize === size.value,
-                unavailable: !isSizeAvailable(size.value)
-              }"
-              @click="selectSize(size)"
-              :disabled="!isSizeAvailable(size.value)"
-            >
-              <span class="size-value">{{ size.name }}</span>
-              <span v-if="!isSizeAvailable(size.value)" class="unavailable-text">{{ t('product.unavailable') }}</span>
-            </button>
-          </div>
-        </div>
 
 
         <!-- Add to Cart -->
