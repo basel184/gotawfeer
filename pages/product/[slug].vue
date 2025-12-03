@@ -1514,14 +1514,41 @@ const initializeVariants = () => {
       // Ensure hex code has # for display
       const hexCode = color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : (color.code?.toUpperCase() || '')
       
+      // For image, if it's already a full URL, use it directly; otherwise normalize it
+      let finalImagePath = ''
+      if (imagePath) {
+        // Check if it's already a full URL (starts with http:// or https://)
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          finalImagePath = imagePath
+        } else {
+          finalImagePath = normalize(imagePath)
+        }
+      } else if (color.image) {
+        // If imagePath is empty but color.image exists, use it directly if it's a full URL
+        if (color.image.startsWith('http://') || color.image.startsWith('https://')) {
+          finalImagePath = color.image
+        } else {
+          finalImagePath = normalize(color.image)
+        }
+      }
+      
       const colorData = {
         name: color.name || hexCode || codeForMatching,
+        originalName: color.name, // Keep original name to check if it's null
         code: codeForMatching, // Store normalized code without # for matching
         hexCode: hexCode, // Store with # for CSS display
-        image: imagePath ? normalize(imagePath) : (color.image ? normalize(color.image) : ''),
+        image: finalImagePath,
         originalImage: foundImage?.image_name?.key || color.image || '',
         imageName: foundImage?.image_name?.key || color.image || ''
       }
+      
+      console.log('[Product] Color data (from colors_formatted):', {
+        originalColor: color,
+        colorData: colorData,
+        hasImage: !!colorData.image,
+        imagePath: colorData.image,
+        originalName: colorData.originalName
+      })
       
       console.log('[Product] Color data (from colors_formatted):', {
         originalColor: color,
@@ -1532,12 +1559,43 @@ const initializeVariants = () => {
       return colorData
     })
   } else if (product.value.colors && Array.isArray(product.value.colors)) {
-    // Get unique colors
-    const uniqueColors = [...new Set(product.value.colors as string[])]
+    // Handle both string arrays and object arrays
+    // First, normalize all colors to extract code/name
+    const normalizedColors = product.value.colors.map((color: any) => {
+      // If color is an object with code/name/image
+      if (typeof color === 'object' && color !== null) {
+        return {
+          code: color.code || color.name || '',
+          name: color.name,
+          image: color.image || '',
+          originalColor: color
+        }
+      }
+      // If color is a string
+      if (typeof color === 'string') {
+        return {
+          code: color,
+          name: '',
+          image: '',
+          originalColor: color
+        }
+      }
+      return null
+    }).filter((c: any) => c !== null && c.code)
     
-    availableColors.value = uniqueColors.map((color: string, index: number) => {
+    // Get unique colors by code
+    const uniqueColorsMap = new Map<string, any>()
+    normalizedColors.forEach((color: any) => {
+      const codeNormalized = normalizeColorCode(color.code)
+      if (!uniqueColorsMap.has(codeNormalized)) {
+        uniqueColorsMap.set(codeNormalized, color)
+      }
+    })
+    const uniqueColors = Array.from(uniqueColorsMap.values())
+    
+    availableColors.value = uniqueColors.map((color: any, index: number) => {
       // Normalize color for matching
-      const colorNormalized = normalizeColorCode(color)
+      const colorNormalized = normalizeColorCode(color.code)
       
       // Find first corresponding image from color_images_full_url
       const colorImage = product.value.color_images_full_url?.find((img: any) => {
@@ -1555,7 +1613,7 @@ const initializeVariants = () => {
         })
       }
       
-      // Use the found image (prefer color_images_full_url, fallback to color_image)
+      // Use the found image (prefer color_images_full_url, fallback to color_image, then color.image)
       const foundImage = colorImage || colorImageFromSingle
       
       // Extract image path
@@ -1568,25 +1626,53 @@ const initializeVariants = () => {
         } else if (foundImage.image_name.key) {
           imagePath = foundImage.image_name.key
         }
+      } else if (color.image) {
+        // Use image from color object if available (may be full URL)
+        imagePath = color.image
       }
       
       // Normalize color code (ensure it's uppercase and has # prefix for display)
-      const normalizedColor = color.toUpperCase().startsWith('#') ? color.toUpperCase() : `#${color.toUpperCase()}`
+      const colorCodeStr = String(color.code || '')
+      const normalizedColor = colorCodeStr.toUpperCase().startsWith('#') 
+        ? colorCodeStr.toUpperCase() 
+        : `#${colorCodeStr.toUpperCase()}`
+      
+      // For image, if it's already a full URL, use it directly; otherwise normalize it
+      let finalImagePath = ''
+      if (imagePath) {
+        // Check if it's already a full URL (starts with http:// or https://)
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          finalImagePath = imagePath
+        } else {
+          finalImagePath = normalize(imagePath)
+        }
+      } else if (color.image) {
+        // If imagePath is empty but color.image exists, use it directly if it's a full URL
+        if (color.image.startsWith('http://') || color.image.startsWith('https://')) {
+          finalImagePath = color.image
+        } else {
+          finalImagePath = normalize(color.image)
+        }
+      }
       
       const colorData = {
-        name: normalizedColor, // Use hex code as name
+        name: color.name || normalizedColor, // Use name from color object, fallback to hex code
+        originalName: color.name, // Keep original name to check if it's null
         code: colorNormalized, // Store normalized code without # for matching
         hexCode: normalizedColor, // Store with # for CSS
-        image: imagePath ? normalize(imagePath) : '',
-        originalImage: foundImage?.image_name?.key || '',
-        imageName: foundImage?.image_name?.key || ''
+        image: finalImagePath,
+        originalImage: foundImage?.image_name?.key || color.image || '',
+        imageName: foundImage?.image_name?.key || color.image || ''
       }
       
       console.log('[Product] Color data (from colors array):', {
         originalColor: color,
         colorData: colorData,
         foundImage: !!foundImage,
-        imagePath: imagePath
+        imagePath: imagePath,
+        finalImagePath: finalImagePath,
+        hasImage: !!colorData.image,
+        originalName: colorData.originalName
       })
       return colorData
     })
@@ -1633,22 +1719,26 @@ const initializeVariants = () => {
     hasActualVariations = !!(sizeOption && sizeOption.options && sizeOption.options.length > 0)
   }
   
-  // Also check variation.type as fallback (for products with variations only, e.g., "100ml", "200ml")
-  // vs color names (e.g., "WARM PEACH 004")
-  if (!hasActualVariations && product.value.variation && Array.isArray(product.value.variation) && product.value.variation.length > 0) {
-    hasActualVariations = product.value.variation.some((v: any) => {
-      if (!v.type) return false
-      const typeStr = String(v.type).trim()
-      // Check if it's a simple variation (like "100ml", "200ml") - usually short, no spaces or dashes
-      // Color names usually have spaces and are longer
-      return typeStr.length <= 10 && !typeStr.includes(' ') && !/^[A-Z]/.test(typeStr)
-    })
+  // Only check variation.type as fallback if choice_options exists but doesn't have Size option
+  // If choice_options is completely empty ([]), don't check variation.type - product has no variations
+  if (!hasActualVariations && product.value.choice_options && Array.isArray(product.value.choice_options) && product.value.choice_options.length > 0) {
+    // choice_options exists but no Size option found, check variation.type as fallback
+    if (product.value.variation && Array.isArray(product.value.variation) && product.value.variation.length > 0) {
+      hasActualVariations = product.value.variation.some((v: any) => {
+        if (!v.type) return false
+        const typeStr = String(v.type).trim()
+        // Check if it's a simple variation (like "100ml", "200ml") - usually short, no spaces or dashes
+        // Color names usually have spaces and are longer
+        return typeStr.length <= 10 && !typeStr.includes(' ') && !/^[A-Z]/.test(typeStr)
+      })
+    }
   }
   
   // First, check if variations are linked to colors by examining variation.type
   // If variation.type contains "-" (e.g., "WARM PEACH 004-100ml"), variations are linked to colors
+  // BUT only if product has actual variations (choice_options with Size option)
   let variationsLinkedToColors = false
-  if (product.value.variation && Array.isArray(product.value.variation)) {
+  if (hasActualVariations && product.value.variation && Array.isArray(product.value.variation)) {
     const hasLinkedVariations = product.value.variation.some((v: any) => {
       if (v.type && typeof v.type === 'string') {
         // Check if type contains a dash and has both color name and size
@@ -3701,10 +3791,20 @@ const handleProductDetails = () => {
             >
               <button
                 class="color-option"
-                :class="{ active: selectedColor === color.name }"
-                :style="{ backgroundColor: color.hexCode || getColorValue(color.code) }"
+                :class="{ active: selectedColor === color.name, 'has-image': color.image && !color.originalName }"
+                :style="( !color.originalName  ) 
+                  ? { 
+                      backgroundImage: `url(${color.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: color.hexCode || getColorValue(color.code)
+                    }
+                  : { 
+                      backgroundColor: color.hexCode || getColorValue(color.code) 
+                    }"
                 @click="selectColor(color)"
-                :title="color.name"
+                :title="color.name || color.code || ''"
               >
               </button>
             </div>
@@ -5201,6 +5301,8 @@ const handleProductDetails = () => {
     display:flex;
     flex-direction:column;
     align-items:center;
+    background-repeat: no-repeat;
+    overflow: hidden;
     justify-content:center;
     overflow:hidden;
     background:#fff;
