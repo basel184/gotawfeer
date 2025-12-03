@@ -67,7 +67,7 @@ export function useCart() {
       }
       // Don't throw timeout errors - just return empty array
       if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout') && e?.name !== 'TimeoutError') {
-        throw e
+      throw e
       }
       return items.value
     } finally {
@@ -99,7 +99,7 @@ export function useCart() {
     })
     
     if (it) {
-      return Number(it?.quantity || it?.qty || 0)
+    return Number(it?.quantity || it?.qty || 0)
     }
     
     return 0

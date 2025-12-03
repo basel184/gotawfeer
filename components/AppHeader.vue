@@ -635,12 +635,12 @@ async function fetchSearch(term: string) {
       }
       
       return {
-        ...p,
-        name: p?.name || p?.product_name || p?.title || '',
-        slug: p?.slug || p?.id,
+      ...p,
+      name: p?.name || p?.product_name || p?.title || '',
+      slug: p?.slug || p?.id,
         image_full_url: getImageUrl(p?.image_full_url) || getImageUrl(p?.thumbnail_full_url) || p?.thumbnail || p?.image || p?.image_url,
         thumbnail_full_url: getImageUrl(p?.thumbnail_full_url) || getImageUrl(p?.image_full_url) || p?.thumbnail || p?.image,
-        price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
+      price: p?.price || p?.unit_price || p?.current_price || p?.selling_price,
       }
     })
     // Collect names for future suggestions
@@ -727,9 +727,9 @@ function goSearch(term?: string) {
   
   // Complete loading after navigation
   if (process.client) {
-    setTimeout(() => {
-      completeGlobalLoading(progressInterval)
-    }, 1000)
+  setTimeout(() => {
+    completeGlobalLoading(progressInterval)
+  }, 1000)
   }
 }
 
@@ -898,7 +898,7 @@ async function handleOtpLogin() {
 
   const success = await taqnyatAuth.verifyOtp(otpForm.value.phone, otpForm.value.otp)
   if (success) {
-    loginModalOpen.value = false
+      loginModalOpen.value = false
     otpForm.value = { phone: '', otp: '' }
     otpSent.value = false
     otpCountdown.value = 0
@@ -906,13 +906,13 @@ async function handleOtpLogin() {
       clearInterval(otpTimer)
       otpTimer = null
     }
-    // Show success message
-    loginSuccess.value = true
-    setTimeout(() => {
-      loginSuccess.value = false
-      // Refresh the page after showing success message
-      window.location.reload()
-    }, 2000)
+      // Show success message
+      loginSuccess.value = true
+      setTimeout(() => {
+        loginSuccess.value = false
+        // Refresh the page after showing success message
+        window.location.reload()
+      }, 2000)
   }
 }
 
@@ -1706,7 +1706,7 @@ async function handleRegisterSubmit() {
                 :disabled="taqnyatAuth.requestingOtp.value || taqnyatAuth.verifyingOtp.value || otpSent"
               />
             </div>
-
+            
             <div v-if="otpSent" class="form-group">
               <label for="otp">{{ t('taqnyat.otp_code') || 'رمز التحقق' }}</label>
               <input 
@@ -1730,7 +1730,7 @@ async function handleRegisterSubmit() {
               </svg>
               {{ taqnyatAuth.success.value }}
             </div>
-
+            
             <div v-if="!otpSent">
               <button 
                 type="button" 
@@ -1741,7 +1741,7 @@ async function handleRegisterSubmit() {
               >
                 <span v-if="taqnyatAuth.requestingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
                 <span v-else>{{ t('taqnyat.send_otp') || 'إرسال رمز التحقق' }}</span>
-              </button>
+            </button>
             </div>
 
             <div v-else>

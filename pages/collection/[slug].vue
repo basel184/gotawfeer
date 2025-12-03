@@ -290,7 +290,6 @@ onMounted(async () => {
                   :key="p.id || p.slug" 
                   :product="p" 
                   :qty="cart.qtyOf(p)"
-                  :busy="cart.loading.value"
                   @add="handleAddToCart"
                   @update="handleUpdateCart"
                   @remove="handleRemoveFromCart"

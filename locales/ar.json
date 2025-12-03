@@ -3,7 +3,6 @@
   "deliver.to": "التوصيل • الرياض",
   "login": "تسجيل الدخول",
   "logout": "خروج",
-  "home": "الرئيسية",
   "all_products": "كل المنتجات",
   "categories": "التصنيفات",
   "newest": "وصل حديثا",
@@ -50,7 +49,9 @@
       "low_high": "السعر: الأقل للأعلى",
       "high_low": "السعر: الأعلى للأقل",
       "a_z": "أ-ي",
-      "z_a": "ي-أ"
+      "z_a": "ي-أ",
+      "highest_discount": "الأعلى خصم",
+      "best_selling": "الأكثر شهرة"
     },
     "search_results": {
       "title": "نتائج البحث عن",
@@ -350,7 +351,29 @@
     "brand": "البراند",
     "categories": "التصنيفات",
     "share": "مشاركة",
-    "changing_image": "جاري تغيير الصورة..."
+    "changing_image": "جاري تغيير الصورة...",
+    "out_of_stock_quantity": "نفذت الكمية",
+    "ends_in": "ينتهي خلال",
+    "day": "يوم",
+    "hour_short": "س",
+    "minute_short": "د",
+    "second_short": "ث",
+    "view_product": "عرض المنتج",
+    "add_to_wishlist": "إضافة إلى المفضلة",
+    "remove_from_wishlist": "إزالة من المفضلة",
+    "add_to_compare": "إضافة للمقارنة",
+    "remove_from_compare": "إزالة من المقارنة",
+    "cart_added_successfully": "تم إضافة السلة بنجاح",
+    "product_added_to_wishlist": "تم إضافة المنتج إلى المفضلة",
+    "product_removed_from_wishlist": "تم إزالة المنتج من المفضلة",
+    "product_added_to_compare": "تم إضافة المنتج إلى المقارنة",
+    "product_removed_from_compare": "تم إزالة المنتج من المقارنة",
+    "compare_max_products": "يمكن مقارنة 4 منتجات كحد أقصى",
+    "product_added_to_cart_successfully": "تم إضافة المنتج للسلة بنجاح",
+    "error_adding_product_to_cart": "حدث خطأ في إضافة المنتج للسلة",
+    "product_removed_from_cart": "تم إزالة المنتج من السلة",
+    "error_removing_product_from_cart": "خطأ في إزالة المنتج من السلة",
+    "error_adding_product_to_compare": "فشل في إضافة المنتج إلى المقارنة"
   },
   "account": {
     "title": "حسابي",
@@ -748,5 +771,17 @@
     "request_failed": "فشل في إرسال رمز التحقق",
     "verify_failed": "فشل في التحقق من رمز التحقق",
     "resend_failed": "فشل في إعادة إرسال رمز التحقق"
+  },
+  "home": {
+    "view_all": "عرض الكل",
+    "hour": "ساعة",
+    "minute": "دقيقة",
+    "second": "ثانية",
+    "strongest": "اقوى",
+    "discounts": "الخصومات",
+    "from_go_tawfeer": "من جو توفير",
+    "customer_reviews": "آراء عملائنا",
+    "back_to_top": "العودة للأعلى",
+    "share_text": "تحقق من {title} - {brand}"
   }
 }

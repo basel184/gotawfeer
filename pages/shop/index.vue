@@ -1357,9 +1357,11 @@ const handleProductDetails = () => {
             {{ t('shop.sort_by') }}
           </div>
           <select v-model="sort_by" class="sort-select">
+            <option value="highest_discount">{{ t('shop.sort_options.highest_discount') }}</option>
+            <option value="best_selling">{{ t('shop.sort_options.best_selling') }}</option>
             <option value="latest">{{ t('shop.sort_options.latest') }}</option>
-            <option value="price_low">{{ t('shop.sort_options.low_high') }}</option>
-            <option value="price_high">{{ t('shop.sort_options.high_low') }}</option>
+            <option value="low-high">{{ t('shop.sort_options.low_high') }}</option>
+            <option value="high-low">{{ t('shop.sort_options.high_low') }}</option>
             <option value="a-z">{{ t('shop.sort_options.a_z') }}</option>
             <option value="z-a">{{ t('shop.sort_options.z_a') }}</option>
           </select>
@@ -1487,6 +1489,8 @@ const handleProductDetails = () => {
         <div class="result">{{ t('shop.results') }}: {{ items.length }} / {{ total }}</div>
         <div class="spacer" />
         <select v-model="sort_by" class="select small">
+          <option value="highest_discount">{{ t('shop.sort_options.highest_discount') }}</option>
+          <option value="best_selling">{{ t('shop.sort_options.best_selling') }}</option>
           <option value="latest">{{ t('shop.sort_options.latest') }}</option>
           <option value="low-high">{{ t('shop.sort_options.low_high') }}</option>
           <option value="high-low">{{ t('shop.sort_options.high_low') }}</option>
@@ -1517,7 +1521,6 @@ const handleProductDetails = () => {
           :key="p.id || p.slug" 
           :product="p" 
           :qty="cart.qtyOf(p)"
-          :busy="cart.loading.value"
           @add="handleAddToCart"
           @update="handleUpdateCart"
           @remove="handleRemoveFromCart"
@@ -1563,7 +1566,7 @@ const handleProductDetails = () => {
       <div class="modal-dialog modal-products">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" :aria-label="t('close')"></button>
           </div>
           <div class="modal-body">
             <div v-if="selectedProductForModal" class="row">
@@ -1576,7 +1579,7 @@ const handleProductDetails = () => {
                 <div class="product-content-popup">
                   <h5>{{ modalProductTitle }}</h5>
                   <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
-                    <strong class="me-2">البراند:</strong>
+                    <strong class="me-2">{{ t('product.brand') }}:</strong>
                     <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                       <picture>
                         <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
@@ -1591,18 +1594,18 @@ const handleProductDetails = () => {
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">
                   <template v-if="hasProductOptions">
-                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">تحديد خيارات</NuxtLink>
+                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">{{ t('product.select_options') }}</NuxtLink>
                   </template>
                   <template v-else>
                     <a href="#" class="main-btn" @click.prevent="handleModalAddToCart" :disabled="isAddingToCart">
-                      <span v-if="!isAddingToCart">إضافة إلى السلة</span>
+                      <span v-if="!isAddingToCart">{{ t('product.add_to_cart') }}</span>
                       <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     </a>
                   </template>
-                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
+                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">{{ t('product.product_details') }}</NuxtLink>
                 </div>
                 <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3">
-                  <strong class="d-block mb-2">التصنيفات:</strong>
+                  <strong class="d-block mb-2">{{ t('product.categories') }}:</strong>
                   <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
                     <li v-for="(cat, index) in modalProductCategories" :key="index">
                       <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
@@ -1611,7 +1614,7 @@ const handleProductDetails = () => {
                     </li>
                   </ul>
                 </div>
-                <strong class="mt-4 mb-2 d-block">مشاركة</strong>
+                <strong class="mt-4 mb-2 d-block">{{ t('product.share') }}</strong>
                 <div class="share d-flex align-items-center gap-2">
                   <a href="#" class="text-decoration-none" @click.prevent="shareOnFacebook">
                     <i class="fa-brands fa-facebook"></i>

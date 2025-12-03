@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import 'assets/css/custom.css'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
+
+const { t } = useI18n()
 
 // Lazy load Swiper components for better performance
 const Swiper = defineAsyncComponent(() => import('swiper/vue').then(m => m.Swiper))
@@ -46,27 +49,50 @@ const countdownSeconds = ref(0)
 // Countdown interval reference
 let countdownInterval: any = null
 
-// Initialize countdown
+// Initialize countdown - weekly countdown to next Saturday
 const initializeCountdown = () => {
   // Clear any existing interval
   if (countdownInterval) {
     clearInterval(countdownInterval)
   }
   
-  // Set end date to 7 days from now
-  const endDate = new Date()
-  endDate.setDate(endDate.getDate() + 7)
-  endDate.setHours(0, 0, 0, 0) // Set to midnight
+  // Calculate next Saturday (Saturday = 6 in JavaScript Date)
+  const getNextSaturday = (): Date => {
+    const now = new Date()
+    const currentDay = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    let daysUntilSaturday: number
+    
+    if (currentDay === 6) {
+      // If today is Saturday, countdown to next Saturday (7 days)
+      daysUntilSaturday = 7
+    } else {
+      // Calculate days until next Saturday
+      // If currentDay < 6, then daysUntilSaturday = 6 - currentDay
+      // This covers Sunday (0) through Friday (5)
+      daysUntilSaturday = 6 - currentDay
+      if (daysUntilSaturday <= 0) {
+        // If somehow negative, add 7 days
+        daysUntilSaturday += 7
+      }
+    }
+    
+    const nextSaturday = new Date(now)
+    nextSaturday.setDate(now.getDate() + daysUntilSaturday)
+    nextSaturday.setHours(0, 0, 0, 0) // Set to midnight
+    
+    return nextSaturday
+  }
+  
+  let endDate = getNextSaturday()
   
   const updateCountdown = () => {
     const now = new Date().getTime()
-    const distance = endDate.getTime() - now
+    let distance = endDate.getTime() - now
     
+    // If countdown finished, get next Saturday
     if (distance < 0) {
-      // Countdown finished, reset to 7 days
-      endDate.setDate(endDate.getDate() + 7)
-      endDate.setHours(0, 0, 0, 0)
-      return
+      endDate = getNextSaturday()
+      distance = endDate.getTime() - now
     }
     
     // Calculate time units
@@ -376,7 +402,10 @@ const shareUrl = computed(() => {
 })
 
 const shareText = computed(() => {
-  return `تحقق من ${modalProductTitle.value} - ${modalProductBrand.value.name}`
+  return t('home.share_text', { 
+    title: modalProductTitle.value, 
+    brand: modalProductBrand.value.name 
+  })
 })
 
 const shareOnFacebook = () => {
@@ -504,10 +533,10 @@ const handleAddToCart = async () => {
       }
     }
     
-    console.log('✅ تم إضافة المنتج للسلة بنجاح')
+    console.log('✅', t('product.product_added_to_cart_successfully'))
   } catch (error: any) {
-    console.error('❌ خطأ في إضافة المنتج للسلة:', error)
-    alert('حدث خطأ في إضافة المنتج للسلة')
+    console.error('❌', t('product.error_adding_product_to_cart'), error)
+    alert(t('product.error_adding_product_to_cart'))
   } finally {
     isAddingToCart.value = false
   }
@@ -786,7 +815,7 @@ const onImgErr = (e: any) => {
 
 <template>
   <div>
-    <main class="home" dir="rtl">
+  <main class="home" dir="rtl">
     <!-- Whatsapp -->
      <a 
       v-show="showScrollTop"
@@ -794,19 +823,19 @@ const onImgErr = (e: any) => {
       class="arrow-up d-flex align-items-center justify-content-center" 
       id="scrollTopBtn"
       role="button"
-      aria-label="العودة للأعلى"
+      :aria-label="t('home.back_to_top')"
     >
       <i class="fa-solid fa-chevron-up"></i>
     </a>
-    <a href="https://wa.me/#" target="_blank" class="whatsapp d-flex align-items-center justify-content-center">
+     <a href="https://wa.me/#" target="_blank" class="whatsapp d-flex align-items-center justify-content-center">
       <i class="fa-brands fa-whatsapp"></i>
     </a>
 
-    <!-- Dynamic Home Sections from Admin -->
+      <!-- Dynamic Home Sections from Admin -->
     <!-- Show loading state while sections are loading (only if no data yet) -->
     <div v-if="sectionsPending && !hasSectionItems" class="sections-loading text-center py-5">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">جاري التحميل...</span>
+        <span class="visually-hidden">{{ t('loading') }}</span>
       </div>
     </div>
     <section v-else-if="hasSectionItems" class="section ">
@@ -816,225 +845,225 @@ const onImgErr = (e: any) => {
         :data-section-index="idx"
         :class="['section', 'card', { 'special-layout': s?.sort_order === 2 }]"
       >
-        <div class="container">
-          <!-- Section Header for Products with View All link -->
-          <div class="section-header" v-if="s?.type === 'products' && (s?.feed_type === 'category' ? s?.feed_category_id : s?.slug) && s?.show_title !== false">
-            <h2 class="section-title">{{ s?.title }}</h2>
-            <NuxtLink
-              :to="s?.feed_type === 'category' ? `/shop?category=${s?.feed_category_id}` : `/collection/${s?.slug}`"
-              class="view-all"
-            >عرض الكل</NuxtLink>
-          </div>
-          <!-- Section Header for other types (testimonials, features, etc.) -->
-          <div class="section-header2" v-else-if="s?.show_title !== false">
-            <h2 class="section-title">{{ s?.title }}</h2>
-            <hr style="color: #F58040;opacity: 1;width: 10%;">
-          </div>
-          <template v-if="s?.type === 'products' && Array.isArray(s?.products) && s.products.length">
-            <!-- Special layout for sort_order: 2 -->
-            <div v-if="s?.sort_order === 2" class="special-products-layout">
-              <div class="products-carousel-section">
-                <div class="products-carousel">
-                  <Swiper
+          <div class="container">
+            <!-- Section Header for Products with View All link -->
+            <div class="section-header" v-if="s?.type === 'products' && (s?.feed_type === 'category' ? s?.feed_category_id : s?.slug) && s?.show_title !== false">
+              <h2 class="section-title">{{ s?.title }}</h2>
+              <NuxtLink
+                :to="s?.feed_type === 'category' ? `/shop?category=${s?.feed_category_id}` : `/collection/${s?.slug}`"
+                class="view-all"
+            >{{ t('home.view_all') }}</NuxtLink>
+            </div>
+            <!-- Section Header for other types (testimonials, features, etc.) -->
+            <div class="section-header2" v-else-if="s?.show_title !== false">
+              <h2 class="section-title">{{ s?.title }}</h2>
+              <hr style="color: #F58040;opacity: 1;width: 10%;">
+            </div>
+            <template v-if="s?.type === 'products' && Array.isArray(s?.products) && s.products.length">
+              <!-- Special layout for sort_order: 2 -->
+              <div v-if="s?.sort_order === 2" class="special-products-layout">
+                <div class="products-carousel-section">
+                  <div class="products-carousel">
+                    <Swiper
                     v-if="s.products && s.products.length > 0"
-                    :modules="swiperModules"
-                    :slides-per-view="5"
-                    :navigation="false"
-                    :breakpoints="{
-                      320: { slidesPerView: 1, spaceBetween: 10 },
-                      640: { slidesPerView: 2, spaceBetween: 10 },
-                      768: { slidesPerView: 3, spaceBetween: 15 },
-                      1024: { slidesPerView: 4, spaceBetween: 15 },
-                      1200: { slidesPerView: 5, spaceBetween: 15 }
-                    }"
+                      :modules="swiperModules"
+                      :slides-per-view="5"
+                      :navigation="false"
+                      :breakpoints="{
+                        320: { slidesPerView: 1, spaceBetween: 10 },
+                        640: { slidesPerView: 2, spaceBetween: 10 },
+                        768: { slidesPerView: 3, spaceBetween: 15 },
+                        1024: { slidesPerView: 4, spaceBetween: 15 },
+                        1200: { slidesPerView: 5, spaceBetween: 15 }
+                      }"
                     :watch-overflow="true"
-                    class="products-swiper"
+                      class="products-swiper"
                     @swiper="(swiper) => { if (swiper && swiper.update) swiper.update() }"
-                  >
-                    <SwiperSlide 
-                      v-for="(product, index) in s.products" 
-                      :key="product.id || product.product_id || index"
                     >
-                      <ProductCard :product="product" />
-                    </SwiperSlide>
-                  </Swiper>
+                      <SwiperSlide 
+                        v-for="(product, index) in s.products" 
+                      :key="product.id || product.product_id || index"
+                      >
+                        <ProductCard :product="product" />
+                      </SwiperSlide>
+                    </Swiper>
+                  </div>
                 </div>
-              </div>
               <div class="promo-banner-section flex-column ">
                 <div class="promo-countdown ">
                   <h4 class="d-flex text-white align-items-center justify-content-center gap-2" dir="ltr">
                     <span class="countdown-item">
                       <span class="countdown-number">{{ formatCountdown(countdownDays) }}</span>
-                      <span class="countdown-label">يوم</span>
+                      <span class="countdown-label">{{ t('product.day') }}</span>
                     </span>
                     <span class="countdown-separator">:</span>
                     <span class="countdown-item">
                       <span class="countdown-number">{{ formatCountdown(countdownHours) }}</span>
-                      <span class="countdown-label">ساعة</span>
+                      <span class="countdown-label">{{ t('home.hour') }}</span>
                     </span>
                     <span class="countdown-separator">:</span>
                     <span class="countdown-item">
                       <span class="countdown-number">{{ formatCountdown(countdownMinutes) }}</span>
-                      <span class="countdown-label">دقيقة</span>
+                      <span class="countdown-label">{{ t('home.minute') }}</span>
                     </span>
                     <span class="countdown-separator">:</span>
                     <span class="countdown-item">
                       <span class="countdown-number">{{ formatCountdown(countdownSeconds) }}</span>
-                      <span class="countdown-label">ثانية</span>
+                      <span class="countdown-label">{{ t('home.second') }}</span>
                     </span>
                   </h4>
                 </div>
-                <div class="promo-banner">
-                  <div class="banner-content">
-                    <h3 class="banner-title">اقوى</h3>
-                    <h3 class="banner-title">الخصومات</h3>
-                    <p class="banner-subtitle">من جو توفير</p>
-                    <div class="percentage-symbol">
+                  <div class="promo-banner">
+                    <div class="banner-content">
+                    <h3 class="banner-title">{{ t('home.strongest') }}</h3>
+                    <h3 class="banner-title">{{ t('home.discounts') }}</h3>
+                    <p class="banner-subtitle">{{ t('home.from_go_tawfeer') }}</p>
+                      <div class="percentage-symbol">
                       <img src="../images/53a3.png" width="100" alt="" loading="lazy">
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <!-- Normal layout for other sections -->
-            <ProductGrid v-else :products="s.products" />
-          </template>
-          <template v-else-if="s?.type === 'categories' && Array.isArray(s?.categories) && s.categories.length">
-            <CategoryPills :categories="s.categories" />
-          </template>
-          <template v-else-if="s?.type === 'brands' && Array.isArray(s?.brands) && s.brands.length">
-            <BrandCarousel :brands="s.brands" />
-          </template>
-          <template v-else-if="s?.type === 'banners' && Array.isArray(s?.banners) && s.banners.length">
-            <div v-if="s?.banner_layout === 'slider'">
-              <BannerCarousel :banners="s.banners" />
-            </div>
-            <div v-else>
-              <PromoBannerRow :banners="s.banners" :columns="s?.banner_layout === 'grid_1' ? 1 : (s?.banner_layout === 'grid_2' ? 2 : (s?.banner_layout === 'grid_3' ? 3 : undefined))" />
-            </div>
-          </template>
-          <template v-else-if="s?.type === 'testimonials' && Array.isArray(s?.testimonials_data) && s.testimonials_data.length">
-            <div class="testimonials-section">
-              <h2 class="text-white text-center pt-3">آراء عملائنا</h2>
-              <div v-if="s?.testimonials_layout === 'slider'" class="testimonials-swiper">
-                <Swiper
+              <!-- Normal layout for other sections -->
+              <ProductGrid v-else :products="s.products" />
+            </template>
+            <template v-else-if="s?.type === 'categories' && Array.isArray(s?.categories) && s.categories.length">
+              <CategoryPills :categories="s.categories" />
+            </template>
+            <template v-else-if="s?.type === 'brands' && Array.isArray(s?.brands) && s.brands.length">
+              <BrandCarousel :brands="s.brands" />
+            </template>
+            <template v-else-if="s?.type === 'banners' && Array.isArray(s?.banners) && s.banners.length">
+              <div v-if="s?.banner_layout === 'slider'">
+                <BannerCarousel :banners="s.banners" />
+              </div>
+              <div v-else>
+                <PromoBannerRow :banners="s.banners" :columns="s?.banner_layout === 'grid_1' ? 1 : (s?.banner_layout === 'grid_2' ? 2 : (s?.banner_layout === 'grid_3' ? 3 : undefined))" />
+              </div>
+            </template>
+            <template v-else-if="s?.type === 'testimonials' && Array.isArray(s?.testimonials_data) && s.testimonials_data.length">
+              <div class="testimonials-section">
+              <h2 class="text-white text-center pt-3">{{ t('home.customer_reviews') }}</h2>
+                <div v-if="s?.testimonials_layout === 'slider'" class="testimonials-swiper">
+                  <Swiper
                   v-if="s.testimonials_data && s.testimonials_data.length > 0"
-                  :modules="swiperModules"
-                  :slides-per-view="3"
-                  :space-between="30"
-                  :navigation="true"
-                  :pagination="{ clickable: false }"
-                  :autoplay="{
-                    delay: 5000,
-                    disableOnInteraction: false,
-                  }"
-                  :centered-slides="true"
+                    :modules="swiperModules"
+                    :slides-per-view="3"
+                    :space-between="30"
+                    :navigation="true"
+                    :pagination="{ clickable: false }"
+                    :autoplay="{
+                      delay: 5000,
+                      disableOnInteraction: false,
+                    }"
+                    :centered-slides="true"
                   :loop="s.testimonials_data.length > 3"
                   :watch-overflow="true"
-                  :breakpoints="{
-                    320: {
-                      slidesPerView: 2,
-                      spaceBetween: 5,
-                      centeredSlides: true
-                    },
-                    1024: {
-                      slidesPerView: 3,
-                      spaceBetween: 5,
-                      centeredSlides: true
-                    }
-                  }"
+                    :breakpoints="{
+                      320: {
+                        slidesPerView: 2,
+                        spaceBetween: 5,
+                        centeredSlides: true
+                      },
+                      1024: {
+                        slidesPerView: 3,
+                        spaceBetween: 5,
+                        centeredSlides: true
+                      }
+                    }"
                   @swiper="(swiper) => { if (swiper && swiper.update) swiper.update() }"
                   @slide-change="(swiper) => { if (swiper) activeTestimonialSlide = swiper.activeIndex }"
-                  class="testimonials-swiper-container"
-                >
-                  <SwiperSlide v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-slide" :class="{ 'center-slide': index === activeTestimonialSlide }">
-                    <div class="testimonial-card" :class="{ 'center-card': index === activeTestimonialSlide }">
+                    class="testimonials-swiper-container"
+                  >
+                    <SwiperSlide v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-slide" :class="{ 'center-slide': index === activeTestimonialSlide }">
+                      <div class="testimonial-card" :class="{ 'center-card': index === activeTestimonialSlide }">
+                        <div class="testimonial-info">
+                          <div v-if="s?.show_stars && testimonial.rating" class="stars">
+                            <span v-for="i in 5" :key="i" class="star" :class="{ 'filled': i <= testimonial.rating }">★</span>
+                          </div>
+                          <p class="testimonial-text">{{ testimonial.testimonial_text }}</p>
+                        </div>
+                        <div class="testimonial-content">
+                          <div v-if="testimonial.image" class="testimonial-image">
+                          <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
+                          </div>
+                          <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
+                        </div>
+                      </div>
+                    </SwiperSlide>
+                  </Swiper>
+                </div>
+                <div v-else class="testimonials-grid" :class="`grid-${s?.testimonials_layout?.replace('grid_', '') || '2'}`">
+                  <div v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-card">
+                    <div class="testimonial-content">
+                      <div v-if="testimonial.image" class="testimonial-image">
+                      <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
+                      </div>
                       <div class="testimonial-info">
+                        <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
                         <div v-if="s?.show_stars && testimonial.rating" class="stars">
                           <span v-for="i in 5" :key="i" class="star" :class="{ 'filled': i <= testimonial.rating }">★</span>
                         </div>
                         <p class="testimonial-text">{{ testimonial.testimonial_text }}</p>
                       </div>
-                      <div class="testimonial-content">
-                        <div v-if="testimonial.image" class="testimonial-image">
-                          <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
-                        </div>
-                        <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
-                      </div>
-                    </div>
-                  </SwiperSlide>
-                </Swiper>
-              </div>
-              <div v-else class="testimonials-grid" :class="`grid-${s?.testimonials_layout?.replace('grid_', '') || '2'}`">
-                <div v-for="(testimonial, index) in s.testimonials_data" :key="index" class="testimonial-card">
-                  <div class="testimonial-content">
-                    <div v-if="testimonial.image" class="testimonial-image">
-                      <img :src="toSrc(testimonial.image)" :alt="testimonial.customer_name" @error="onImgErr" loading="lazy" />
-                    </div>
-                    <div class="testimonial-info">
-                      <h4 class="customer-name">{{ testimonial.customer_name }}</h4>
-                      <div v-if="s?.show_stars && testimonial.rating" class="stars">
-                        <span v-for="i in 5" :key="i" class="star" :class="{ 'filled': i <= testimonial.rating }">★</span>
-                      </div>
-                      <p class="testimonial-text">{{ testimonial.testimonial_text }}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </template>
-          <template v-else-if="s?.type === 'features' && Array.isArray(s?.features_data) && s.features_data.length">
-            <div class="features-section">
-              <div v-if="s?.features_layout === 'list'" class="features-list">
-                <div v-for="(feature, index) in s.features_data" :key="index" class="feature-item-list">
-                  <div v-if="s?.show_icons && feature.icon" class="feature-icon">
-                    <i :class="feature.icon"></i>
-                  </div>
-                  <div class="feature-content">
-                    <h4 class="feature-title">{{ feature.title }}</h4>
-                    <p class="feature-description">{{ feature.description }}</p>
+            </template>
+            <template v-else-if="s?.type === 'features' && Array.isArray(s?.features_data) && s.features_data.length">
+              <div class="features-section">
+                <div v-if="s?.features_layout === 'list'" class="features-list">
+                  <div v-for="(feature, index) in s.features_data" :key="index" class="feature-item-list">
+                    <div v-if="s?.show_icons && feature.icon" class="feature-icon">
+                      <i :class="feature.icon"></i>
+                    </div>
+                    <div class="feature-content">
+                      <h4 class="feature-title">{{ feature.title }}</h4>
+                      <p class="feature-description">{{ feature.description }}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div v-else-if="s?.features_layout === 'pills'" class="features-pills">
-                <div class="pills-container">
-                  <div class="pills">
-                    <div v-for="(feature, index) in s.features_data" :key="index" class="pill">
-                      <div class="pill-content">
-                        <div v-if="s?.show_icons && feature.icon" class="feature-icon">
-                          <i :class="feature.icon"></i>
-                        </div>
-                        <div class="feature-info">
-                          <h4 class="feature-title">{{ feature.title }}</h4>
-                          <p class="feature-description">{{ feature.description }}</p>
+                <div v-else-if="s?.features_layout === 'pills'" class="features-pills">
+                  <div class="pills-container">
+                    <div class="pills">
+                      <div v-for="(feature, index) in s.features_data" :key="index" class="pill">
+                        <div class="pill-content">
+                          <div v-if="s?.show_icons && feature.icon" class="feature-icon">
+                            <i :class="feature.icon"></i>
+                          </div>
+                          <div class="feature-info">
+                            <h4 class="feature-title">{{ feature.title }}</h4>
+                            <p class="feature-description">{{ feature.description }}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div v-else class="features-grid" :class="`grid-${s?.features_layout?.replace('grid_', '') || '2'}`">
-                <div v-for="(feature, index) in s.features_data" :key="index" class="feature-card">
-                  <div v-if="s?.show_icons && feature.icon" class="feature-icon">
-                    <i :class="feature.icon"></i>
-                  </div>
-                  <div class="feature-content">
-                    <h4 class="feature-title">{{ feature.title }}</h4>
-                    <p class="feature-description">{{ feature.description }}</p>
+                <div v-else class="features-grid" :class="`grid-${s?.features_layout?.replace('grid_', '') || '2'}`">
+                  <div v-for="(feature, index) in s.features_data" :key="index" class="feature-card">
+                    <div v-if="s?.show_icons && feature.icon" class="feature-icon">
+                      <i :class="feature.icon"></i>
+                    </div>
+                    <div class="feature-content">
+                      <h4 class="feature-title">{{ feature.title }}</h4>
+                      <p class="feature-description">{{ feature.description }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-products">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" :aria-label="t('close')"></button>
           </div>
           <div class="modal-body">
             <div v-if="selectedProductForModal" class="row">
@@ -1047,7 +1076,7 @@ const onImgErr = (e: any) => {
                 <div class="product-content-popup">
                   <h5>{{ modalProductTitle }}</h5>
                   <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
-                    <strong class="me-2">البراند:</strong>
+                    <strong class="me-2">{{ t('product.brand') }}:</strong>
                     <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                       <picture>
                         <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }" loading="lazy">
@@ -1062,18 +1091,18 @@ const onImgErr = (e: any) => {
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">
                   <template v-if="hasProductOptions">
-                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">تحديد خيارات</NuxtLink>
+                    <NuxtLink :to="modalProductLink" class="main-btn" @click="handleProductDetails">{{ t('product.select_options') }}</NuxtLink>
                   </template>
                   <template v-else>
                     <a href="#" class="main-btn" @click.prevent="handleAddToCart" :disabled="isAddingToCart">
-                      <span v-if="!isAddingToCart">إضافة إلى السلة</span>
+                      <span v-if="!isAddingToCart">{{ t('product.add_to_cart') }}</span>
                       <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     </a>
                   </template>
-                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">تفاصيل المنتج</NuxtLink>
+                  <NuxtLink :to="modalProductLink" class="second-btn" @click="handleProductDetails">{{ t('product.product_details') }}</NuxtLink>
                 </div>
                 <div v-if="modalProductCategories.length > 0" class="cat border-top mt-3 pt-3">
-                  <strong class="d-block mb-2">التصنيفات:</strong>
+                  <strong class="d-block mb-2">{{ t('product.categories') }}:</strong>
                   <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
                     <li v-for="(cat, index) in modalProductCategories" :key="index">
                       <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
@@ -1082,7 +1111,7 @@ const onImgErr = (e: any) => {
                     </li>
                   </ul>
                 </div>
-                <strong class="mt-4 mb-2 d-block">مشاركة</strong>
+                <strong class="mt-4 mb-2 d-block">{{ t('product.share') }}</strong>
                 <div class="share d-flex align-items-center gap-2">
                   <a href="#" class="text-decoration-none" @click.prevent="shareOnFacebook">
                     <i class="fa-brands fa-facebook"></i>
@@ -1112,12 +1141,12 @@ const onImgErr = (e: any) => {
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </svg>
-            <span>تم إضافة السلة بنجاح</span>
+            <span>{{ t('product.cart_added_successfully') }}</span>
           </div>
         </div>
       </Transition>
     </teleport>
-    </main>
+  </main>
   </div>
 </template>
 

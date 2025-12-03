@@ -24,6 +24,7 @@
 }
 .status-card.count-down  {
     background-color: var(--secondary-color);
+    display: flex;
 }
 /* Navbar */
 .search-box-mobile {

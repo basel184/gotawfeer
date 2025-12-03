@@ -6,7 +6,7 @@ import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 import { useCompare } from '../composables/useCompare'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 
 const props = defineProps<{ product: any; qty?: number; busy?: boolean }>()
@@ -277,6 +277,10 @@ const title = computed(() => {
   const p: any = props.product || {}
   return p?.name || p?.product_name || p?.product?.name || p?.product?.product_name || 'Product'
 })
+const status = computed(() => {
+  const p: any = props.product || {}
+  return p?.condition || p?.product?.condition 
+})
 const { ensure: ensureBrands, nameOf: brandNameOf, ensureBrand } = useBrands() as any
 const cart = useCart()
 const wishlist = useWishlist()
@@ -364,11 +368,22 @@ onMounted(async () => {
       })
     })
   }
+  
+  // Initialize discount countdown if applicable
+  if (showDiscountCountdown.value) {
+    initializeDiscountCountdown()
+  }
 })
 
-// Cleanup tooltips on unmount
+// Cleanup tooltips and countdown on unmount
 onBeforeUnmount(() => {
   if (!process.client) return
+  
+  // Clear countdown interval
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
   
   // Dispose all tooltips safely
   tooltipInstances.value.forEach((tooltip: any) => {
@@ -416,7 +431,7 @@ onBeforeUnmount(() => {
             // Ignore errors
           }
         })
-      }
+  }
     } catch (e) {
       // Ignore errors
     }
@@ -471,6 +486,78 @@ const discountPercent = computed<number>(() => {
   const isPercent = String(discountType.value).toLowerCase().startsWith('per')
   return Math.max(0, Math.round(isPercent ? dv : (dv / bp) * 100))
 })
+
+// Discount countdown timer
+const discountStartDate = computed<string | null>(() => {
+  const p: any = props.product || {}
+  return p?.discount_start_date || p?.product?.discount_start_date || null
+})
+
+const discountEndDate = computed<string | null>(() => {
+  const p: any = props.product || {}
+  return p?.discount_end_date || p?.product?.discount_end_date || null
+})
+
+const discountPeriodType = computed<string | null>(() => {
+  const p: any = props.product || {}
+  return p?.discount_period_type || p?.product?.discount_period_type || null
+})
+
+const showDiscountCountdown = computed(() => {
+  return discountPeriodType.value === 'temporary' && discountStartDate.value && discountEndDate.value
+})
+
+// Countdown state
+const countdownDays = ref(0)
+const countdownHours = ref(0)
+const countdownMinutes = ref(0)
+const countdownSeconds = ref(0)
+const countdownExpired = ref(false)
+let countdownInterval: any = null
+
+// Initialize countdown
+const initializeDiscountCountdown = () => {
+  if (!process.client || !showDiscountCountdown.value) return
+  
+  const updateCountdown = () => {
+    if (!discountEndDate.value) {
+      countdownExpired.value = true
+      return
+    }
+    
+    const endDate = new Date(discountEndDate.value)
+    const now = new Date()
+    const distance = endDate.getTime() - now.getTime()
+    
+    if (distance < 0) {
+      countdownExpired.value = true
+      countdownDays.value = 0
+      countdownHours.value = 0
+      countdownMinutes.value = 0
+      countdownSeconds.value = 0
+      return
+    }
+    
+    countdownDays.value = Math.floor(distance / (1000 * 60 * 60 * 24))
+    countdownHours.value = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    countdownMinutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+    countdownSeconds.value = Math.floor((distance % (1000 * 60)) / 1000)
+  }
+  
+  // Update immediately
+  updateCountdown()
+  
+  // Update every second
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+  }
+  countdownInterval = setInterval(updateCountdown, 1000)
+}
+
+// Format countdown number with leading zero
+const formatCountdown = (num: number): string => {
+  return num.toString().padStart(2, '0')
+}
 const formatPrice = (n: number) => {
   if (!isFinite(n)) return ''
   try { return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
@@ -536,7 +623,7 @@ watch([wished, isInCompare], () => {
       if (wishButton) {
         const tooltip = (window as any).bootstrap.Tooltip.getInstance(wishButton)
         if (tooltip) {
-          const newTitle = wished.value ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'
+          const newTitle = wished.value ? t('product.remove_from_wishlist') : t('product.add_to_wishlist')
           wishButton.setAttribute('data-bs-title', newTitle)
           tooltip.setContent({ '.tooltip-inner': newTitle })
         }
@@ -547,7 +634,7 @@ watch([wished, isInCompare], () => {
       if (compareButton) {
         const tooltip = (window as any).bootstrap.Tooltip.getInstance(compareButton)
         if (tooltip) {
-          const newTitle = isInCompare.value ? 'إزالة من المقارنة' : 'إضافة للمقارنة'
+          const newTitle = isInCompare.value ? t('product.remove_from_compare') : t('product.add_to_compare')
           compareButton.setAttribute('data-bs-title', newTitle)
           tooltip.setContent({ '.tooltip-inner': newTitle })
         }
@@ -586,7 +673,7 @@ const toggleWish = async (e: Event) => {
     await wishlist.toggle(String(productId))
     
     // Show success message
-    console.log(wished.value ? 'تم إضافة المنتج إلى المفضلة' : 'تم إزالة المنتج من المفضلة')
+    console.log(wished.value ? t('product.product_added_to_wishlist') : t('product.product_removed_from_wishlist'))
   } catch (error: any) {
     console.error('Wishlist error:', error)
     
@@ -622,21 +709,21 @@ const toggleCompare = async (e: Event) => {
       // Remove from compare
       const success = compare.remove(Number(productId))
       if (success) {
-        console.log('تم إزالة المنتج من المقارنة')
+        console.log(t('product.product_removed_from_compare'))
       }
     } else {
       // Check if compare is full
       if (compare.isFull.value) {
-        alert('يمكن مقارنة 4 منتجات كحد أقصى')
+        alert(t('product.compare_max_products'))
         return
       }
       
       // Add to compare
       const success = compare.add(props.product)
       if (success) {
-        console.log('تم إضافة المنتج إلى المقارنة')
+        console.log(t('product.product_added_to_compare'))
       } else {
-        console.error(compare.error.value || 'فشل في إضافة المنتج إلى المقارنة')
+        console.error(compare.error.value || t('product.error_adding_product_to_compare'))
       }
     }
   } catch (error: any) {
@@ -793,7 +880,8 @@ const qty = computed(() => {
 
 // Local loading state for this specific product
 const isAddingToCart = ref(false)
-const isBusy = computed(() => !!props.busy || isAddingToCart.value || cart.loading.value)
+const isUpdatingCart = ref(false)
+const isBusy = computed(() => !!props.busy || isAddingToCart.value || isUpdatingCart.value)
 
 // Success message state
 const showSuccessMessage = ref(false)
@@ -847,8 +935,12 @@ const handleAdd = async (e: Event) => {
       cartData.discount_type = discountType.value
     }
     
+    // Add to cart - this will set cart.loading, but we use our local isAddingToCart instead
     await cart.add(cartData)
     // cart.add() already calls list(true) internally, so UI will update automatically
+    
+    // Wait a bit to ensure cart state is updated
+    await nextTick()
     
     // Show success message
     showSuccessToast()
@@ -857,11 +949,13 @@ const handleAdd = async (e: Event) => {
     openCartDropdown()
     
     emit('add', props.product)
-    console.log('✅ تم إضافة المنتج للسلة بنجاح')
+    console.log('✅', t('product.product_added_to_cart_successfully'))
   } catch (error: any) {
     console.error('❌ خطأ في إضافة المنتج للسلة:', error)
-    alert('حدث خطأ في إضافة المنتج للسلة')
+    alert(t('product.error_adding_product_to_cart'))
   } finally {
+    // Reset local loading state immediately after operation completes
+    // This ensures only this card shows loading, not others
     isAddingToCart.value = false
   }
 }
@@ -871,13 +965,19 @@ const inc = async (e: Event) => {
   if (isBusy.value) return
   
   try {
+    isUpdatingCart.value = true
     const currentQty = qty.value
     const newQty = currentQty + 1
     await cart.updateByProduct(props.product, newQty)
+    // Wait a bit to ensure cart state is updated
+    await nextTick()
     emit('update', { product: props.product, qty: newQty })
     console.log('تم تحديث الكمية:', newQty)
   } catch (error: any) {
     console.error('خطأ في تحديث الكمية:', error)
+  } finally {
+    // Reset local loading state immediately
+    isUpdatingCart.value = false
   }
 }
 
@@ -886,19 +986,27 @@ const dec = async (e: Event) => {
   if (isBusy.value) return
   
   try {
+    isUpdatingCart.value = true
     const currentQty = qty.value
     if (currentQty > 1) {
       const newQty = currentQty - 1
       await cart.updateByProduct(props.product, newQty)
+      // Wait a bit to ensure cart state is updated
+      await nextTick()
       emit('update', { product: props.product, qty: newQty })
       console.log('تم تحديث الكمية:', newQty)
     } else if (currentQty === 1) {
       await cart.removeByProduct(props.product)
+      // Wait a bit to ensure cart state is updated
+      await nextTick()
       emit('remove', props.product)
-      console.log('تم إزالة المنتج من السلة')
+      console.log(t('product.product_removed_from_cart'))
     }
   } catch (error: any) {
     console.error('خطأ في تحديث الكمية:', error)
+  } finally {
+    // Reset local loading state immediately
+    isUpdatingCart.value = false
   }
 }
 
@@ -908,11 +1016,17 @@ const clearQty = async (e: Event) => {
   e.stopPropagation()
   
   try {
+    isUpdatingCart.value = true
     await cart.removeByProduct(props.product)
+    // Wait a bit to ensure cart state is updated
+    await nextTick()
     emit('remove', props.product)
     console.log('تم إزالة المنتج من السلة')
   } catch (error: any) {
-    console.error('خطأ في إزالة المنتج من السلة:', error)
+    console.error(t('product.error_removing_product_from_cart'), error)
+  } finally {
+    // Reset local loading state immediately
+    isUpdatingCart.value = false
   }
 }
 
@@ -928,6 +1042,12 @@ const promoChip = computed<{ text: string; tone: 'green' | 'pink' | 'blue' } | n
 const promoText = computed(() => promoChip.value?.text || '')
 const promoTone = computed(() => promoChip.value?.tone || '')
 // Stock
+const current_stock = computed<number>(() => {
+  const p: any = props.product || {}
+  const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
+  return Number(q) || 0
+})
+
 const inStock = computed<boolean>(() => {
   const p: any = props.product || {}
   const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
@@ -977,7 +1097,7 @@ const openProductModal = async (e: Event) => {
           :data-wished="wished"
           :data-loading="wishlistLoading"
           data-bs-toggle="tooltip"
-          :data-bs-title="wished ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'"
+          :data-bs-title="wished ? t('product.remove_from_wishlist') : t('product.add_to_wishlist')"
           data-bs-placement="top"
           aria-label="Wishlist"
           >
@@ -994,7 +1114,7 @@ const openProductModal = async (e: Event) => {
           @click="toggleCompare" 
           :disabled="compare.loading.value"
           data-bs-toggle="tooltip"
-          :data-bs-title="isInCompare ? 'إزالة من المقارنة' : 'إضافة للمقارنة'"
+          :data-bs-title="isInCompare ? t('product.remove_from_compare') : t('product.add_to_compare')"
           data-bs-placement="top"
           aria-label="Compare"
         >
@@ -1009,7 +1129,7 @@ const openProductModal = async (e: Event) => {
           type="button" 
           @click.stop.prevent="openProductModal"
           data-bs-toggle="tooltip"
-          data-bs-title="عرض المنتج"
+          :data-bs-title="t('product.view_product')"
           data-bs-placement="top"
           aria-label="View Product"
         >
@@ -1018,8 +1138,34 @@ const openProductModal = async (e: Event) => {
           </svg>
         </button>
       </div>
-      <div class="status-card count-down d-none">
-        ينتهي بعد 01:12:45 
+      <div v-if="status != null" class="status-card available">
+        {{ status }}
+      </div>
+      <div v-if="current_stock === 0" class="status-card out">
+        {{ t('product.out_of_stock_quantity') }}
+      </div>
+      <div v-if="showDiscountCountdown && !countdownExpired" class="status-card count-down">
+        <div class="countdown-label">{{ t('product.ends_in') }}</div>
+        <div class="countdown-timer">
+          <span v-if="countdownDays > 0" class="countdown-item">
+            <span class="countdown-number">{{ formatCountdown(countdownDays) }}</span>
+            <span class="countdown-unit">{{ t('product.day') }}</span>
+          </span>
+          <span class="countdown-item">
+            <span class="countdown-number">{{ formatCountdown(countdownHours) }}</span>
+            <span class="countdown-unit">{{ t('product.hour_short') }}</span>
+          </span>
+          <span class="countdown-separator">:</span>
+          <span class="countdown-item">
+            <span class="countdown-number">{{ formatCountdown(countdownMinutes) }}</span>
+            <span class="countdown-unit">{{ t('product.minute_short') }}</span>
+          </span>
+          <span class="countdown-separator">:</span>
+          <span class="countdown-item">
+            <span class="countdown-number">{{ formatCountdown(countdownSeconds) }}</span>
+            <span class="countdown-unit">{{ t('product.second_short') }}</span>
+          </span>
+        </div>
       </div>
       <img :src="(imgSrc as any)" :alt="(title as any)" @error="onErr" />
       
@@ -1059,11 +1205,11 @@ const openProductModal = async (e: Event) => {
             </template>
           </template>
           <template v-else>
-            <span class="lock" title="غير متوفر">
+            <span class="lock" :title="t('product.unavailable')">
               <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 0 0 2-2v-2a2 2 0 1 0-4 0v2a2 2 0 0 0 2 2m6-6h-1V9a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2m-3 0H9V9a3 3 0 0 1 6 0z"/></svg>
             </span>
           </template>
-          <span v-if="(isBusy as any)" class="mini-spin" aria-hidden="true" title="جاري التحميل..."></span>
+          <span v-if="(isBusy as any)" class="mini-spin" aria-hidden="true" :title="t('loading')"></span>
         </div>
 
       </div>
@@ -1098,7 +1244,7 @@ const openProductModal = async (e: Event) => {
             <path d="M6.41566 9.76641C6.24628 10.1389 6.13432 10.5431 6.09143 10.967L9.67578 10.2113C9.84515 9.83893 9.95703 9.43463 10 9.01074L6.41566 9.76641Z" fill="#808080" fill-opacity="0.6"/>
             <path d="M9.67525 7.94574C9.84462 7.57335 9.95658 7.16905 9.99948 6.74516L7.20738 7.3341V6.20194L9.67516 5.68183C9.84454 5.30944 9.9565 4.90515 9.99939 4.48126L7.2073 5.0697V0.998106C6.77947 1.23635 6.39951 1.55347 6.09065 1.92753V5.30517L4.974 5.54057V0.444336C4.54616 0.682492 4.16621 0.999697 3.85734 1.37376V5.77587L1.35883 6.30243C1.18946 6.67482 1.07741 7.07911 1.03443 7.503L3.85734 6.90803V8.33379L0.832042 8.97138C0.662666 9.34377 0.550705 9.74806 0.507812 10.172L3.67446 9.50455C3.93224 9.45138 4.1538 9.30023 4.29784 9.09222L4.87859 8.23832V8.23815C4.93887 8.14981 4.974 8.04329 4.974 7.92857V6.67264L6.09065 6.43725V8.70157L9.67516 7.94557L9.67525 7.94574Z" fill="#808080" fill-opacity="0.6"/>
           </svg>
-          <!-- <span class="save-amount">حفظ {{ formatPrice((oldPrice as any) - (finalPrice as any)) }} <img src="../images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></span> -->
+          <!-- <span class="save-amount">حفظ {{ formatPrice((oldPrice as any) - (finalPrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span> -->
         </div>
         <div class="price-row">
           <span class="price final">{{ formatPrice((finalPrice as any)) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
@@ -1116,7 +1262,7 @@ const openProductModal = async (e: Event) => {
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </svg>
-            <span>تم إضافة السلة بنجاح</span>
+            <span>{{ t('product.cart_added_successfully') }}</span>
           </div>
         </div>
       </Transition>
@@ -1516,93 +1662,92 @@ img {
   bottom: -15px;
 }
 
-/* Success Toast Styles */
-.success-toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
-}
+  /* Success Toast Styles */
+  .success-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+  }
 
-.success-content {
-  background: #10b981;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  font-weight: 600;
-  font-size: 14px;
-  min-width: 200px;
-}
+  .success-content {
+    background: #10b981;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 200px;
+  }
 
-.success-content svg {
-  flex-shrink: 0;
-}
+  .success-content svg {
+    flex-shrink: 0;
+  }
 
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
+  .slide-fade-enter-active {
+    transition: all 0.3s ease-out;
+  }
 
-.slide-fade-leave-active {
-  transition: all 0.3s ease-in;
-}
+  .slide-fade-leave-active {
+    transition: all 0.3s ease-in;
+  }
 
-.slide-fade-enter-from {
-  transform: translateX(100%);
-  opacity: 0;
-}
+  .slide-fade-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 
-.slide-fade-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
+  .slide-fade-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 
-/* RTL Support */
-[dir="rtl"] .success-toast {
-  right: auto;
-  left: 20px;
-}
+  /* RTL Support */
+  [dir="rtl"] .success-toast {
+    right: auto;
+    left: 20px;
+  }
 
-[dir="rtl"] .success-content {
-  text-align: right;
-}
+  [dir="rtl"] .success-content {
+    text-align: right;
+  }
 
-/* Color Palette Styles */
-.color-pallete-container {
-  margin-top: 8px;
-  margin-bottom: 8px;
-  gap: 8px;
-}
+  /* Color Palette Styles */
+  .color-pallete-container {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
 
-.color-pallete {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid #e5e7eb;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  flex-shrink: 0;
-  display: inline-block;
-  position: relative;
-  overflow: hidden;
-}
+  .color-pallete {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+  }
 
-.color-pallete:hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
+  .color-pallete:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
 
-.color-pallete-num {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-}
-
+  .color-pallete-num {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+  }
 </style>

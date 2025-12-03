@@ -281,6 +281,19 @@ const parseColorImage = (colorImage: any): any[] | null => {
   return null
 }
 
+// Detect mobile screen size
+const isMobile = ref(false)
+const checkMobile = () => {
+  if (process.client) {
+    isMobile.value = window.innerWidth < 768
+  }
+}
+
+// Thumbnail swiper direction - vertical on desktop, horizontal on mobile
+const thumbnailDirection = computed(() => {
+  return isMobile.value ? 'horizontal' : 'vertical'
+})
+
 const images = computed<string[]>(() => {
   const p: any = product.value || {}
   
@@ -809,7 +822,7 @@ const setMainSwiper = (swiper: any) => {
   try {
     // Verify swiper and element exist and are in the DOM
     if (swiper && swiper.el && swiper.el.classList && document.body.contains(swiper.el)) {
-      mainSwiper.value = swiper
+    mainSwiper.value = swiper
       // Link thumbnails to main swiper (only if both exist and are in DOM)
       if (thumbnailSwiper.value && 
           thumbnailSwiper.value.el && 
@@ -1394,6 +1407,14 @@ const currentVariantSku = computed(() => {
   // Fallback to product SKU if no variant is selected
   const p: any = product.value || {}
   return p?.sku || p?.product?.sku || ''
+})
+const currentVariantName = computed(() => {
+  if (selectedVariant.value && selectedVariant.value.type) {
+    return selectedVariant.value.type
+  }
+  // Fallback to product SKU if no variant is selected
+  const p: any = product.value || {}
+  return p?.type || p?.product?.type || ''
 })
 
 // Initialize variants when product loads
@@ -2036,10 +2057,10 @@ const updateSelectedVariant = () => {
     }
   } else {
     // If variations are NOT linked to colors, use old logic
-    // If product has no colors, search by size directly
-    if (!selectedColor.value || availableColors.value.length === 0) {
-      if (selectedSize.value) {
-        variant = product.value.variation.find((v: any) => 
+  // If product has no colors, search by size directly
+  if (!selectedColor.value || availableColors.value.length === 0) {
+    if (selectedSize.value) {
+      variant = product.value.variation.find((v: any) => 
           (v.type === selectedSize.value || v.type === String(selectedSize.value)) && v.qty > 0
         )
       } else if (selectedVariation.value) {
@@ -2073,8 +2094,8 @@ const updateSelectedVariant = () => {
           foundPrice: variant?.price || null,
           variantMatches: variant ? (variant.type === selectedVariation.value) : false
         })
-      }
-    } else {
+    }
+  } else {
       // If product has colors, check if there are variations/sizes
       const hasVariations = availableVariations.value.length > 0
       const hasSizes = availableSizes.value.length > 0
@@ -2108,7 +2129,7 @@ const updateSelectedVariant = () => {
           
           // First, try using colorName from mapping
           if (selectedColorObj?.colorName) {
-            variant = product.value.variation.find((v: any) => 
+    variant = product.value.variation.find((v: any) => 
               v.type === selectedColorObj.colorName && v.qty > 0
             )
             console.log('[Product] Trying colorName from mapping:', selectedColorObj.colorName, '->', variant?.type || 'not found')
@@ -2183,20 +2204,20 @@ const updateSelectedVariant = () => {
         // Try different search patterns (only if qty > 0)
         variant = product.value.variation.find((v: any) => 
           v.type === `${selectedColor.value}-${selectedSize.value}` && v.qty > 0
-        )
-        
-        // If not found, try with different separators
-        if (!variant) {
-          variant = product.value.variation.find((v: any) => 
+    )
+    
+    // If not found, try with different separators
+    if (!variant) {
+      variant = product.value.variation.find((v: any) => 
             (v.type === `${selectedColor.value}_${selectedSize.value}` ||
-            v.type === `${selectedColor.value} ${selectedSize.value}` ||
+        v.type === `${selectedColor.value} ${selectedSize.value}` ||
             v.type === `${selectedColor.value}/${selectedSize.value}`) && v.qty > 0
-          )
-        }
-        
-        // If still not found, try partial matches
-        if (!variant) {
-          variant = product.value.variation.find((v: any) => 
+      )
+    }
+    
+    // If still not found, try partial matches
+    if (!variant) {
+      variant = product.value.variation.find((v: any) => 
             v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value) && v.qty > 0
           )
         }
@@ -2435,7 +2456,7 @@ const clearColorSelection = async () => {
   await nextTick()
   
   // Wait a bit more to ensure images computed has updated
-  setTimeout(() => {
+      setTimeout(() => {
     console.log('[Product] After clearing color, images count:', images.value.length)
     if (images.value && images.value.length > 0 && shouldShowSwiper.value) {
       console.log('[Product] Re-enabling swiper after clearing color')
@@ -2719,17 +2740,6 @@ const addToCart = async () => {
     if (selectedVariant.value) {
       cartData.variant = `${selectedColor.value || ''}-${selectedSize.value || ''}`.replace(/^-|-$/g, '')
     }
-    
-    console.log('إضافة للسلة:', cartData)
-    console.log('selectedVariant:', selectedVariant.value)
-    console.log('selectedColor:', selectedColor.value)
-    console.log('selectedSize:', selectedSize.value)
-    console.log('currentVariantPrice:', currentVariantPrice.value)
-    console.log('basePrice:', basePrice.value)
-    console.log('discountValue:', discountValue.value)
-    console.log('discountType:', discountType.value)
-    console.log('finalPrice:', finalPrice.value)
-    console.log('hasDiscount:', hasDiscount.value)
     
     await cart.add(cartData)
     // Refresh cart to update counts and totals
@@ -3156,6 +3166,14 @@ const load = async () => {
 }
 
 onMounted(async () => {
+  // Check mobile screen size
+  checkMobile()
+  
+  // Add resize listener for mobile detection
+  if (process.client) {
+    window.addEventListener('resize', checkMobile)
+  }
+  
   // Load product first (non-blocking)
   load()
   
@@ -3203,6 +3221,11 @@ onMounted(async () => {
 
 // Cleanup Swiper instances on unmount
 onBeforeUnmount(() => {
+  // Remove resize listener
+  if (process.client) {
+    window.removeEventListener('resize', checkMobile)
+  }
+  
   try {
     if (mainSwiper.value && mainSwiper.value.destroy) {
       mainSwiper.value.destroy(true, true)
@@ -3503,10 +3526,10 @@ const handleProductDetails = () => {
           <!-- Thumbnail Swiper (Side) -->
           <div v-if="swiperReady && images.length > 1" class="thumbnail-swiper-container">
             <SwiperComponent
-              :key="`thumb-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
+              :key="`thumb-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}-${thumbnailDirection}`"
               :space-between="10"
-              :slides-per-view="4"
-              :direction="'vertical'"
+              :slides-per-view="isMobile ? 4 : 4"
+              :direction="thumbnailDirection"
               :modules="modules"
               :loop="false"
               :watch-slides-progress="true"
@@ -3643,8 +3666,8 @@ const handleProductDetails = () => {
 
         <!-- Price -->
         <div class="price-section">
-          <div class="price-main">{{ currentVariantPrice.toLocaleString() }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
-          <div v-if="hasDiscount" class="price-old">{{ basePrice.toLocaleString() }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
+          <div class="price-main">{{ currentVariantPrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+          <div v-if="hasDiscount" class="price-old">{{ basePrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           <div v-if="hasDiscount" class="discount-badge">-{{ discountPercent }}%</div>
         </div>
 
@@ -3655,7 +3678,7 @@ const handleProductDetails = () => {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-              {{ t('product.select_color') }}
+              {{ t('product.select_color') }} : {{ currentVariantName }}
           </h4>
             <button 
               v-if="selectedColor" 
@@ -3691,12 +3714,12 @@ const handleProductDetails = () => {
         <!-- Variation Selection -->
         <div v-if="availableVariations.length > 0" class="variant-section">
           <div class="variant-title-wrapper">
-            <h4 class="variant-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <h4 class="variant-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
+            </svg>
               {{ t('product.select_variation') }}
-            </h4>
+          </h4>
             <button 
               v-if="selectedVariation" 
               class="clear-color-btn"
@@ -3730,6 +3753,11 @@ const handleProductDetails = () => {
             <button @click="qty = Math.max(1, qty - 1)" :disabled="qty <= 1" class="qty-btn">−</button>
             <input type="number" v-model.number="qty" min="1" class="qty-input" />
             <button @click="qty = qty + 1" class="qty-btn">+</button>
+            <div class="qty-price">
+              <span class="qty-price-label">السعر:</span>
+              <span class="qty-price-value">{{ (currentVariantPrice * qty).toLocaleString() }}</span>
+              <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" />
+            </div>
           </div>
           <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
             <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
@@ -3794,7 +3822,7 @@ const handleProductDetails = () => {
               <div class="payment-logo">Tabby</div>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
-            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
+            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
@@ -3804,7 +3832,7 @@ const handleProductDetails = () => {
               <div class="payment-logo">تمارا</div>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
-            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Group 1171274840 (1).png" alt="ر.س" class="currency-icon" /></div>
+            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
         </div>
         <div class="order-now border py-2 px-3 d-flex justify-content-between align-items-center mb-3 rounded-3 ">
@@ -4350,17 +4378,6 @@ const handleProductDetails = () => {
     </teleport>
   </div>
 
-  <!-- Success Message -->
-  <teleport to="body">
-    <div v-if="showSuccessMessage" class="success-toast">
-      <div class="success-content">
-        <svg width="20" height="20" viewBox="0 0 24 24">
-          <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-        </svg>
-        <span>{{ successMessage }}</span>
-      </div>
-    </div>
-  </teleport>
   
   <!-- Product Modal -->
   <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -4368,14 +4385,14 @@ const handleProductDetails = () => {
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
+      </div>
         <div class="modal-body">
           <div v-if="selectedProductForModal" class="row">
             <div class="col-lg-6 mb-3">
               <picture>
                 <img class="mw-100 pic-img" :src="modalProductImage || placeholderImage" :alt="modalProductTitle" @error="onImgErr">
               </picture>
-            </div>
+    </div>
             <div class="col-lg-6">
               <div class="product-content-popup">
                 <h5>{{ modalProductTitle }}</h5>
@@ -5058,11 +5075,15 @@ const handleProductDetails = () => {
   }
 
   .add-to-cart-section{ display:flex; gap:12px; align-items:center; margin-bottom:16px }
-  .qty-selector{ display:flex; align-items:center; border:1px solid #e5e7eb; border-radius:8px; background:#fff }
-  .qty-btn{ width:36px; height:36px; border:none; background:#f9fafb; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:#6b7280 }
+  .qty-selector{ display:flex; align-items:center; gap:12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; padding:4px }
+  .qty-btn{ width:36px; height:36px; border:none; background:#f9fafb; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:#6b7280; border-radius:6px }
   .qty-btn:hover{ background:#f3f4f6 }
   .qty-btn:disabled{ opacity:0.5; cursor:not-allowed }
   .qty-input{ width:60px; height:36px; border:none; text-align:center; font-size:16px; font-weight:600; outline:none }
+  .qty-price{ display:flex; align-items:center; gap:6px; margin-inline-start:auto; padding-inline-start:12px; border-inline-start:1px solid #e5e7eb }
+  .qty-price-label{ font-size:14px; color:#6b7280; font-weight:500 }
+  .qty-price-value{ font-size:16px; color:#111827; font-weight:700 }
+  .qty-price .currency-icon{ width:16px; height:16px; object-fit:contain }
   .add-to-cart-btn{ 
     flex:1; 
     background:linear-gradient(135deg, #111827, #374151); 
