@@ -9,13 +9,57 @@ import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
 import { useApi } from '../../composables/useApi'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { filter, search } = useProducts()
 const { categories, brands } = useCatalog()
 const cart = useCart()
 const wishlist = useWishlist()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for shop page
+const shopTitle = computed(() => {
+  const searchQuery = route.query.q as string
+  const categoryName = route.query.category as string
+  const brandName = route.query.brand as string
+  
+  if (searchQuery) {
+    return locale.value === 'ar' 
+      ? `نتائج البحث عن "${searchQuery}"`
+      : `Search results for "${searchQuery}"`
+  }
+  if (categoryName) {
+    return locale.value === 'ar' 
+      ? `التصنيف: ${categoryName}`
+      : `Category: ${categoryName}`
+  }
+  if (brandName) {
+    return locale.value === 'ar' 
+      ? `البراند: ${brandName}`
+      : `Brand: ${brandName}`
+  }
+  return locale.value === 'ar' ? 'المتجر' : 'Shop'
+})
+
+const shopDescription = computed(() => {
+  return locale.value === 'ar' 
+    ? 'تصفح آلاف المنتجات الأصيلة في متجر جو توفير. عطور، مكياج، إلكترونيات وأكثر بأسعار مميزة.'
+    : 'Browse thousands of authentic products at Go Tawfeer store. Perfumes, makeup, electronics and more at great prices.'
+})
+
+watch(() => [route.query, locale.value], () => {
+  seo.setSeo({
+    title: shopTitle.value,
+    description: shopDescription.value,
+    keywords: locale.value === 'ar' 
+      ? 'جو توفير، متجر، منتجات، تسوق، عطور، مكياج'
+      : 'Go Tawfeer, store, products, shopping, perfumes, makeup',
+    image: '/images/go-tawfeer-1-1.webp'
+  })
+}, { immediate: true })
 
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)

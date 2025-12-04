@@ -2,8 +2,24 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const cart = useCart()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for cart page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'السلة' : 'Shopping Cart',
+  description: locale.value === 'ar' 
+    ? 'راجع منتجاتك في السلة وأكمل عملية الشراء من جو توفير.'
+    : 'Review your products in the cart and complete your purchase from Go Tawfeer.',
+  keywords: locale.value === 'ar' 
+    ? 'سلة التسوق، منتجات، شراء، جو توفير'
+    : 'shopping cart, products, purchase, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Cart pages typically shouldn't be indexed
+})
 
 // Success message state
 const showSuccessMessage = ref(false)
@@ -354,7 +370,7 @@ function imgOf(it: any): string {
 }
 
 // Currency + totals helpers
-const { locale } = useI18n() as any
+// locale is already defined at the top of the file
 const currencyCode = (cfg?.public?.currencyCode || 'SAR') as string
 function money(n: any): string {
   const loc = locale?.value === 'ar' ? 'ar-SA' : 'en-US'

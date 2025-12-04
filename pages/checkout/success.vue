@@ -60,8 +60,24 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for checkout success page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'تم إتمام الطلب بنجاح' : 'Order Success',
+  description: locale.value === 'ar' 
+    ? 'تم إتمام طلبك بنجاح. شكراً لك على التسوق مع جو توفير.'
+    : 'Your order has been completed successfully. Thank you for shopping with Go Tawfeer.',
+  keywords: locale.value === 'ar' 
+    ? 'طلب ناجح، إتمام الطلب، جو توفير'
+    : 'order success, checkout, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Success pages shouldn't be indexed
+})
 
 // Get order details from URL params
 const orderId = ref<string | null>(null)

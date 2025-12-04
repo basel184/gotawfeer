@@ -25,12 +25,21 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-// Set page title
-// @ts-ignore - useHead is auto-imported by Nuxt
-useHead({
-  title: t('footer.links.company.about')
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for about page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'من نحن' : 'About Us',
+  description: locale.value === 'ar' 
+    ? 'تعرف على جو توفير - وجهتك الأولى للتسوق الإلكتروني في المملكة العربية السعودية. مهمتنا ورؤيتنا وقيمنا.'
+    : 'Learn about Go Tawfeer - your premier destination for online shopping in Saudi Arabia. Our mission, vision, and values.',
+  keywords: locale.value === 'ar' 
+    ? 'من نحن، جو توفير، عن الشركة، مهمة، رؤية، قيم'
+    : 'about us, Go Tawfeer, company, mission, vision, values',
+  image: '/images/go-tawfeer-1-1.webp'
 })
 </script>
 

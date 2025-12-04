@@ -152,9 +152,24 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for search page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'البحث' : 'Search',
+  description: locale.value === 'ar' 
+    ? 'ابحث عن المنتجات في متجر جو توفير. ابحث عن آلاف المنتجات الأصيلة بأسعار مميزة.'
+    : 'Search for products at Go Tawfeer store. Search for thousands of authentic products at great prices.',
+  keywords: locale.value === 'ar' 
+    ? 'بحث، منتجات، جو توفير، تسوق'
+    : 'search, products, Go Tawfeer, shopping',
+  image: '/images/go-tawfeer-1-1.webp'
+})
 
 // Search state
 const searchQuery = ref('')

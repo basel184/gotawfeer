@@ -3,9 +3,24 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { $get } = useApi()
 const router = useRouter()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for brands page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'البراندات' : 'Brands',
+  description: locale.value === 'ar' 
+    ? 'تصفح جميع العلامات التجارية المتاحة في متجر جو توفير. منتجات أصلية من أفضل البراندات العالمية.'
+    : 'Browse all available brands at Go Tawfeer store. Authentic products from the best international brands.',
+  keywords: locale.value === 'ar' 
+    ? 'براندات، علامات تجارية، منتجات أصلية، جو توفير'
+    : 'brands, trademarks, authentic products, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp'
+})
 
 // Loading state - Start with false for instant display
 const loading = ref(false)

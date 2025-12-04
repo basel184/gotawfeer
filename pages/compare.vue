@@ -150,10 +150,28 @@
 
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for compare page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'مقارنة المنتجات' : 'Compare Products',
+  description: locale.value === 'ar' 
+    ? 'قارن بين المنتجات في متجر جو توفير لاتخاذ أفضل قرار شراء.'
+    : 'Compare products at Go Tawfeer store to make the best purchase decision.',
+  keywords: locale.value === 'ar' 
+    ? 'مقارنة، منتجات، جو توفير'
+    : 'compare, products, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Compare pages typically shouldn't be indexed
+})
 
 // @ts-ignore
-const { t } = useI18n()
-// @ts-ignore
+// t and locale are already defined at the top
 const compare = useCompare()
 
 // Initialize compare on mount
@@ -199,8 +217,6 @@ const hasCategory = computed(() => {
 // Currency helper
 const cfg = useRuntimeConfig() as any
 const currencyCode = (cfg?.public?.currencyCode || 'SAR') as string
-// @ts-ignore
-const { locale } = useI18n() as any
 
 function money(n: any): string {
   const loc = locale?.value === 'ar' ? 'ar-SA' : 'en-US'
@@ -237,14 +253,7 @@ const clearOldData = () => {
   }
 }
 
-// SEO
-// @ts-ignore
-useHead({
-  title: t('compare.title') || 'مقارنة المنتجات',
-  meta: [
-    { name: 'description', content: t('compare.meta_description')  }
-  ]
-})
+// SEO is already configured at the top using seo.setSeo()
 </script>
 
 <style scoped>

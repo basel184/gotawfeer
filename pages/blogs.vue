@@ -88,12 +88,22 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { $get } = useApi()
 
-// Set page title
-useHead({
-  title: t('blog.title')
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for blogs listing page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'المدونة' : 'Blog',
+  description: locale.value === 'ar' 
+    ? 'اكتشف آخر المقالات والأخبار من جو توفير. نصائح التسوق، مراجعات المنتجات، وأحدث العروض.'
+    : 'Discover the latest articles and news from Go Tawfeer. Shopping tips, product reviews, and latest offers.',
+  keywords: locale.value === 'ar' 
+    ? 'مدونة، مقالات، أخبار، نصائح تسوق، مراجعات منتجات، جو توفير'
+    : 'blog, articles, news, shopping tips, product reviews, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp'
 })
 
 // Fetch blogs

@@ -7,6 +7,22 @@ const cart = useCart()
 const auth = useAuth()
 const { $get, $post } = useApi()
 
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for checkout page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'إتمام الطلب' : 'Checkout',
+  description: locale.value === 'ar' 
+    ? 'أكمل عملية الشراء من جو توفير. اختر عنوان التسليم وطريقة الدفع.'
+    : 'Complete your purchase from Go Tawfeer. Choose delivery address and payment method.',
+  keywords: locale.value === 'ar' 
+    ? 'إتمام الطلب، شراء، دفع، تسليم، جو توفير'
+    : 'checkout, purchase, payment, delivery, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Checkout pages shouldn't be indexed
+})
+
 // Loading states
 const loading = ref(false)
 const placingOrder = ref(false)

@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
 const route = useRoute()
+const { locale } = useI18n()
 const slug = route.params.slug as string
 const { $get } = useApi()
 const cart = useCart()
+
+// SEO Configuration
+const seo = useSeo()
 
 const { data: section, pending, error } = await useAsyncData(`section-${slug}` as const, () => $get(`v1/home-sections/${slug}`))
 // Fallback holder if show endpoint 404s
@@ -65,6 +71,30 @@ const load = async (reset = false) => {
     loading.value = false
   }
 }
+
+// Collection name for SEO
+const collectionName = computed(() => {
+  return sectionValue.value?.title || 
+         sectionValue.value?.name || 
+         sectionValue.value?.section_name ||
+         slug
+})
+
+// Set SEO for collection page
+watch(() => [sectionValue.value, locale.value], () => {
+  if (sectionValue.value) {
+    seo.setSeo({
+      title: collectionName.value,
+      description: locale.value === 'ar' 
+        ? `تصفح ${collectionName.value} في متجر جو توفير. منتجات أصلية بأسعار مميزة.`
+        : `Browse ${collectionName.value} at Go Tawfeer store. Authentic products at great prices.`,
+      keywords: locale.value === 'ar' 
+        ? `${collectionName.value}, منتجات, مجموعة, جو توفير`
+        : `${collectionName.value}, products, collection, Go Tawfeer`,
+      image: '/images/go-tawfeer-1-1.webp'
+    })
+  }
+}, { immediate: true })
 
 // Load products only when the section type is products
 watch(

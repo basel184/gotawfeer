@@ -2,10 +2,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const auth = useAuth()
 const { $get } = useApi()
 const config = useRuntimeConfig()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for account page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'حسابي' : 'My Account',
+  description: locale.value === 'ar' 
+    ? 'إدارة حسابك الشخصي، طلباتك، عناوينك، والمفضلة على جو توفير.'
+    : 'Manage your personal account, orders, addresses, and wishlist on Go Tawfeer.',
+  keywords: locale.value === 'ar' 
+    ? 'حسابي، طلبات، عناوين، مفضلة، جو توفير'
+    : 'my account, orders, addresses, wishlist, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Account pages shouldn't be indexed
+})
 
 // Protect page - redirect if not authenticated
 if (process.client) {

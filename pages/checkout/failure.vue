@@ -82,8 +82,24 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for checkout failure page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'فشل في إتمام الطلب' : 'Order Failed',
+  description: locale.value === 'ar' 
+    ? 'عذراً، حدث خطأ في معالجة طلبك. يرجى المحاولة مرة أخرى أو التواصل معنا.'
+    : 'Sorry, an error occurred while processing your order. Please try again or contact us.',
+  keywords: locale.value === 'ar' 
+    ? 'فشل الطلب، خطأ، جو توفير'
+    : 'order failed, error, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Failure pages shouldn't be indexed
+})
 
 // Get payment method from URL params
 const paymentMethod = ref<string | null>(null)

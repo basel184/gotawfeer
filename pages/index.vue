@@ -5,7 +5,22 @@ import 'assets/css/custom.css'
 import { useWishlist } from '../composables/useWishlist'
 import { useCart } from '../composables/useCart'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for homepage
+seo.setSeo({
+  title: locale.value === 'ar' ? 'الرئيسية' : 'Home',
+  description: locale.value === 'ar' 
+    ? 'مرحباً بكم في جو توفير، وجهتك الأولى للتسوق الإلكتروني في المملكة العربية السعودية. تسوق الآن من آلاف المنتجات الأصيلة بأسعار مميزة.'
+    : 'Welcome to Go Tawfeer, your premier destination for online shopping in Saudi Arabia. Shop now from thousands of authentic products at great prices.',
+  keywords: locale.value === 'ar' 
+    ? 'جو توفير، تسوق إلكتروني، متجر إلكتروني، السعودية، منتجات أصلية، عطور، مكياج، إلكترونيات'
+    : 'Go Tawfeer, online shopping, ecommerce, Saudi Arabia, authentic products, perfumes, makeup, electronics',
+  image: '/images/go-tawfeer-1-1.webp'
+})
 
 // Lazy load Swiper components for better performance
 const Swiper = defineAsyncComponent(() => import('swiper/vue').then(m => m.Swiper))

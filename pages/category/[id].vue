@@ -4,8 +4,11 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { byCategory } = useProducts()
+
+// SEO Configuration
+const seo = useSeo()
 
 // Get category ID from route params
 const id = computed(() => String(route.params.id || ''))
@@ -34,13 +37,29 @@ const items = computed(() => {
   return []
 })
 
-// Set page title
-useHead({
-  title: computed(() => {
-    const categoryName = items.value[0]?.category?.name || items.value[0]?.categories?.[0]?.name || 'Category'
-    return `${categoryName} - ${t('site_name') || 'Go Tawfeer'}`
-  })
+// Category name for SEO
+const categoryName = computed(() => {
+  return items.value[0]?.category?.name || 
+         items.value[0]?.categories?.[0]?.name || 
+         items.value[0]?.category_name ||
+         (locale.value === 'ar' ? 'التصنيف' : 'Category')
 })
+
+// Set SEO for category page
+watch(() => [items.value, locale.value], () => {
+  if (items.value.length > 0) {
+    seo.setSeo({
+      title: categoryName.value,
+      description: locale.value === 'ar' 
+        ? `تصفح منتجات ${categoryName.value} في متجر جو توفير. منتجات أصلية بأسعار مميزة.`
+        : `Browse ${categoryName.value} products at Go Tawfeer store. Authentic products at great prices.`,
+      keywords: locale.value === 'ar' 
+        ? `${categoryName.value}, منتجات, تصنيف, جو توفير`
+        : `${categoryName.value}, products, category, Go Tawfeer`,
+      image: '/images/go-tawfeer-1-1.webp'
+    })
+  }
+}, { immediate: true })
 </script>
 
 <template>

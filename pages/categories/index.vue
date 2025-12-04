@@ -4,9 +4,24 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useCatalog } from '../../composables/useCatalog'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { categories: getCategories } = useCatalog()
 const router = useRouter()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for categories page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'التصنيفات' : 'Categories',
+  description: locale.value === 'ar' 
+    ? 'تصفح جميع التصنيفات المتاحة في متجر جو توفير. عثور على المنتجات التي تبحث عنها بسهولة.'
+    : 'Browse all available categories at Go Tawfeer store. Find the products you are looking for easily.',
+  keywords: locale.value === 'ar' 
+    ? 'تصنيفات، أقسام، منتجات، جو توفير'
+    : 'categories, sections, products, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp'
+})
 
 // Loading state - use pending from useAsyncData
 const loadingProgress = ref(0)

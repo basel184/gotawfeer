@@ -40,6 +40,20 @@ export default defineNuxtConfig({
       duration: 50
     },
     // htmlAttrs will be set dynamically in app.vue based on i18n locale
+    head: {
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1',
+      title: 'جو توفير - Go Tawfeer',
+      meta: [
+        { name: 'description', content: 'مرحباً بكم في جو توفير، وجهتك الأولى للتسوق الإلكتروني في المملكة العربية السعودية.' },
+        { name: 'format-detection', content: 'telephone=no' }
+      ],
+      link: [
+        { rel: 'icon', type: 'image/webp', href: '/favicon.webp' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'apple-touch-icon', href: '/favicon.webp' }
+      ]
+    }
   },
   
   experimental: {

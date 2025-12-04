@@ -19,10 +19,138 @@ const SwiperComponent = Swiper
 const SwiperSlideComponent = SwiperSlide
 
 const route = useRoute()
+const { t, locale } = useI18n()
 const { details: getDetails, related: getRelated, filter: filterProducts } = useProducts() as any
 const cart = useCart()
 const wishlist = useWishlist()
 const compare = useCompare()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Product data - must be defined before computed properties and watch
+const loading = ref(true)
+const loadingProgress = ref(0)
+const error = ref<string>('')
+const product = ref<any>(null)
+const recLoading = ref(true)
+const recommended = ref<any[]>([])
+
+// Offer products (4 random products)
+const offerProducts = ref<any[]>([])
+const offerProductsLoading = ref(false)
+
+// Current URL for structured data
+const currentUrl = computed(() => {
+  if (process.client) {
+    return window.location.href
+  }
+  return `${seo.siteUrl.value}${route.path}`
+})
+
+// Computed properties for SEO
+const productTitle = computed(() => {
+  const p: any = product.value || {}
+  return p?.name || p?.product_name || p?.product?.name || ''
+})
+
+const productDescription = computed(() => {
+  const p: any = product.value || {}
+  return metaDescription.value || 
+         p?.short_description || 
+         p?.description || 
+         p?.details || 
+         p?.product?.short_description || 
+         p?.product?.description || 
+         p?.product?.details || 
+         ''
+})
+
+const productImage = computed(() => {
+  return getProductImage(product.value)
+})
+
+const productPrice = computed(() => {
+  return finalPrice.value > 0 ? finalPrice.value : basePrice.value
+})
+
+const productCurrency = computed(() => {
+  return 'SAR'
+})
+
+const productAvailability = computed(() => {
+  return inStock.value ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+})
+
+// Helper to get category name for SEO (extracts directly from product data)
+const getCategoryNameForSeo = computed(() => {
+  const p: any = product.value || {}
+  
+  // Try category_ids first (array of categories)
+  const categoryIds = p?.category_ids || p?.product?.category_ids
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    const firstCategory = categoryIds[0]
+    if (firstCategory?.name) return firstCategory.name
+    if (firstCategory?.category_name) return firstCategory.category_name
+    if (firstCategory?.title) return firstCategory.title
+  }
+  
+  // Try to get category from product data
+  const categories = p?.categories || p?.category || p?.product?.categories || p?.product?.category
+  if (Array.isArray(categories) && categories.length > 0) {
+    const firstCat = categories[0]
+    if (firstCat?.name) return firstCat.name
+    if (firstCat?.category_name) return firstCat.category_name
+    if (firstCat?.title) return firstCat.title
+  }
+  
+  if (categories && typeof categories === 'object') {
+    if (categories.name) return categories.name
+    if (categories.category_name) return categories.category_name
+    if (categories.title) return categories.title
+  }
+  
+  // Fallback to direct category fields
+  const category = p?.category || p?.category_name || p?.product?.category || p?.product?.category_name
+  if (typeof category === 'string') return category
+  if (category?.name) return category.name
+  if (category?.category_name) return category.category_name
+  if (category?.title) return category.title
+  
+  return ''
+})
+
+const productBrand = computed(() => {
+  return brandName.value
+})
+
+const productSku = computed(() => {
+  const p: any = product.value || {}
+  return p?.code || p?.sku || p?.product?.code || p?.product?.sku || ''
+})
+
+// Set SEO when product data is available
+watch(() => [product.value, locale.value], () => {
+  if (product.value) {
+    const categoryName = getCategoryNameForSeo.value
+    const keywords = [
+      productTitle.value,
+      productBrand.value,
+      categoryName,
+      locale.value === 'ar' ? 'تسوق' : 'shop',
+      locale.value === 'ar' ? 'شراء' : 'buy',
+      locale.value === 'ar' ? 'منتج' : 'product'
+    ].filter(Boolean).join(', ')
+
+    seo.setSeo({
+      title: productTitle.value,
+      description: productDescription.value || `${productTitle.value} - ${productBrand.value} - ${locale.value === 'ar' ? 'تسوق الآن من جو توفير' : 'Shop now from Go Tawfeer'}`,
+      image: productImage.value,
+      keywords: keywords,
+      type: 'product'
+    })
+  }
+}, { immediate: true })
 
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
@@ -87,16 +215,6 @@ const slug = computed(() => {
   
   return decoded
 })
-const loading = ref(true)
-const loadingProgress = ref(0)
-const error = ref<string>('')
-const product = ref<any>(null)
-const recLoading = ref(true)
-const recommended = ref<any[]>([])
-
-// Offer products (4 random products)
-const offerProducts = ref<any[]>([])
-const offerProductsLoading = ref(false)
 
 // Helper functions to extract product data
 const getProductImage = (product: any): string => {
@@ -1048,7 +1166,6 @@ const activeTab = ref('description')
 // Auth and review modal
 const showLoginModal = ref(false)
 const auth = useAuth()
-const { t } = useI18n()
 const { $get, $post, $del } = useApi()
 
 // Login form - OTP Login
@@ -3384,6 +3501,196 @@ onBeforeUnmount(() => {
 })
 
 watch(slug, () => { mainIndex.value = 0; load() })
+
+// Structured Data (JSON-LD) for Product
+const productStructuredData = computed(() => {
+  if (!product.value) return null
+
+  const p: any = product.value || {}
+  const categoryName = getCategoryNameForSeo.value
+  
+  const structuredData: any = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: productTitle.value,
+    description: productDescription.value || productTitle.value,
+    image: images.value.length > 0 ? images.value.map((img: string) => {
+      if (img.startsWith('http')) return img
+      return `${seo.siteUrl.value}${img.startsWith('/') ? img : '/' + img}`
+    }) : [productImage.value],
+    brand: productBrand.value ? {
+      '@type': 'Brand',
+      name: productBrand.value
+    } : undefined,
+    category: categoryName || undefined,
+    sku: productSku.value || undefined,
+    offers: {
+      '@type': 'Offer',
+      url: currentUrl.value,
+      priceCurrency: productCurrency.value,
+      price: productPrice.value.toFixed(2),
+      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      availability: productAvailability.value,
+      seller: {
+        '@type': 'Organization',
+        name: seo.siteName.value,
+        url: seo.siteUrl.value
+      }
+    }
+  }
+
+  // Add aggregateRating if reviews exist
+  if (reviewsCount.value > 0 && rating.value > 0) {
+    structuredData.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: rating.value,
+      reviewCount: reviewsCount.value,
+      bestRating: 5,
+      worstRating: 1
+    }
+  }
+
+  // Remove undefined properties
+  Object.keys(structuredData).forEach(key => {
+    if (structuredData[key] === undefined) {
+      delete structuredData[key]
+    }
+  })
+
+  return structuredData
+})
+
+// Breadcrumb Structured Data
+const breadcrumbStructuredData = computed(() => {
+  const categoryName = getCategoryNameForSeo.value
+  // Try to get category ID from product data
+  const p: any = product.value || {}
+  let categoryId: string | number | null = null
+  const categoryIds = p?.category_ids || p?.product?.category_ids
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    categoryId = categoryIds[0]?.id || categoryIds[0]?.category_id || null
+  }
+  if (!categoryId) {
+    const categories = p?.categories || p?.category || p?.product?.categories || p?.product?.category
+    if (Array.isArray(categories) && categories.length > 0) {
+      categoryId = categories[0]?.id || categories[0]?.category_id || null
+    } else if (categories && typeof categories === 'object') {
+      categoryId = categories.id || categories.category_id || null
+    }
+  }
+  if (!categoryId && p?.category_id) {
+    categoryId = p.category_id
+  }
+  
+  const items = [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: locale.value === 'ar' ? 'الرئيسية' : 'Home',
+      item: seo.siteUrl.value
+    }
+  ]
+
+  if (categoryName) {
+    items.push({
+      '@type': 'ListItem',
+      position: 2,
+      name: categoryName,
+      item: categoryId ? `${seo.siteUrl.value}/shop?category=${categoryId}` : `${seo.siteUrl.value}/shop`
+    })
+  }
+
+  items.push({
+    '@type': 'ListItem',
+    position: items.length + 1,
+    name: productTitle.value,
+    item: currentUrl.value
+  })
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items
+  }
+})
+
+// Organization Structured Data
+const organizationStructuredData = computed(() => {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: seo.siteName.value,
+    url: seo.siteUrl.value,
+    logo: `${seo.siteUrl.value}/images/go-tawfeer-1-1.webp`,
+    description: seo.siteDescription.value,
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      areaServed: 'SA',
+      availableLanguage: ['ar', 'en']
+    }
+  }
+})
+
+// Add structured data to head
+watch(() => [productStructuredData.value, breadcrumbStructuredData.value, organizationStructuredData.value], () => {
+  if (product.value) {
+    useHead({
+      script: [
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(productStructuredData.value)
+        },
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(breadcrumbStructuredData.value)
+        },
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(organizationStructuredData.value)
+        }
+      ]
+    })
+  }
+}, { immediate: true })
+
+// Enhanced Open Graph and Twitter Card meta tags
+watch(() => [product.value, locale.value], () => {
+  if (product.value) {
+    const categoryName = getCategoryNameForSeo.value
+    
+    useHead({
+      meta: [
+        // Enhanced Open Graph for Products
+        { property: 'og:type', content: 'product' },
+        { property: 'product:price:amount', content: productPrice.value.toFixed(2) },
+        { property: 'product:price:currency', content: productCurrency.value },
+        { property: 'product:availability', content: inStock.value ? 'in stock' : 'out of stock' },
+        { property: 'product:condition', content: 'new' },
+        ...(productBrand.value ? [{ property: 'product:brand', content: productBrand.value }] : []),
+        ...(categoryName ? [{ property: 'product:category', content: categoryName }] : []),
+        
+        // Enhanced Twitter Card
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:label1', content: locale.value === 'ar' ? 'السعر' : 'Price' },
+        { name: 'twitter:data1', content: `${productPrice.value.toFixed(2)} ${productCurrency.value}` },
+        ...(productBrand.value ? [
+          { name: 'twitter:label2', content: locale.value === 'ar' ? 'البراند' : 'Brand' },
+          { name: 'twitter:data2', content: productBrand.value }
+        ] : []),
+        
+        // Additional meta tags
+        { name: 'product:price:amount', content: productPrice.value.toFixed(2) },
+        { name: 'product:price:currency', content: productCurrency.value },
+        ...(productSku.value ? [{ name: 'product:sku', content: productSku.value }] : []),
+        ...(rating.value > 0 ? [
+          { name: 'rating:value', content: rating.value.toString() },
+          { name: 'rating:scale', content: '5' }
+        ] : [])
+      ]
+    })
+  }
+}, { immediate: true })
 
 // Watch for mainIndex changes and update Swiper
 watch(mainIndex, (newIndex) => {

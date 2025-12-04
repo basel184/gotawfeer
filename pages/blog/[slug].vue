@@ -169,7 +169,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const { $get } = useApi()
 
@@ -225,9 +225,28 @@ const pageTitle = computed(() => {
   return t('blog.title')
 })
 
-useHead({
-  title: pageTitle
-})
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for blog detail page
+watch(() => blog.value, (newBlog: any) => {
+  if (newBlog) {
+    const blogDescription = newBlog.description || newBlog.short_description || newBlog.excerpt || ''
+    const cleanDescription = blogDescription.replace(/<[^>]*>/g, '').trim().substring(0, 160)
+    
+    seo.setSeo({
+      title: pageTitle.value,
+      description: cleanDescription || (locale.value === 'ar' 
+        ? 'اقرأ المزيد من المقالات والمدونات على جو توفير'
+        : 'Read more articles and blogs on Go Tawfeer'),
+      image: newBlog.image || '/images/go-tawfeer-1-1.webp',
+      keywords: locale.value === 'ar' 
+        ? `${pageTitle.value}, مدونة, مقالات, جو توفير`
+        : `${pageTitle.value}, blog, articles, Go Tawfeer`,
+      type: 'article'
+    })
+  }
+}, { immediate: true })
 
 // Fetch popular blogs
 const { data: popularBlogsData } = await useAsyncData(

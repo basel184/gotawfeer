@@ -1,4 +1,23 @@
-<script></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { locale } = useI18n()
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for FAQ page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'الأسئلة الشائعة' : 'FAQ',
+  description: locale.value === 'ar' 
+    ? 'إجابات على الأسئلة الشائعة حول متجر جو توفير. تعرف على سياسات الشحن، الإرجاع، والدفع.'
+    : 'Answers to frequently asked questions about Go Tawfeer store. Learn about shipping, return, and payment policies.',
+  keywords: locale.value === 'ar' 
+    ? 'أسئلة شائعة، FAQ، مساعدة، جو توفير'
+    : 'FAQ, frequently asked questions, help, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp'
+})
+</script>
 <template>
 <main class="container container-faq my-5">
     <h2 class="mb-5 text-center ">الاسئلة الشائعة</h2>
