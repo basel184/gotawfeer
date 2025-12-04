@@ -49,9 +49,8 @@ export default defineNuxtConfig({
         { name: 'format-detection', content: 'telephone=no' }
       ],
       link: [
-        { rel: 'icon', type: 'image/webp', href: '/favicon.webp' },
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'apple-touch-icon', href: '/favicon.webp' }
+        { rel: 'icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp' },
+        { rel: 'apple-touch-icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp }
       ]
     }
   },
