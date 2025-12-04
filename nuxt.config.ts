@@ -50,7 +50,7 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp' },
-        { rel: 'apple-touch-icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp }
+        { rel: 'apple-touch-icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp'}
       ]
     }
   },
