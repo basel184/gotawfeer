@@ -7,10 +7,10 @@
 
         <!-- Brand Section -->
         <div class="footer-brand">
-          <h5>عن جو توفير
+          <h5>{{ t('footer.brand.title') }}
           </h5>
           <p class="brand-description">
-            نسعى لتقديم تجربة تسوق شاملة وموثوقة ، من خلال توفير منتجات أصلية ومتنوعة بأسعار تنافسية، مع دعم العلامات التجارية المحلية والعالمية.
+            {{ t('footer.brand.description') }}
           </p>
           <div class="info-contact d-flex flex-column gap-3">
             <div class="info-cont d-flex align-items-center gap-2">
@@ -46,8 +46,8 @@
           <!-- Main Links -->
             <div class="link-section">
               <ul class="link-list">
-                <li><NuxtLink to="/blog" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
-                <li><NuxtLink to="/intellectual-property-rights" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
+                <li><NuxtLink :to="getLocalizedPath('/blog')" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
+                <li><NuxtLink :to="getLocalizedPath('/intellectual-property-rights')" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
               </ul>
             </div>
 
@@ -56,8 +56,8 @@
           <!-- Account Links -->
           <div class="link-section">
             <ul class="link-list">
-              <li><NuxtLink to="/about" class="footer-link">{{ t('footer.links.company.about') }}</NuxtLink></li>
-              <li><NuxtLink to="/blogs" class="footer-link">{{ t('footer.links.company.blog') }}</NuxtLink></li>
+              <li><NuxtLink :to="getLocalizedPath('/about')" class="footer-link">{{ t('footer.links.company.about') }}</NuxtLink></li>
+              <li><NuxtLink :to="getLocalizedPath('/blogs')" class="footer-link">{{ t('footer.links.company.blog') }}</NuxtLink></li>
             </ul>
           </div>
         </div>
@@ -66,8 +66,8 @@
                     <!-- Company Links -->
           <div class="link-section">
             <ul class="link-list">
-              <li><NuxtLink to="/privacy-policy" class="footer-link">{{ t('footer.links.company.privacy_policy') }}</NuxtLink></li>
-              <li><NuxtLink to="/shipping-return-policy" class="footer-link">{{ t('footer.links.company.shipping_return_policy') }}</NuxtLink></li>
+              <li><NuxtLink :to="getLocalizedPath('/privacy-policy')" class="footer-link">{{ t('footer.links.company.privacy_policy') }}</NuxtLink></li>
+              <li><NuxtLink :to="getLocalizedPath('/shipping-return-policy')" class="footer-link">{{ t('footer.links.company.shipping_return_policy') }}</NuxtLink></li>
             </ul>
             <img src="/images/footer-social.jpg" :style="{ width: '50px' , borderRadius: '10px' }" alt="logo" class="logo-img">
           </div>
@@ -137,6 +137,32 @@ const dir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')
 const auth = useAuth()
 const email = ref('')
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 // Login modal state
 const loginModalOpen = ref(false)
 const loginForm = ref({ email: '', password: '' })
@@ -154,7 +180,7 @@ const subscribe = () => {
 
 const handleOrdersClick = () => {
   if (auth.user.value) {
-    navigateTo('/account?orders=true')
+    navigateTo(getLocalizedPath('/account?orders=true'))
   } else {
     // Open login modal
     openLoginModal()
@@ -195,14 +221,14 @@ async function handleLogin() {
       loginModalOpen.value = false
       loginForm.value = { email: '', password: '' }
       // Navigate to orders page after successful login
-      navigateTo('/account?orders=true')
+      navigateTo(getLocalizedPath('/account?orders=true'))
     } else if (response?.token) {
       auth.setToken(response.token)
       auth.setUser(response.user || response.data)
       loginModalOpen.value = false
       loginForm.value = { email: '', password: '' }
       // Navigate to orders page after successful login
-      navigateTo('/account?orders=true')
+      navigateTo(getLocalizedPath('/account?orders=true'))
     }
   } catch (error: any) {
     console.error('Login error:', error)

@@ -128,6 +128,7 @@
   "cart.sku": "SKU",
   "cart.view_cart": "عرض السلة",
   "cart.add_for_free_shipping": "أضف",
+  "cart.view_cart": "عرض السلة",
   "cart.to_cart_for_free_shipping": "إلى سلة المشتريات واحصل على شحن مجاني!",
   "compare": "مقارنة",
   "compare.title": "مقارنة المنتجات",
@@ -239,6 +240,8 @@
   "logout.success": "تم تسجيل الخروج بنجاح",
   "pills_view": "عرض الأقراص",
   "footer": {
+    "brand.title": "عن جو توفير",
+    "brand.description": "نسعى لتقديم تجربة تسوق شاملة وموثوقة ، من خلال توفير منتجات أصلية ومتنوعة بأسعار تنافسية، مع دعم العلامات التجارية المحلية والعالمية.",
     "newsletter": {
       "title": "لا تفوت أي جديد من جو توفير .. اشترك الآن",
       "placeholder": "بريدك الإلكتروني",

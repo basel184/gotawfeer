@@ -8,6 +8,10 @@
   "home": "Home",
   "bag": "Bag",
   "account": "Account",
+  "cart.view_cart": "View Cart",
+  "cart.to_cart_for_free_shipping": "to cart for free shipping!",
+  "cart.add_for_free_shipping": "Add",
+  "cart.minimum_order_message": "The minimum order amount is 50 SAR. The remaining amount:",
   "all_categories": "All Categories",
   "email": "Email",
   "password": "Password",
@@ -171,14 +175,16 @@
   "logout.success": "Logout successful",
   "pills_view": "Pills View",
   "footer": {
+    "brand" : { 
+      "title": "About Go Tawfeer",
+      "description": "We strive to provide a comprehensive and reliable shopping experience, through providing original and diverse products at competitive prices, with support for local and international brands.",
+      "description1": "Go Tawfeer, a comprehensive store for all products",
+      "description2": "for all age groups"
+    },
     "newsletter": {
       "title": "Don't miss anything new from Go Tawfeer.. Subscribe now",
       "placeholder": "Your Email",
       "subscribe": "Subscribe Now"
-    },
-    "brand": {
-      "description1": "Go Tawfeer, a comprehensive store for all products",
-      "description2": "for all age groups"
     },
     "links": {
       "main": {

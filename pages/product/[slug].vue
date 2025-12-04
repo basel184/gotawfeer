@@ -158,7 +158,31 @@ const selectedProductForModal = useState<any>('selectedProductForModal', () => n
 // Wishlist data
 const isInWishlist = ref(false)
 const wishlistLoading = ref(false)
-
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
 // Compare data
 const isInCompare = ref(false)
 const compareLoading = ref(false)
@@ -1059,7 +1083,8 @@ const brandId = computed(() => {
 // Brand link
 const brandLink = computed(() => {
   const id = brandId.value
-  return id ? `/shop?brand=${id}` : '/shop'
+  const path = id ? `/shop?brand=${id}` : '/shop'
+  return getLocalizedPath(path)
 })
 const basePrice = computed<number>(() => {
   const p: any = product.value || {}
@@ -3804,7 +3829,8 @@ const productCategory = computed(() => {
 const getProductLink = (product: any): string => {
   if (!product) return '#'
   const slug = product?.slug || product?.product?.slug
-  return slug ? `/product/${encodeURIComponent(String(slug))}` : '#'
+  if (!slug) return '#'
+  return getLocalizedPath(`/product/${encodeURIComponent(String(slug))}`)
 }
 
 // Computed properties for modal
@@ -3961,13 +3987,13 @@ const handleProductDetails = () => {
 <template>
   <div class="wrap">
     <div class="crumbs">
-      <NuxtLink to="/">{{ t('product.home') }}</NuxtLink>
+      <NuxtLink :to="getLocalizedPath('/')">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
       <template v-if="productCategory">
-        <NuxtLink :to="`/shop?category=${productCategory.id}`">{{ productCategory.name }}</NuxtLink>
+        <NuxtLink :to="getLocalizedPath(`/shop?category=${productCategory.id}`)">{{ productCategory.name }}</NuxtLink>
         <span>/</span>
       </template>
-      <NuxtLink to="/shop">{{ t('product.shop') }}</NuxtLink>
+      <NuxtLink :to="getLocalizedPath('/shop')">{{ t('product.shop') }}</NuxtLink>
       <span>/</span>
       <b>{{ title }}</b>
     </div>
@@ -4015,8 +4041,8 @@ const handleProductDetails = () => {
         <h1 class="error-title">المنتج غير موجود</h1>
         <p class="error-message">{{ error }}</p>
         <div class="error-actions">
-          <NuxtLink to="/shop" class="btn-primary">العودة للمتجر</NuxtLink>
-          <NuxtLink to="/" class="btn-secondary">الصفحة الرئيسية</NuxtLink>
+          <NuxtLink :to="getLocalizedPath('/shop')" class="btn-primary">العودة للمتجر</NuxtLink>
+          <NuxtLink :to="getLocalizedPath('/')" class="btn-secondary">الصفحة الرئيسية</NuxtLink>
         </div>
       </div>
     </div>
@@ -4265,7 +4291,6 @@ const handleProductDetails = () => {
             <input type="number" v-model.number="qty" min="1" class="qty-input" />
             <button @click="qty = qty + 1" class="qty-btn">+</button>
             <div class="qty-price">
-              <span class="qty-price-label">السعر:</span>
               <span class="qty-price-value">{{ (currentVariantPrice * qty).toLocaleString() }}</span>
               <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" />
             </div>
@@ -4392,7 +4417,7 @@ const handleProductDetails = () => {
               <NuxtLink 
                 v-for="(offerProduct, index) in offerProducts" 
                 :key="offerProduct?.id || offerProduct?.product_id || index"
-                :to="`/product/${encodeURIComponent(String(offerProduct?.slug || offerProduct?.product?.slug || ''))}`"
+                :to="getLocalizedPath(`/product/${encodeURIComponent(String(offerProduct?.slug || offerProduct?.product?.slug || ''))}`)"
                 class="offer-product-card d-flex align-items-center gap-2 my-4 text-decoration-none"
               >
                 <picture>
@@ -4946,7 +4971,7 @@ const handleProductDetails = () => {
                 <h5>{{ modalProductTitle }}</h5>
                 <div v-if="modalProductBrand.name" class="brands-popup d-flex align-items-center gap-2 mt-2 mb-2">
                   <strong class="me-2">{{ t('product.brand') }}:</strong>
-                  <NuxtLink :to="modalProductBrand.id ? `/brand/${modalProductBrand.id}` : '#'" class="text-decoration-none d-flex align-items-center gap-2">
+                  <NuxtLink :to="modalProductBrand.id ? getLocalizedPath(`/brand/${modalProductBrand.id}`) : '#'" class="text-decoration-none d-flex align-items-center gap-2">
                     <picture>
                       <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
                     </picture>
@@ -4973,7 +4998,7 @@ const handleProductDetails = () => {
                 <strong class="d-block mb-2">{{ t('product.categories') }}:</strong>
                 <ul class="d-flex align-items-center gap-2 p-0 m-0 list-unstyled flex-wrap">
                   <li v-for="(cat, index) in modalProductCategories" :key="index">
-                    <NuxtLink class="text-decoration-none category-badge" :to="`/category/${cat.id}`">
+                    <NuxtLink class="text-decoration-none category-badge" :to="getLocalizedPath(`/category/${cat.id}`)">
                       {{ cat.name }}
                     </NuxtLink>
                   </li>
