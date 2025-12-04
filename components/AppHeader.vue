@@ -408,6 +408,27 @@ const getRemainingForFreeShipping = (): number => {
   return Math.max(0, remaining)
 }
 
+// Check if checkout is allowed (minimum 50 SAR)
+const canCheckout = computed(() => cartTotal.value > 49)
+
+// Minimum order message with remaining amount
+const minimumOrderMessage = computed(() => {
+  const remaining = 50 - cartTotal.value
+  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 50 ريال. المتبقي:'} ${money(remaining)}`
+})
+
+// Handle checkout click
+const handleCheckoutClick = (e: Event) => {
+  if (!canCheckout.value) {
+    e.preventDefault()
+    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 50 ريال')
+    closeCart()
+    return false
+  }
+  closeCart()
+  return true
+}
+
 const handleImageError = (e: Event) => {
   const target = e.target as HTMLImageElement
   if (!target.src.includes('placeholder.png')) {
@@ -868,6 +889,17 @@ function closeLoginModal() {
   taqnyatAuth.clearMessages()
 }
 
+// Handle user icon click (mobile)
+function handleUserIconClick() {
+  if (auth?.user?.value) {
+    // User is logged in, navigate to account page
+    navigateTo('/account')
+  } else {
+    // User is not logged in, open login modal
+    openLoginModal()
+  }
+}
+
 // OTP Login Functions
 async function handleRequestOtp() {
   if (!otpForm.value.phone || otpForm.value.phone.trim() === '') {
@@ -1179,7 +1211,7 @@ async function handleRegisterSubmit() {
               </div>
             </div>
             <div class="col-2 col-md-4 d-flex align-items-center justify-content-center d-xl-none   ">
-                <div class="sign-up-mobile">
+                <div class="sign-up-mobile" @click="handleUserIconClick" style="cursor: pointer;">
                   <svg width="23" height="23" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M11.2332 14.6204C7.30234 14.6204 3.98508 15.2591 3.98508 17.7235C3.98508 20.1888 7.32409 20.8049 11.2332 20.8049C15.1632 20.8049 18.4813 20.1661 18.4813 17.7017C18.4813 15.2365 15.1423 14.6204 11.2332 14.6204ZM11.2332 2.68457C8.57033 2.68457 6.43677 4.81735 6.43677 7.47835C6.43677 10.1393 8.57033 12.273 11.2332 12.273C13.8952 12.273 16.0296 10.1393 16.0296 7.47835C16.0296 4.81735 13.8952 2.68457 11.2332 2.68457Z" fill="white"/>
                   </svg>
@@ -1190,7 +1222,7 @@ async function handleRegisterSubmit() {
       <div class="search-box-container">
         <div class="search-box search-box-mobile w-75 m-auto" @click.stop>
             <svg width="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-            <input v-model="q" type="text" :placeholder="t('search.placeholder')" @focus="showMobileSuggestions = true" @blur="handleMobileSearchBlur" @keyup.enter="goSearch()" />
+            <input style="width: 100%;border: 0;" v-model="q" type="text" :placeholder="t('search.placeholder')" @focus="showMobileSuggestions = true" @blur="handleMobileSearchBlur" @keyup.enter="goSearch()" />
         </div>
         <!-- Mobile Search Suggestions - Outside search-box, absolute positioned -->
         <div v-if="showMobileSuggestions && q && q.length >= 2 && (suggestions.length > 0 || products.length > 0)" class="header-search-suggestions mobile-suggestions">
@@ -1513,10 +1545,17 @@ async function handleRegisterSubmit() {
           {{ t('cart.view_cart') || 'عرض السلة' }}
         </NuxtLink>
         
+        <div v-if="!canCheckout" class="minimum-order-message">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          {{ minimumOrderMessage }}
+        </div>
         <NuxtLink 
           :to="getLocalizedPath('/checkout')" 
           class="checkout-btn"
-          @click="closeCart"
+          :class="{ 'disabled': cartTotal <= 49 }"
+          @click="handleCheckoutClick"
         >
           {{ t('cart.checkout') || 'إتمام الطلب' }}
         </NuxtLink>
@@ -1582,16 +1621,17 @@ async function handleRegisterSubmit() {
               <h4>{{ t('quick_links') || 'روابط سريعة' }}</h4>
               <div class="mobile-menu-links">
                 <NuxtLink :to="getLocalizedPath('/shop')" class="mobile-menu-link" @click="mobileMenuOpen = false">
-                  {{ t('shop') || 'المتجر' }}
+                  {{ t('all_products') || 'المتجر' }}
                 </NuxtLink>
                 <NuxtLink :to="getLocalizedPath('/brands')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                   {{ t('brands') || 'العلامات التجارية' }}
                 </NuxtLink>
+                <NuxtLink :to="getLocalizedPath('/categories')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  {{ t('categories') || 'التصنيفات' }}
+                </NuxtLink>
+
                 <NuxtLink :to="getLocalizedPath('/shop?has_discount=true')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                   {{ t('offers') || 'العروض' }}
-                </NuxtLink>
-                <NuxtLink :to="getLocalizedPath('/contact')" class="mobile-menu-link" @click="mobileMenuOpen = false">
-                  {{ t('contact') || 'اتصل بنا' }}
                 </NuxtLink>
               </div>
             </div>
@@ -1617,9 +1657,6 @@ async function handleRegisterSubmit() {
                 <template v-else>
                   <button class="mobile-menu-link" @click="openLoginModal(); mobileMenuOpen = false">
                     {{ t('login') || 'تسجيل الدخول' }}
-                  </button>
-                  <button class="mobile-menu-link" @click="openRegisterModal(); mobileMenuOpen = false">
-                    {{ t('register') || 'إنشاء حساب' }}
                   </button>
                 </template>
               </div>
@@ -1934,12 +1971,12 @@ async function handleRegisterSubmit() {
 
     <!-- Bottom navigation (mobile) -->
     <nav class="bottom-nav">
-      <NuxtLink  class="bn-item">
+      <NuxtLink :to="getLocalizedPath('/compare')" class="bn-item">
         <div class="bn-icon-wrapper">
           <svg width="22" height="22" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 512 385.87"><path fill-rule="nonzero" d="M214.19 67.27h149.05V8.17c0-4.51 3.66-8.17 8.17-8.17 2.21 0 4.21.87 5.68 2.29l132.02 112.09c3.44 2.91 3.87 8.06.96 11.49-.32.39-.67.73-1.05 1.04L376.68 239.27c-3.44 2.91-8.59 2.48-11.49-.96a8.098 8.098 0 0 1-1.93-5.27l-.02-59.1H214.19c-4.51 0-8.17-3.66-8.17-8.17V75.45c0-4.52 3.66-8.18 8.17-8.18zm75.44 161.02H140.59c-4.51 0-8.17-3.66-8.17-8.18v-49.63L20.76 265.27l111.66 94.8v-49.64c0-4.51 3.66-8.17 8.17-8.17h149.04v-73.97zm-140.87-16.35h149.05c4.51 0 8.17 3.66 8.17 8.17v90.32c0 4.52-3.66 8.18-8.17 8.18H148.76v59.1a8.268 8.268 0 0 1-1.95 5.27c-2.9 3.43-8.05 3.86-11.49.96L2.98 271.58c-.38-.31-.73-.66-1.05-1.04-2.91-3.44-2.48-8.59.96-11.49l132.02-112.09a8.141 8.141 0 0 1 5.68-2.29c4.51 0 8.17 3.66 8.17 8.17v59.1zM371.41 83.62H222.37v73.97h149.04c4.52 0 8.18 3.66 8.18 8.18v49.64l111.65-94.8-111.65-94.8v49.64c0 4.51-3.66 8.17-8.18 8.17z"/></svg>
           <span v-if="cartCount > 0" class="bn-cart-badge">{{ cartCount }}</span>
         </div>
-        <span>{{ t('bag') }}</span>
+        <span>{{ t('compare') }}</span>
       </NuxtLink>
       <!-- <NuxtLink :to="getLocalizedPath('/')" class="bn-item">
         <svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3L2 12h3v8z"/></svg>
@@ -2148,19 +2185,11 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 2px solid #f0f0f0;
   border-radius: 50px;
   padding: 8px 20px;
   background: #fafafa;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.search-box:hover {
-  border-color: #E1EDFF;
-  background: #fff;
-  box-shadow: 0 4px 16px #F58040;
 }
 
 .search-icon {
@@ -4379,9 +4408,30 @@ body {
 }
 
 .view-cart-btn:disabled,
-.checkout-btn:disabled {
+.checkout-btn:disabled,
+.checkout-btn.disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  pointer-events: none;
+  background: #9ca3af !important;
+}
+
+.minimum-order-message {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.minimum-order-message svg {
+  flex-shrink: 0;
 }
 
 /* Cart Loading State */

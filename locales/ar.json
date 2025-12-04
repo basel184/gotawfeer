@@ -175,6 +175,8 @@
   "cart.total": "الإجمالي",
   "cart.checkout": "متابعة للدفع",
   "cart.continue_shopping": "متابعة التسوق",
+  "cart.minimum_order_amount": "الحد الأدنى للطلب هو 50 ريال",
+  "cart.minimum_order_message": "الحد الأدنى للطلب هو 50 ريال. المتبقي:",
   "cart.product": "منتج",
   "cart.loading_error": "تعذر تحميل السلة حالياً. حاول مرة أخرى.",
   "checkout.title": "إتمام الطلب",
@@ -266,36 +268,36 @@
       }
     }
   },
-  "search": {
-    "title": "البحث",
-    "placeholder": "ابحث عن المنتجات...",
-    "search_button": "بحث",
-    "searching": "جاري البحث...",
-    "results_count": "تم العثور على {count} منتج",
-    "no_results": "لا توجد نتائج",
-    "no_results_title": "لم نجد ما تبحث عنه",
-    "no_results_description": "جرب البحث بكلمات مختلفة أو تصفح الفئات",
-    "suggestions_title": "اقتراحات:",
-    "suggestion_1": "تأكد من صحة الإملاء",
-    "suggestion_2": "جرب كلمات أكثر عمومية",
-    "suggestion_3": "استخدم كلمات أقل",
-    "popular_searches": "البحث الشائع",
-    "close": "إغلاق",
-    "products": "المنتجات",
-    "product": "منتج"
-  },
-  "product": {
-    "recommended_products": "منتجات موصى بها",
-    "write_review": "اكتب تقييمك",
-    "your_rating": "تقييمك",
-    "your_comment": "تعليقك",
-    "write_comment_placeholder": "اكتب تعليقك عن المنتج...",
-    "sending": "جاري الإرسال...",
+         "search": {
+           "title": "البحث",
+           "placeholder": "ابحث عن المنتجات...",
+           "search_button": "بحث",
+           "searching": "جاري البحث...",
+           "results_count": "تم العثور على {count} منتج",
+           "no_results": "لا توجد نتائج",
+           "no_results_title": "لم نجد ما تبحث عنه",
+           "no_results_description": "جرب البحث بكلمات مختلفة أو تصفح الفئات",
+           "suggestions_title": "اقتراحات:",
+           "suggestion_1": "تأكد من صحة الإملاء",
+           "suggestion_2": "جرب كلمات أكثر عمومية",
+           "suggestion_3": "استخدم كلمات أقل",
+           "popular_searches": "البحث الشائع",
+         "close": "إغلاق",
+         "products": "المنتجات",
+         "product": "منتج"
+       },
+       "product": {
+         "recommended_products": "منتجات موصى بها",
+         "write_review": "اكتب تقييمك",
+         "your_rating": "تقييمك",
+         "your_comment": "تعليقك",
+         "write_comment_placeholder": "اكتب تعليقك عن المنتج...",
+         "sending": "جاري الإرسال...",
     "shop": "المتجر",
-    "submit_review": "إرسال التقييم",
-    "add_reply": "أضف رد",
-    "your_reply": "ردك",
-    "write_reply_placeholder": "اكتب ردك...",
+         "submit_review": "إرسال التقييم",
+         "add_reply": "أضف رد",
+         "your_reply": "ردك",
+         "write_reply_placeholder": "اكتب ردك...",
     "submit_reply": "إرسال الرد",
     "home": "الرئيسية",
     "no_images": "لا توجد صور متاحة",
@@ -551,7 +553,10 @@
         "discount_on_purchase": "خصم على الشراء",
         "free_delivery": "توصيل مجاني",
         "flat_discount": "خصم ثابت"
-      }
+      },
+      "copy": "نسخ الكوبون",
+      "copied": "تم نسخ الكوبون بنجاح",
+      "copy_error": "حدث خطأ في نسخ الكوبون"
     },
     "tracking": {
       "title": "تتبع الطلب",
@@ -783,5 +788,19 @@
     "customer_reviews": "آراء عملائنا",
     "back_to_top": "العودة للأعلى",
     "share_text": "تحقق من {title} - {brand}"
+  },
+  "blog": {
+    "title": "المدونة",
+    "subtitle": "اكتشف آخر المقالات والأخبار من جو توفير",
+    "read_more": "اقرأ المزيد",
+    "no_blogs": "لا توجد مدونات متاحة حالياً",
+    "error_loading": "حدث خطأ أثناء تحميل المدونات",
+    "not_found": "المدونة غير موجودة",
+    "back_to_list": "العودة إلى قائمة المدونات",
+    "tags": "الوسوم",
+    "popular_blogs": "المدونات الشائعة",
+         "categories": "التصنيفات",
+    "coming_soon": "قريباً",
+    "description": "سنضيف محتوى المدونة قريباً"
   }
 }

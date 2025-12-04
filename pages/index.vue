@@ -376,6 +376,179 @@ const getProductLink = (product: any): string => {
   return slug ? `/product/${encodeURIComponent(String(slug))}` : '#'
 }
 
+const getProductSku = (product: any): string => {
+  if (!product) return ''
+  // Use code as primary SKU, fallback to sku
+  return product?.code || product?.product?.code || product?.sku || product?.product?.sku || ''
+}
+
+// Helper to normalize color code
+const normalizeColorCode = (code: string | null | undefined): string => {
+  if (!code) return ''
+  return String(code).toUpperCase().replace(/^#/, '').trim()
+}
+
+// Helper to get color value for CSS
+const getColorValue = (code: string | null | undefined): string => {
+  if (!code) return '#000000'
+  const normalized = normalizeColorCode(code)
+  return normalized.startsWith('#') ? normalized : `#${normalized}`
+}
+
+// Helper to parse color_image if it's a JSON string
+const parseColorImage = (colorImage: any): any[] | null => {
+  if (!colorImage) return null
+  if (Array.isArray(colorImage)) return colorImage
+  if (typeof colorImage === 'string') {
+    try {
+      const parsed = JSON.parse(colorImage)
+      return Array.isArray(parsed) ? parsed : null
+    } catch (e) {
+      return null
+    }
+  }
+  return null
+}
+
+// Helper to normalize image path
+const normalizeImagePath = (imagePath: string | null | undefined): string => {
+  if (!imagePath || imagePath.trim() === '') return ''
+  const trimmed = String(imagePath).trim()
+  // If it's already a full URL, return as is
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+    return trimmed
+  }
+  // Otherwise build full URL
+  const cfg = useRuntimeConfig() as any
+  const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const fixedPath = trimmed.replace(/^public\//, '').replace(/^storage\/app\/public\//, '').replace(/^storage\//, '')
+  return `${assetBase}/storage/app/public/${fixedPath}`
+}
+
+// Get product colors
+const getProductColors = (product: any): any[] => {
+  if (!product) return []
+  const cfg = useRuntimeConfig() as any
+  const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  
+  // Try colors_formatted first
+  if (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) {
+    return product.colors_formatted.map((color: any) => {
+      const codeNormalized = normalizeColorCode(color.code)
+      const hexCode = color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : (color.code?.toUpperCase() || '')
+      
+      // Find corresponding image
+      const colorImage = product.color_images_full_url?.find((img: any) => {
+        const imgColorNormalized = normalizeColorCode(img.color)
+        return imgColorNormalized === codeNormalized
+      })
+      
+      let imagePath = ''
+      if (colorImage?.image_name) {
+        if (typeof colorImage.image_name === 'string') {
+          imagePath = colorImage.image_name
+        } else if (colorImage.image_name.path) {
+          imagePath = colorImage.image_name.path
+        } else if (colorImage.image_name.key) {
+          imagePath = colorImage.image_name.key
+        }
+      } else if (color.image) {
+        imagePath = color.image
+      }
+      
+      const finalImagePath = normalizeImagePath(imagePath)
+      
+      return {
+        name: color.name || hexCode || codeNormalized,
+        originalName: color.name,
+        code: codeNormalized,
+        hexCode: hexCode,
+        image: finalImagePath
+      }
+    })
+  }
+  
+  // Try colors array
+  if (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+    return product.colors.map((color: any) => {
+      if (typeof color === 'string') {
+        const codeNormalized = normalizeColorCode(color)
+        return {
+          name: codeNormalized,
+          originalName: null,
+          code: codeNormalized,
+          hexCode: getColorValue(color),
+          image: ''
+        }
+      }
+      
+      const codeNormalized = normalizeColorCode(color.code || color.name)
+      const hexCode = color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : (color.code?.toUpperCase() || getColorValue(color.code || color.name))
+      
+      let imagePath = ''
+      if (color.image) {
+        imagePath = color.image
+      }
+      
+      const finalImagePath = normalizeImagePath(imagePath)
+      
+      return {
+        name: color.name || hexCode || codeNormalized,
+        originalName: color.name,
+        code: codeNormalized,
+        hexCode: hexCode,
+        image: finalImagePath
+      }
+    })
+  }
+  
+  return []
+}
+
+// Get product variations
+const getProductVariations = (product: any): string[] => {
+  if (!product) return []
+  
+  // Check if product has choice_options
+  if (product?.choice_options && Array.isArray(product.choice_options) && product.choice_options.length > 0) {
+    const variationsSet = new Set<string>()
+    
+    product.choice_options.forEach((option: any) => {
+      if (option.options && Array.isArray(option.options)) {
+        option.options.forEach((opt: string) => {
+          if (opt && opt.trim()) {
+            variationsSet.add(opt.trim())
+          }
+        })
+      }
+    })
+    
+    return Array.from(variationsSet).sort()
+  }
+  
+  // Check if product has variation array
+  if (product?.variation && Array.isArray(product.variation) && product.variation.length > 0) {
+    const variationsSet = new Set<string>()
+    
+    product.variation.forEach((v: any) => {
+      if (v.type && typeof v.type === 'string') {
+        // Extract variation type (e.g., "100ml" from "WARM PEACH 004-100ml")
+        const parts = v.type.split('-')
+        if (parts.length >= 2) {
+          const variationType = parts[parts.length - 1].trim()
+          if (variationType) {
+            variationsSet.add(variationType)
+          }
+        }
+      }
+    })
+    
+    return Array.from(variationsSet).sort()
+  }
+  
+  return []
+}
+
 const formatPrice = (n: number): string => {
   if (!isFinite(n) || n <= 0) return '0'
   try { 
@@ -392,6 +565,9 @@ const modalProductPrice = computed(() => getProductPrice(selectedProductForModal
 const modalProductBrand = computed(() => getProductBrand(selectedProductForModal.value))
 const modalProductCategories = computed(() => getProductCategories(selectedProductForModal.value))
 const modalProductLink = computed(() => getProductLink(selectedProductForModal.value))
+const modalProductSku = computed(() => getProductSku(selectedProductForModal.value))
+const modalProductColors = computed(() => getProductColors(selectedProductForModal.value))
+const modalProductVariations = computed(() => getProductVariations(selectedProductForModal.value))
 
 // Share functions
 const shareUrl = computed(() => {
@@ -511,7 +687,7 @@ const handleAddToCart = async () => {
     if (product?.color) cartData.color = product.color
     if (product?.size) cartData.size = product.size
     if (product?.variant_type) cartData.variant_type = product.variant_type
-    if (product?.sku) cartData.sku = product.sku
+    if (product?.code) cartData.sku = product.code
     
     await cart.add(cartData)
     // cart.add() already calls list(true) internally, so UI will update automatically
@@ -1081,13 +1257,71 @@ const onImgErr = (e: any) => {
                       <picture>
                         <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }" loading="lazy">
                       </picture>
-                      <span class="brand-name">{{ modalProductBrand.name }}</span>
                     </NuxtLink>
                   </div>
-                  <h5 class="price final mt-3">
-                    {{ formatPrice(modalProductPrice.final) }} 
-                    <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" loading="lazy" />
-                  </h5>
+                  
+                  <!-- Product SKU -->
+                  <div v-if="modalProductSku" class="product-sku-modal mb-2">
+                    <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
+                    <span class="sku-value">{{ modalProductSku }}</span>
+                  </div>
+                  
+                  <!-- Colors (Disabled) -->
+                  <div v-if="modalProductColors.length > 0" class="variant-section-disabled mt-3">
+                    <h6 class="variant-title-disabled mb-2">{{ t('product.select_color') || 'اختر اللون' }}</h6>
+                    <div class="color-options-disabled">
+                      <div
+                        v-for="color in modalProductColors"
+                        :key="color.code"
+                        class="color-option-disabled"
+                        :class="{ 'has-image': color.image && !color.originalName }"
+                        :style="(color.image) 
+                          ? { 
+                              backgroundImage: `url(${color.image})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundColor: color.hexCode || getColorValue(color.code)
+                            }
+                          : { 
+                              backgroundColor: color.hexCode || getColorValue(color.code)
+                            }"
+                        :title="color.name || color.code || ''"
+                      >
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Variations (Disabled) -->
+                  <div v-if="modalProductVariations.length > 0" class="variant-section-disabled mt-3">
+                    <h6 class="variant-title-disabled mb-2">{{ t('product.select_variation') || 'اختر المتغير' }}</h6>
+                    <div class="variation-options-disabled">
+                      <div
+                        v-for="variation in modalProductVariations"
+                        :key="variation"
+                        class="variation-option-disabled"
+                      >
+                        <span class="variation-value">{{ variation }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="pricing-section mt-3">
+                    <div v-if="modalProductPrice.hasDiscount" class="old-price-row mb-2">
+                      <span class="old">{{ formatPrice(modalProductPrice.old) }}</span>
+                      <svg width="14" height="14" viewBox="0 0 10 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6.41566 9.76641C6.24628 10.1389 6.13432 10.5431 6.09143 10.967L9.67578 10.2113C9.84515 9.83893 9.95703 9.43463 10 9.01074L6.41566 9.76641Z" fill="#808080" fill-opacity="0.6"/>
+                        <path d="M9.67525 7.94574C9.84462 7.57335 9.95658 7.16905 9.99948 6.74516L7.20738 7.3341V6.20194L9.67516 5.68183C9.84454 5.30944 9.9565 4.90515 9.99939 4.48126L7.2073 5.0697V0.998106C6.77947 1.23635 6.39951 1.55347 6.09065 1.92753V5.30517L4.974 5.54057V0.444336C4.54616 0.682492 4.16621 0.999697 3.85734 1.37376V5.77587L1.35883 6.30243C1.18946 6.67482 1.07741 7.07911 1.03443 7.503L3.85734 6.90803V8.33379L0.832042 8.97138C0.662666 9.34377 0.550705 9.74806 0.507812 10.172L3.67446 9.50455C3.93224 9.45138 4.1538 9.30023 4.29784 9.09222L4.87859 8.23832V8.23815C4.93887 8.14981 4.974 8.04329 4.974 7.92857V6.67264L6.09065 6.43725V8.70157L9.67516 7.94557L9.67525 7.94574Z" fill="#808080" fill-opacity="0.6"/>
+                      </svg>
+                    </div>
+                    <div class="price-row d-flex align-items-center gap-2">
+                      <h5 class="price final mb-0">
+                        {{ formatPrice(modalProductPrice.final) }} 
+                        <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" loading="lazy" />
+                      </h5>
+                      <div v-if="modalProductPrice.hasDiscount" class="badge bg-danger">-{{ modalProductPrice.discountPercent }}%</div>
+                    </div>
+                  </div>
                 </div>
                 <div class="buttons d-flex align-items-center gap-2">
                   <template v-if="hasProductOptions">
@@ -1686,8 +1920,8 @@ const onImgErr = (e: any) => {
 }
 
 .brands-popup .cover-image-class {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 90px;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
@@ -1899,5 +2133,119 @@ const onImgErr = (e: any) => {
   width: 3rem;
   height: 3rem;
   border-width: 0.3em;
+}
+
+/* Pricing Section in Modal */
+.pricing-section {
+  margin-bottom: 12px;
+}
+
+.pricing-section .old-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pricing-section .old {
+  color: #9ca3af;
+  text-decoration: line-through;
+  font-size: 14px;
+}
+
+.pricing-section .price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pricing-section .price.final {
+  color: #ef4444;
+  font-weight: 800;
+  font-size: 18px;
+  margin: 0;
+}
+
+.pricing-section .currency-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.pricing-section .badge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Disabled Variants Styles */
+.variant-section-disabled {
+  margin-bottom: 16px;
+}
+
+.variant-title-disabled {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+
+.color-options-disabled {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-option-disabled {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.6;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.variation-options-disabled {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.variation-option-disabled {
+  padding: 8px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.variation-value {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Product SKU in Modal */
+.product-sku-modal {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.product-sku-modal .sku-label {
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.product-sku-modal .sku-value {
+  color: #374151;
+  font-weight: 500;
 }
 </style>

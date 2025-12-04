@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
 const { t, locale, te } = useI18n()
 const cart = useCart()
 const auth = useAuth()
@@ -16,11 +17,61 @@ const selectedPaymentMethod = ref('')
 const couponCode = ref('')
 const appliedCoupon = ref<any>(null)
 
-// Login modal state
+// Persist applied coupon to localStorage
+const COUPON_STORAGE_KEY = 'applied_coupon'
+
+// Save coupon to localStorage
+function saveCouponToStorage(coupon: any) {
+  if (process.client && coupon) {
+    try {
+      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(coupon))
+    } catch (error) {
+      console.error('Error saving coupon to localStorage:', error)
+    }
+  }
+}
+
+// Load coupon from localStorage
+function loadCouponFromStorage() {
+  if (process.client) {
+    try {
+      const savedCoupon = localStorage.getItem(COUPON_STORAGE_KEY)
+      if (savedCoupon) {
+        const parsed = JSON.parse(savedCoupon)
+        // Validate that coupon has required fields
+        if (parsed && parsed.coupon_code && parsed.discount_amount !== undefined) {
+          return parsed
+        }
+      }
+    } catch (error) {
+      console.error('Error loading coupon from localStorage:', error)
+    }
+  }
+  return null
+}
+
+// Remove coupon from localStorage
+function removeCouponFromStorage() {
+  if (process.client) {
+    try {
+      localStorage.removeItem(COUPON_STORAGE_KEY)
+    } catch (error) {
+      console.error('Error removing coupon from localStorage:', error)
+    }
+  }
+}
+
+// Login modal state - OTP Login
+const taqnyatAuth = useTaqnyatAuth()
 const loginModalOpen = ref(false)
-const loginForm = ref({ email: '', password: '' })
-const loginError = ref('')
-const loginLoading = ref(false)
+const otpForm = ref({
+  phone: '',
+  otp: ''
+})
+const otpSent = ref(false)
+const otpCountdown = ref(0)
+let otpTimer: any = null
+const loginSuccess = ref(false)
 
 const paymentMethods = computed(() => {
   const translations = {
@@ -60,7 +111,7 @@ const subtotal = computed(() => items.value.reduce((s: number, it: any) => s + (
 const discountTotal = computed(() => items.value.reduce((s: number, it: any) => s + (Number(it?.discount || 0) * Number(it?.quantity || it?.qty || 0)), 0))
 const subtotalAfterDiscount = computed(() => Math.max(0, subtotal.value - discountTotal.value))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
-const shipping = computed(() => items.value.reduce((s: number, it: any) => s + Number(it?.shipping_cost || 0), 0))
+const shipping = computed(() => items.value.reduce((s: number, it: any) => s + Number(it?.shipping_cost || 25), 0))
 
 // Coupon discount
 const couponDiscount = computed(() => {
@@ -122,66 +173,100 @@ function handleImageError(event: Event) {
 // Login modal functions
 function openLoginModal() {
   loginModalOpen.value = true
-  loginError.value = ''
-  loginForm.value = { email: '', password: '' }
+  loginSuccess.value = false
+  // Reset OTP form
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
+  taqnyatAuth.clearMessages()
 }
 
 function closeLoginModal() {
   loginModalOpen.value = false
-  loginError.value = ''
-  loginForm.value = { email: '', password: '' }
+  loginSuccess.value = false
+  // Reset OTP form
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
+  taqnyatAuth.clearMessages()
 }
 
-async function handleLogin() {
-  if (!loginForm.value.email || !loginForm.value.password) {
-    loginError.value = t('login.required_fields') || 'جميع الحقول مطلوبة'
+// OTP Login Functions
+async function handleRequestOtp() {
+  if (!otpForm.value.phone || otpForm.value.phone.trim() === '') {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
     return
   }
-  
-  loginLoading.value = true
-  loginError.value = ''
-  
-  try {
-    const response: any = await $post('v1/auth/login', {
-      email_or_phone: loginForm.value.email,
-      password: loginForm.value.password,
-      type: 'email'
-    })
-    
-    // Handle different response formats
-    if (response?.access_token) {
-      auth.setToken(response.access_token)
-      // Try to get user info
-      try {
-        const userInfo: any = await $get('v1/customer/info')
-        if (userInfo) auth.setUser(userInfo)
-      } catch (e) {
-        // If user info fails, still set token
-        auth.setUser(response.user || response.data)
+
+  const success = await taqnyatAuth.requestOtp(otpForm.value.phone)
+  if (success) {
+    otpSent.value = true
+    // Start countdown (60 seconds)
+    otpCountdown.value = 60
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
       }
-      loginModalOpen.value = false
-      loginForm.value = { email: '', password: '' }
-      // Reload addresses after successful login
-      await loadAddresses()
-    } else if (response?.token) {
-      auth.setToken(response.token)
-      auth.setUser(response.user || response.data)
-      loginModalOpen.value = false
-      loginForm.value = { email: '', password: '' }
-      // Reload addresses after successful login
-      await loadAddresses()
+    }, 1000)
+  }
+}
+
+async function handleOtpLogin() {
+  if (!otpForm.value.phone || !otpForm.value.otp) {
+    taqnyatAuth.error.value = t('taqnyat.otp_required') || 'رمز التحقق مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.verifyOtp(otpForm.value.phone, otpForm.value.otp)
+  if (success) {
+    loginModalOpen.value = false
+    otpForm.value = { phone: '', otp: '' }
+    otpSent.value = false
+    otpCountdown.value = 0
+    if (otpTimer) {
+      clearInterval(otpTimer)
+      otpTimer = null
     }
-  } catch (error: any) {
-    console.error('Login error:', error)
-    // Handle validation errors
-    if (error?.data?.errors && Array.isArray(error.data.errors)) {
-      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
-      loginError.value = errorMessages
-    } else {
-      loginError.value = error?.data?.message || t('login.error') || 'خطأ في تسجيل الدخول'
+    // Show success message
+    loginSuccess.value = true
+    // Reload addresses after successful login
+    await loadAddresses()
+    setTimeout(() => {
+      loginSuccess.value = false
+    }, 2000)
+  }
+}
+
+async function handleResendOtp() {
+  if (!otpForm.value.phone) {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.resendOtp(otpForm.value.phone)
+  if (success) {
+    // Reset countdown
+    otpCountdown.value = 60
+    if (otpTimer) {
+      clearInterval(otpTimer)
     }
-  } finally {
-    loginLoading.value = false
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
+      }
+    }, 1000)
   }
 }
 
@@ -228,31 +313,103 @@ async function applyCoupon() {
   if (!couponCode.value.trim()) return
   
   try {
-    // Get guest_id from cart or generate one
-    const guestId = cart.guestId || '961' // Use existing guest ID or default
+    // Get guest_id from useGuest composable
+    const { guestId } = useGuest()
+    
+    // Prepare request data
+    // Backend handles: if user is authenticated, it uses customer_id from token ($request->user()->id)
+    // If user is guest, it uses guest_id from request ($request->guest_id ?? '0')
+    // We should always send guest_id as fallback, even for authenticated users
+    const requestData: any = {
+      coupon_code: couponCode.value.trim()
+    }
+    
+    // Always send guest_id if available (backend uses it as fallback)
+    // Backend code: $customer_id = $request->user() ? $request->user()->id : ($request->guest_id ?? '0');
+    // Convert to number to ensure correct type
+    if (guestId?.value) {
+      requestData.guest_id = Number(guestId.value)
+    } else {
+      // If no guest_id, use 0 as fallback (backend default)
+      requestData.guest_id = 0
+    }
     
     console.log('Applying coupon:', {
-      coupon_code: couponCode.value,
-      guest_id: guestId
+      coupon_code: requestData.coupon_code,
+      guest_id: requestData.guest_id,
+      is_authenticated: !!auth?.user?.value,
+      user_id: auth?.user?.value?.id || 'N/A'
     })
     
-    const response = await $post('v1/coupon/apply', {
-      coupon_code: couponCode.value,
-      guest_id: guestId
-    })
+    const response = await $post('v1/coupon/apply', requestData)
     
     console.log('Coupon response:', response)
     
-    if (response?.success) {
-      appliedCoupon.value = response.data
+    // Backend returns: {success: true, data: {...}} for success (200)
+    // Backend returns: {success: false, message: '...'} for failure (202)
+    // Check success flag explicitly
+    if (response?.success === true) {
+      // Success case - apply the coupon
+      if (response.data) {
+        appliedCoupon.value = response.data
+      } else {
+        // Fallback: use response itself if data is not nested
+        appliedCoupon.value = response
+      }
+      // Save coupon to localStorage for persistence
+      saveCouponToStorage(appliedCoupon.value)
       // Clear the input after successful application
       couponCode.value = ''
+      console.log('Coupon applied successfully:', appliedCoupon.value)
     } else {
-      alert(response?.message || (t('checkout.errors.invalid_coupon') || 'كود الخصم غير صحيح'))
+      // Failure case - extract error message
+      let errorMessage = ''
+      
+      // Backend returns message directly in response.message
+      if (response?.message) {
+        errorMessage = response.message
+      } else if (response?.data?.message) {
+        errorMessage = response.data.message
+      } else if (response?.data?.data?.message) {
+        errorMessage = response.data.data.message
+      } else {
+        errorMessage = t('checkout.errors.invalid_coupon') || 'كود الخصم غير صحيح'
+      }
+      
+      console.error('Coupon application failed:', errorMessage)
+      alert(errorMessage)
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error applying coupon:', error)
-    alert(t('checkout.errors.apply_coupon') || 'حدث خطأ في تطبيق كود الخصم')
+    
+    // Handle nested error structure (in case $fetch throws an error)
+    // Backend may return status 202 with {success: false, message: '...'} in error.data
+    let errorMessage = ''
+    
+    // First, check if error.data contains the response (status 202 case)
+    if (error?.data && typeof error.data === 'object') {
+      // If error.data has success: false, extract message from it
+      if (error.data.success === false && error.data.message) {
+        errorMessage = error.data.message
+      } else if (error.data.message) {
+        errorMessage = error.data.message
+      } else if (error.data.data?.message) {
+        errorMessage = error.data.data.message
+      }
+    }
+    
+    // If no message found yet, check other nested structures
+    if (!errorMessage) {
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      } else {
+        errorMessage = t('checkout.errors.apply_coupon') || 'حدث خطأ في تطبيق كود الخصم'
+      }
+    }
+    
+    alert(errorMessage)
   }
 }
 
@@ -260,6 +417,8 @@ async function applyCoupon() {
 function removeCoupon() {
   appliedCoupon.value = null
   couponCode.value = ''
+  // Remove coupon from localStorage
+  removeCouponFromStorage()
 }
 
 // Select payment method
@@ -594,6 +753,42 @@ async function placeOrder() {
 onMounted(async () => {
   loading.value = true
   try {
+    // Load applied coupon from localStorage first
+    const savedCoupon = loadCouponFromStorage()
+    if (savedCoupon) {
+      // Verify coupon is still valid by checking with backend
+      try {
+        const { guestId } = useGuest()
+        const requestData: any = {
+          coupon_code: savedCoupon.coupon_code
+        }
+        if (guestId?.value) {
+          requestData.guest_id = Number(guestId.value)
+        } else {
+          requestData.guest_id = 0
+        }
+        
+        const response = await $post('v1/coupon/apply', requestData)
+        
+        if (response?.success === true && response.data) {
+          // Coupon is still valid, apply it
+          appliedCoupon.value = response.data
+          saveCouponToStorage(response.data)
+          console.log('Restored and verified coupon from storage:', response.data)
+        } else {
+          // Coupon is no longer valid, remove it
+          console.warn('Saved coupon is no longer valid, removing:', savedCoupon)
+          removeCouponFromStorage()
+          appliedCoupon.value = null
+        }
+      } catch (error) {
+        // If verification fails, still try to use saved coupon
+        // User can remove it manually if it doesn't work
+        console.warn('Could not verify saved coupon, using saved value:', error)
+        appliedCoupon.value = savedCoupon
+      }
+    }
+    
     await Promise.all([
       loadAddresses(),
       loadCart()
@@ -876,39 +1071,80 @@ onMounted(async () => {
           </button>
         </div>
         
-        <form @submit.prevent="handleLogin" class="login-form">
+        <!-- OTP Login -->
+        <form @submit.prevent="handleOtpLogin" class="login-form">
           <div class="form-group">
-            <label for="email">{{ t('email') || 'البريد الإلكتروني' }}</label>
+            <label for="phone">{{ t('taqnyat.phone') || 'رقم الهاتف' }}</label>
             <input 
-              id="email"
-              v-model="loginForm.email" 
-              type="email" 
-              :placeholder="t('email') || 'البريد الإلكتروني'"
+              id="phone"
+              v-model="otpForm.phone" 
+              type="tel" 
+              :placeholder="t('taqnyat.phone_placeholder') || '05xxxxxxxx'"
               required
-              :disabled="loginLoading"
+              :disabled="taqnyatAuth.requestingOtp.value || taqnyatAuth.verifyingOtp.value || otpSent"
             />
           </div>
           
-          <div class="form-group">
-            <label for="password">{{ t('password') || 'كلمة المرور' }}</label>
+          <div v-if="otpSent" class="form-group">
+            <label for="otp">{{ t('taqnyat.otp_code') || 'رمز التحقق' }}</label>
             <input 
-              id="password"
-              v-model="loginForm.password" 
-              type="password" 
-              :placeholder="t('password') || 'كلمة المرور'"
+              id="otp"
+              v-model="otpForm.otp" 
+              type="text" 
+              :placeholder="t('taqnyat.otp_placeholder') || 'أدخل رمز التحقق'"
               required
-              :disabled="loginLoading"
+              maxlength="6"
+              :disabled="taqnyatAuth.verifyingOtp.value"
             />
           </div>
           
-          <div v-if="loginError" class="error-message">
-            {{ loginError }}
+          <div v-if="taqnyatAuth.error.value" class="error-message">
+            {{ taqnyatAuth.error.value }}
           </div>
           
-          <button type="submit" class="main-btn" :disabled="loginLoading">
-            <span v-if="loginLoading">{{ t('login.loading') || 'جاري تسجيل الدخول...' }}</span>
-            <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
-          </button>
+          <div v-if="taqnyatAuth.success.value" class="success-message">
+            <svg width="16" height="16" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            {{ taqnyatAuth.success.value }}
+          </div>
+          
+          <div v-if="!otpSent">
+            <button 
+              type="button" 
+              class="main-btn" 
+              style="width: 100%;" 
+              :disabled="taqnyatAuth.requestingOtp.value || !otpForm.phone"
+              @click="handleRequestOtp"
+            >
+              <span v-if="taqnyatAuth.requestingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+              <span v-else>{{ t('taqnyat.send_otp') || 'إرسال رمز التحقق' }}</span>
+            </button>
+          </div>
+
+          <div v-else>
+            <button 
+              type="submit" 
+              class="main-btn" 
+              style="width: 100%;margin-bottom: 10px;" 
+              :disabled="taqnyatAuth.verifyingOtp.value || !otpForm.otp"
+            >
+              <span v-if="taqnyatAuth.verifyingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+              <span v-else>{{ t('taqnyat.verify') || 'التحقق وتسجيل الدخول' }}</span>
+            </button>
+
+            <button 
+              type="button" 
+              class="resend-btn" 
+              style="width: 100%;background: transparent;color: #232323;padding: 10px;border-radius: 10px;border: 1px solid #232323;" 
+              :disabled="taqnyatAuth.resendingOtp.value || otpCountdown > 0"
+              @click="handleResendOtp"
+            >
+              <span v-if="taqnyatAuth.resendingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+              <span v-else-if="otpCountdown > 0">{{ t('taqnyat.resend_in') || 'إعادة الإرسال خلال' }} {{ otpCountdown }} {{ t('taqnyat.seconds') || 'ثانية' }}</span>
+              <span v-else>{{ t('taqnyat.resend_otp') || 'إعادة إرسال رمز التحقق' }}</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -1376,10 +1612,13 @@ onMounted(async () => {
     border: none;
     color: #166534;
     cursor: pointer;
-    padding: 2px;
+    padding: 10px;
     border-radius: 4px;
     transition: all 0.2s ease;
     margin-left: auto;
+    position: absolute;
+    inset-inline-end: 0;
+
   }
 
   .remove-coupon-btn:hover {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -7,8 +7,22 @@ const auth = useAuth()
 const { $get } = useApi()
 const config = useRuntimeConfig()
 
+// Protect page - redirect if not authenticated
+if (process.client) {
+  // Check authentication on client side
+  if (!auth?.user?.value && !auth?.token?.value) {
+    // User is not authenticated, redirect to home page
+    navigateTo('/')
+  }
+}
+
 // Success message state
 const logoutSuccess = ref(false)
+
+// Toast message state
+const showToastMessage = ref(false)
+const toastMessage = ref('')
+const toastType = ref<'success' | 'error'>('success')
 
 // Helper function to get correct image URL
 function getImageUrl(imagePath: string | undefined, fallback: string = '/images/placeholder.png'): string {
@@ -834,6 +848,45 @@ const getCouponTypeName = (type: string) => {
   return types[type] || type
 }
 
+// Show toast message
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  toastMessage.value = message
+  toastType.value = type
+  showToastMessage.value = true
+  setTimeout(() => {
+    showToastMessage.value = false
+  }, 3000)
+}
+
+// Copy coupon code to clipboard
+const copyCouponCode = async (code: string) => {
+  if (!code) return
+  
+  try {
+    if (process.client && navigator.clipboard) {
+      await navigator.clipboard.writeText(code)
+      // Show success toast
+      showToast(t('account.coupons.copied'), 'success')
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = code
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      // Show success toast
+      showToast(t('account.coupons.copied'), 'success')
+    }
+  } catch (error) {
+    console.error('Error copying coupon code:', error)
+    // Show error toast
+    showToast(t('account.coupons.copy_error'), 'error')
+  }
+}
+
 // Load restock requests
 const loadRestockRequests = async () => {
   restockLoading.value = true
@@ -978,7 +1031,15 @@ const logout = () => {
 }
 
 // Load data on mount
-onMounted(() => {
+onMounted(async () => {
+  // Check authentication before loading data
+  if (!auth?.user?.value && !auth?.token?.value) {
+    // User is not authenticated, redirect to home page
+    await navigateTo('/')
+    return
+  }
+  
+  // User is authenticated, load data
   loadUserData()
   loadOrders()
   loadWishlist()
@@ -1012,6 +1073,21 @@ const tabs = computed(() => [
           <span>{{ t('logout.success') || 'تم تسجيل الخروج بنجاح' }}</span>
         </div>
       </div>
+      
+      <!-- Toast Message -->
+      <Transition name="slide-fade">
+        <div v-if="showToastMessage" class="toast-message" :class="toastType">
+          <div class="toast-content">
+            <svg v-if="toastType === 'success'" width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            <span>{{ toastMessage }}</span>
+          </div>
+        </div>
+      </Transition>
     </teleport>
 
     <div class="container">
@@ -1024,26 +1100,6 @@ const tabs = computed(() => [
         <!-- Sidebar -->
         <div class="account-sidebar">
             <div class="user-info">
-              <div class="user-avatar">
-                <img v-if="user.image" :src="getImageUrl(user.image)" :alt="user.f_name" @error="handleImageError" @load="console.log('Image loaded successfully')" />
-                <div v-else class="avatar-placeholder">
-                  {{ (user.f_name || 'U').charAt(0).toUpperCase() }}
-                </div>
-                <div class="avatar-overlay">
-                  <label for="avatar-upload" class="avatar-upload-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                  </label>
-                  <input 
-                    id="avatar-upload" 
-                    type="file" 
-                    accept="image/*" 
-                    @change="handleAvatarChange"
-                    style="display: none;"
-                  />
-                </div>
-              </div>
               <div class="user-details">
                 <h3>{{ user.f_name }} {{ user.l_name }}</h3>
                 <p>{{ user.email }}</p>
@@ -1123,17 +1179,6 @@ const tabs = computed(() => [
                     :disabled="profileLoading"
                   />
                 </div>
-              </div>
-
-              <div class="form-group mb-3">
-                <label for="image">{{ t('account.profile.profile_image') }}</label>
-                <input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  @change="profileForm.image = ($event.target as HTMLInputElement)?.files?.[0] || null"
-                  :disabled="profileLoading"
-                />
               </div>
 
               <div v-if="profileError" class="error-message">
@@ -1363,7 +1408,7 @@ const tabs = computed(() => [
                   </button>
                 <div class="item-image">
                   <img 
-                    :src="getImageUrl(item.productFullInfo?.thumbnail || item.productFullInfo?.image)" 
+                    :src="getImageUrl(item.productFullInfo?.thumbnail_full_url.path || item.productFullInfo?.image)" 
                     :alt="item.productFullInfo?.name || item.productFullInfo?.product_name"
                     @error="handleImageError"
                   />
@@ -1406,16 +1451,6 @@ const tabs = computed(() => [
                 </div>
 
                 <div class="item-actions">
-                  <button 
-                    class="action-btn primary" 
-                    @click="addToCart(item.productFullInfo)"
-                    :disabled="!item.productFullInfo?.current_stock || wishlistLoading"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18M7.16 14h9.53c.75 0 1.4-.42 1.73-1.05L22 7H6.21L5.27 5H2v2h2l3.6 7.59l-1.35 2.44A2 2 0 0 0 8 20h12v-2H8l1.1-2h8.59l-1.45 2H7.16Z"/>
-                    </svg>
-                    {{ t('account.wishlist.add_to_cart') }}
-                  </button>
                   <NuxtLink 
                     :to="`/product/${item.productFullInfo?.slug || item.productFullInfo?.id || item.product_id}`" 
                     class="action-btn secondary"
@@ -1631,15 +1666,26 @@ const tabs = computed(() => [
 
             <!-- Coupons Content -->
             <div v-else class="coupons-content">
-              <!-- My Coupons -->
-              <div v-if="myCoupons.length > 0" class="coupons-section">
-                <h3 class="section-title">{{ t('account.coupons.my_coupons') }}</h3>
-                <div class="coupons-grid">
-                  <div v-for="coupon in myCoupons" :key="coupon.id" class="coupon-card my-coupon">
-                    <div class="coupon-header">
+            <!-- My Coupons -->
+            <div v-if="myCoupons.length > 0" class="coupons-section">
+              <h3 class="section-title">{{ t('account.coupons.my_coupons') }}</h3>
+              <div class="coupons-grid">
+                <div v-for="coupon in myCoupons" :key="coupon.id" class="coupon-card my-coupon">
+                  <div class="coupon-header">
+                    <div class="coupon-code-wrapper">
                       <div class="coupon-code">{{ coupon.code }}</div>
-                      <div class="coupon-type">{{ getCouponTypeName(coupon.coupon_type) }}</div>
+                      <button 
+                        class="copy-coupon-btn" 
+                        @click="copyCouponCode(coupon.code)"
+                        :title="t('account.coupons.copy') || 'نسخ الكوبون'"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                        </svg>
+                      </button>
                     </div>
+                    <div class="coupon-type">{{ getCouponTypeName(coupon.coupon_type) }}</div>
+                  </div>
                     
                     <div class="coupon-details">
                       <div class="coupon-discount">
@@ -1683,7 +1729,18 @@ const tabs = computed(() => [
                 <div class="coupons-grid">
                   <div v-for="coupon in availableCoupons" :key="coupon.id" class="coupon-card available-coupon">
                     <div class="coupon-header">
-                      <div class="coupon-code">{{ coupon.code }}</div>
+                      <div class="coupon-code-wrapper">
+                        <div class="coupon-code">{{ coupon.code }}</div>
+                        <button 
+                          class="copy-coupon-btn" 
+                          @click="copyCouponCode(coupon.code)"
+                          :title="t('account.coupons.copy') || 'نسخ الكوبون'"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                          </svg>
+                        </button>
+                      </div>
                       <div class="coupon-type">{{ getCouponTypeName(coupon.coupon_type) }}</div>
                     </div>
                     
@@ -1708,16 +1765,6 @@ const tabs = computed(() => [
                           {{ t('account.coupons.max_discount') }}: {{ formatCurrency(coupon.max_discount) }}
                         </p>
                       </div>
-                    </div>
-
-                    <div class="coupon-footer">
-                      <div class="coupon-expiry">
-                        <span class="expiry-label">{{ t('account.coupons.expires_at') }}:</span>
-                        <span class="expiry-date">{{ formatDate(coupon.expire_date) }}</span>
-                      </div>
-                      <button class="apply-btn" @click="applyCoupon(coupon.code)">
-                        {{ t('account.coupons.apply') }}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -2841,8 +2888,8 @@ const tabs = computed(() => [
   }
 
   .item-image {
-    width: 60px;
-    height: 60px;
+    width: 150px;
+    height: auto;
     border-radius: 8px;
     overflow: hidden;
     background: #f3f4f6;
@@ -4000,6 +4047,14 @@ const tabs = computed(() => [
     border-radius: 1px;
   }
 
+  .coupon-code-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    flex: 1;
+  }
+
   .coupon-code {
     font-size: 20px;
     font-weight: 800;
@@ -4011,6 +4066,36 @@ const tabs = computed(() => [
     border-radius: 10px;
     border: 2px solid #e2e8f0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex: 1;
+  }
+
+  .copy-coupon-btn {
+    background: #f58040;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .copy-coupon-btn:hover {
+    background: #e67030;
+    transform: scale(1.05);
+  }
+
+  .copy-coupon-btn:active {
+    transform: scale(0.95);
+  }
+
+  .copy-coupon-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .coupon-type {
@@ -4824,8 +4909,8 @@ const tabs = computed(() => [
   }
 
   .item-image {
-    width: 60px;
-    height: 60px;
+    width: 150px;
+    height: auto;
     border-radius: 8px;
     overflow: hidden;
     background: #f3f4f6;
@@ -5108,6 +5193,69 @@ const tabs = computed(() => [
     .item-image {
       width: 80px;
       height: 80px;
+    }
+  }
+
+  /* Toast Message Styles */
+  .toast-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .toast-message.success {
+    background: #10b981;
+    color: white;
+  }
+
+  .toast-message.error {
+    background: #ef4444;
+    color: white;
+  }
+
+  .toast-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 250px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .toast-content svg {
+    flex-shrink: 0;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  [dir="rtl"] .toast-message {
+    right: auto;
+    left: 20px;
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
     }
   }
 

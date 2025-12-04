@@ -12,6 +12,7 @@ import { Navigation, Thumbs } from 'swiper/modules'
 import { useWishlist } from '../../composables/useWishlist'
 import { useCart } from '../../composables/useCart'
 import { useCompare } from '../../composables/useCompare'
+import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
 
 // Register Swiper components globally for this component
 const SwiperComponent = Swiper
@@ -1050,10 +1051,16 @@ const auth = useAuth()
 const { t } = useI18n()
 const { $get, $post, $del } = useApi()
 
-// Login form
-const loginForm = ref({ email: '', password: '' })
-const loginLoading = ref(false)
-const loginError = ref('')
+// Login form - OTP Login
+const taqnyatAuth = useTaqnyatAuth()
+const otpForm = ref({
+  phone: '',
+  otp: ''
+})
+const otpSent = ref(false)
+const otpCountdown = ref(0)
+let otpTimer: any = null
+const loginSuccess = ref(false)
 
 
 // Review form
@@ -2856,60 +2863,89 @@ const addToCart = async () => {
     busy.value = false
   }
 }
-// Login functions
-async function handleLogin() {
-  if (!loginForm.value.email || !loginForm.value.password) {
-    loginError.value = t('login.required_fields') || 'جميع الحقول مطلوبة'
+// OTP Login Functions
+async function handleRequestOtp() {
+  if (!otpForm.value.phone || otpForm.value.phone.trim() === '') {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
     return
   }
-  
-  loginLoading.value = true
-  loginError.value = ''
-  
-  try {
-    const response = await $post('v1/auth/login', {
-      email_or_phone: loginForm.value.email,
-      password: loginForm.value.password,
-      type: 'email'
-    })
-    
-    // Handle different response formats
-    if (response?.access_token) {
-      auth.setToken(response.access_token)
-      // Try to get user info
-      try {
-        const userInfo = await $get('v1/customer/info')
-        if (userInfo) auth.setUser(userInfo)
-      } catch (e) {
-        // If user info fails, still set token
-        auth.setUser(response.user || response.data)
+
+  const success = await taqnyatAuth.requestOtp(otpForm.value.phone)
+  if (success) {
+    otpSent.value = true
+    // Start countdown (60 seconds)
+    otpCountdown.value = 60
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
       }
-      showLoginModal.value = false
-      loginForm.value = { email: '', password: '' }
-    } else if (response?.token) {
-      auth.setToken(response.token)
-      auth.setUser(response.user || response.data)
-      showLoginModal.value = false
-      loginForm.value = { email: '', password: '' }
+    }, 1000)
+  }
+}
+
+async function handleOtpLogin() {
+  if (!otpForm.value.phone || !otpForm.value.otp) {
+    taqnyatAuth.error.value = t('taqnyat.otp_required') || 'رمز التحقق مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.verifyOtp(otpForm.value.phone, otpForm.value.otp)
+  if (success) {
+    showLoginModal.value = false
+    otpForm.value = { phone: '', otp: '' }
+    otpSent.value = false
+    otpCountdown.value = 0
+    if (otpTimer) {
+      clearInterval(otpTimer)
+      otpTimer = null
     }
-  } catch (error: any) {
-    console.error('Login error:', error)
-    // Handle validation errors
-    if (error?.data?.errors && Array.isArray(error.data.errors)) {
-      const errorMessages = error.data.errors.map((err: any) => err.message).join(', ')
-      loginError.value = errorMessages
-    } else {
-      loginError.value = error?.data?.message || t('login.error') || 'خطأ في تسجيل الدخول'
+    // Show success message
+    loginSuccess.value = true
+    // Reload reviews after successful login
+    await loadReviews()
+    setTimeout(() => {
+      loginSuccess.value = false
+    }, 2000)
+  }
+}
+
+async function handleResendOtp() {
+  if (!otpForm.value.phone) {
+    taqnyatAuth.error.value = t('taqnyat.phone_required') || 'رقم الهاتف مطلوب'
+    return
+  }
+
+  const success = await taqnyatAuth.resendOtp(otpForm.value.phone)
+  if (success) {
+    // Reset countdown
+    otpCountdown.value = 60
+    if (otpTimer) {
+      clearInterval(otpTimer)
     }
-  } finally {
-    loginLoading.value = false
+    otpTimer = setInterval(() => {
+      otpCountdown.value--
+      if (otpCountdown.value <= 0) {
+        clearInterval(otpTimer)
+        otpTimer = null
+      }
+    }, 1000)
   }
 }
 
 function openLoginModal() {
   showLoginModal.value = true
-  loginError.value = ''
-  loginForm.value = { email: '', password: '' }
+  loginSuccess.value = false
+  // Reset OTP form
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
+  taqnyatAuth.clearMessages()
 }
 
 // Wishlist functions
@@ -2929,6 +2965,15 @@ async function checkWishlistStatus() {
 async function toggleWishlist() {
   if (!auth?.user?.value) {
     showLoginModal.value = true
+    // Reset OTP form when opening modal
+    otpForm.value = { phone: '', otp: '' }
+    otpSent.value = false
+    otpCountdown.value = 0
+    if (otpTimer) {
+      clearInterval(otpTimer)
+      otpTimer = null
+    }
+    taqnyatAuth.clearMessages()
     return
   }
   
@@ -3003,8 +3048,16 @@ async function toggleCompare() {
 
 function closeLoginModal() {
   showLoginModal.value = false
-  loginError.value = ''
-  loginForm.value = { email: '', password: '' }
+  loginSuccess.value = false
+  // Reset OTP form
+  otpForm.value = { phone: '', otp: '' }
+  otpSent.value = false
+  otpCountdown.value = 0
+  if (otpTimer) {
+    clearInterval(otpTimer)
+    otpTimer = null
+  }
+  taqnyatAuth.clearMessages()
 }
 // Load reviews
 const loadReviews = async () => {
@@ -3394,6 +3447,53 @@ const getProductCategories = (product: any): Array<{ id: number | string; name: 
   return []
 }
 
+// Get primary category for breadcrumb (first category or category from product data)
+const productCategory = computed(() => {
+  if (!product.value) return null
+  
+  // Try category_ids first (array of categories)
+  const categoryIds = product.value?.category_ids || product.value?.product?.category_ids
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    const firstCategory = categoryIds[0]
+    if (firstCategory && (firstCategory.name || firstCategory.id)) {
+      return {
+        id: firstCategory.id || firstCategory.category_id || '',
+        name: firstCategory.name || firstCategory.category_name || firstCategory.title || '',
+        slug: firstCategory.slug || ''
+      }
+    }
+  }
+  
+  // Try to get category from product data
+  const categories = getProductCategories(product.value)
+  if (categories.length > 0) {
+    return categories[0] // Return first category
+  }
+  
+  // Fallback to category fields
+  const cat = product.value?.category || product.value?.product?.category
+  if (cat) {
+    if (typeof cat === 'object') {
+      return {
+        id: cat.id || cat.category_id || '',
+        name: cat.name || cat.category_name || cat.title || '',
+        slug: cat.slug || ''
+      }
+    }
+  }
+  
+  // Try category_id and category_name
+  if (product.value?.category_id && product.value?.category_name) {
+    return {
+      id: product.value.category_id,
+      name: product.value.category_name,
+      slug: product.value.category_slug || ''
+    }
+  }
+  
+  return null
+})
+
 const getProductLink = (product: any): string => {
   if (!product) return '#'
   const slug = product?.slug || product?.product?.slug
@@ -3556,6 +3656,10 @@ const handleProductDetails = () => {
     <div class="crumbs">
       <NuxtLink to="/">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
+      <template v-if="productCategory">
+        <NuxtLink :to="`/shop?category=${productCategory.id}`">{{ productCategory.name }}</NuxtLink>
+        <span>/</span>
+      </template>
       <NuxtLink to="/shop">{{ t('product.shop') }}</NuxtLink>
       <span>/</span>
       <b>{{ title }}</b>
@@ -3624,12 +3728,12 @@ const handleProductDetails = () => {
               :loop="false"
               :watch-slides-progress="true"
               @swiper="setThumbnailSwiper"
-              class="mySwiper"
-            >
+              class="mySwiper">
+              
               <SwiperSlideComponent v-for="(img, i) in images" :key="`thumb-${i}-${img}`">
                 <div class="thumbnail-image-wrapper">
                   <img :src="img" :alt="`${title} - ${i + 1}`" @error="onImgErr" />
-        </div>
+                </div>
               </SwiperSlideComponent>
             </SwiperComponent>
           </div>
@@ -4232,44 +4336,81 @@ const handleProductDetails = () => {
             </button>
           </div>
           
-          <form @submit.prevent="handleLogin" class="login-form">
+          <!-- OTP Login -->
+          <form @submit.prevent="handleOtpLogin" class="login-form">
             <div class="form-group">
-              <label for="email">{{ t('email') || 'البريد الإلكتروني' }}</label>
+              <label for="phone">{{ t('taqnyat.phone') || 'رقم الهاتف' }}</label>
               <input 
-                id="email"
-                v-model="loginForm.email" 
-                type="email" 
-                :placeholder="t('email') || 'البريد الإلكتروني'"
+                id="phone"
+                v-model="otpForm.phone" 
+                type="tel" 
+                :placeholder="t('taqnyat.phone_placeholder') || '05xxxxxxxx'"
                 required
-                :disabled="loginLoading"
+                :disabled="taqnyatAuth.requestingOtp.value || taqnyatAuth.verifyingOtp.value || otpSent"
               />
             </div>
             
-            <div class="form-group">
-              <label for="password">{{ t('password') || 'كلمة المرور' }}</label>
+            <div v-if="otpSent" class="form-group">
+              <label for="otp">{{ t('taqnyat.otp_code') || 'رمز التحقق' }}</label>
               <input 
-                id="password"
-                v-model="loginForm.password" 
-                type="password" 
-                :placeholder="t('password') || 'كلمة المرور'"
+                id="otp"
+                v-model="otpForm.otp" 
+                type="text" 
+                :placeholder="t('taqnyat.otp_placeholder') || 'أدخل رمز التحقق'"
                 required
-                :disabled="loginLoading"
+                maxlength="6"
+                :disabled="taqnyatAuth.verifyingOtp.value"
               />
             </div>
             
-            <div v-if="loginError" class="error-message">
-              {{ loginError }}
+            <div v-if="taqnyatAuth.error.value" class="error-message">
+              {{ taqnyatAuth.error.value }}
             </div>
             
-            <button type="submit" class="login-btn" :disabled="loginLoading">
-              <span v-if="loginLoading">{{ t('loading') || 'جاري التحميل...' }}</span>
-              <span v-else>{{ t('login') || 'تسجيل الدخول' }}</span>
-            </button>
+            <div v-if="taqnyatAuth.success.value" class="success-message">
+              <svg width="16" height="16" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+              {{ taqnyatAuth.success.value }}
+            </div>
+            
+            <div v-if="!otpSent">
+              <button 
+                type="button" 
+                class="login-btn" 
+                style="width: 100%;" 
+                :disabled="taqnyatAuth.requestingOtp.value || !otpForm.phone"
+                @click="handleRequestOtp"
+              >
+                <span v-if="taqnyatAuth.requestingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else>{{ t('taqnyat.send_otp') || 'إرسال رمز التحقق' }}</span>
+              </button>
+            </div>
+
+            <div v-else>
+              <button 
+                type="submit" 
+                class="login-btn" 
+                style="width: 100%;margin-bottom: 10px;" 
+                :disabled="taqnyatAuth.verifyingOtp.value || !otpForm.otp"
+              >
+                <span v-if="taqnyatAuth.verifyingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else>{{ t('taqnyat.verify') || 'التحقق وتسجيل الدخول' }}</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="resend-btn" 
+                style="width: 100%;background: transparent;color: #232323;padding: 10px;border-radius: 10px;border: 1px solid #232323;" 
+                :disabled="taqnyatAuth.resendingOtp.value || otpCountdown > 0"
+                @click="handleResendOtp"
+              >
+                <span v-if="taqnyatAuth.resendingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
+                <span v-else-if="otpCountdown > 0">{{ t('taqnyat.resend_in') || 'إعادة الإرسال خلال' }} {{ otpCountdown }} {{ t('taqnyat.seconds') || 'ثانية' }}</span>
+                <span v-else>{{ t('taqnyat.resend_otp') || 'إعادة إرسال رمز التحقق' }}</span>
+              </button>
+            </div>
           </form>
-          
-          <div class="login-footer">
-            <p>ليس لديك حساب؟ <a href="#" @click.prevent="handleRegister">إنشاء حساب جديد</a></p>
-          </div>
         </div>
       </div>
     </teleport>
@@ -4502,7 +4643,6 @@ const handleProductDetails = () => {
                     <picture>
                       <img class="cover-image-class" :src="modalProductBrand.image" :alt="modalProductBrand.name" @error="(e: any) => { e.target.src = '/images/Group 1171274840.png' }">
                     </picture>
-                    <span class="brand-name">{{ modalProductBrand.name }}</span>
                   </NuxtLink>
                 </div>
                 <h5 class="price final mt-3">
@@ -5979,6 +6119,7 @@ const handleProductDetails = () => {
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
+    background: #232323;
     cursor: pointer;
     transition: background-color 0.2s ease;
   }

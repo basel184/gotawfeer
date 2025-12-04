@@ -8,7 +8,6 @@ import { useCompare } from '../composables/useCompare'
 
 const { locale, t } = useI18n()
 
-
 const props = defineProps<{ product: any; qty?: number; busy?: boolean }>()
 const emit = defineEmits<{
   (e: 'add', product: any): void;
@@ -799,14 +798,32 @@ const colorToHex = (color: string): string => {
 const productColors = computed(() => {
   const p: any = props.product || {}
   
+  // Helper function to normalize image path
+  const normalizeImage = (imagePath: string | null | undefined): string => {
+    if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) return ''
+    const trimmed = String(imagePath).trim()
+    // If it's already a full URL, return as is
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+      return trimmed
+    }
+    // Otherwise normalize it
+    const normalized = normalize(trimmed)
+    if (process.client && normalized) {
+      console.log('[ProductCard] normalizeImage:', { original: imagePath, normalized })
+    }
+    return normalized
+  }
+  
   // Try to get colors_formatted first
   if (p?.colors_formatted && Array.isArray(p.colors_formatted) && p.colors_formatted.length > 0) {
     return p.colors_formatted.map((color: any) => {
       const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || 'Color',
+        originalName: color.name, // Keep original name to check if it's null
         code: color.code || color.name || '',
-        hex: colorToHex(hex)
+        hex: colorToHex(hex),
+        image: normalizeImage(color.image)
       }
     })
   }
@@ -817,8 +834,10 @@ const productColors = computed(() => {
       const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || 'Color',
+        originalName: color.name, // Keep original name to check if it's null
         code: color.code || color.name || '',
-        hex: colorToHex(hex)
+        hex: colorToHex(hex),
+        image: normalizeImage(color.image)
       }
     })
   }
@@ -829,15 +848,19 @@ const productColors = computed(() => {
       if (typeof color === 'string') {
         return {
           name: `Color ${index + 1}`,
+          originalName: null,
           code: color,
-          hex: colorToHex(color)
+          hex: colorToHex(color),
+          image: ''
         }
       }
       const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || `Color ${index + 1}`,
+        originalName: color.name, // Keep original name to check if it's null
         code: color.code || color.name || color,
-        hex: colorToHex(hex)
+        hex: colorToHex(hex),
+        image: normalizeImage(color.image)
       }
     })
   }
@@ -848,15 +871,19 @@ const productColors = computed(() => {
       if (typeof color === 'string') {
         return {
           name: `Color ${index + 1}`,
+          originalName: '',
           code: color,
-          hex: colorToHex(color)
+          hex: colorToHex(color),
+          image: ''
         }
       }
       const hex = color.hex || color.code || color.name || ''
       return {
         name: color.name || color.code || `Color ${index + 1}`,
+        originalName: color.name, // Keep original name to check if it's null
         code: color.code || color.name || color,
-        hex: colorToHex(hex)
+        hex: colorToHex(hex),
+        image: normalizeImage(color.image)
       }
     })
   }
@@ -872,6 +899,39 @@ const remainingColorsCount = computed(() => {
   const total = productColors.value.length
   return total > 3 ? total - 3 : 0
 })
+
+// Check if product has colors
+const hasColors = computed(() => {
+  return productColors.value.length > 0
+})
+
+// Check if product has variations
+const hasVariations = computed(() => {
+  const p: any = props.product || {}
+  // Check choice_options
+  if (p?.choice_options && Array.isArray(p.choice_options) && p.choice_options.length > 0) {
+    return true
+  }
+  // Check variation array
+  if (p?.variation && Array.isArray(p.variation) && p.variation.length > 0) {
+    return true
+  }
+  // Check nested product.choice_options
+  if (p?.product?.choice_options && Array.isArray(p.product.choice_options) && p.product.choice_options.length > 0) {
+    return true
+  }
+  // Check nested product.variation
+  if (p?.product?.variation && Array.isArray(p.product.variation) && p.product.variation.length > 0) {
+    return true
+  }
+  return false
+})
+
+// Check if product has options (colors or variations)
+const hasProductOptions = computed(() => {
+  return hasColors.value || hasVariations.value
+})
+
 // Cart controls with quantity
 const qty = computed(() => {
   // Use cart.qtyOf if available, otherwise fall back to props.qty
@@ -905,6 +965,15 @@ const openCartDropdown = () => {
 const handleAdd = async (e: Event) => {
   e.preventDefault(); e.stopPropagation()
   if (isBusy.value) return
+  
+  // If product has colors or variations, navigate to product page instead
+  if (hasProductOptions.value) {
+    const productLink = link.value
+    if (productLink && productLink !== '#') {
+      navigateTo(productLink)
+    }
+    return
+  }
   
   try {
     isAddingToCart.value = true
@@ -1214,14 +1283,25 @@ const openProductModal = async (e: Event) => {
 
       </div>
       <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center">
+        
         <div 
           v-for="(color, index) in visibleColors" 
           :key="`color-${index}-${color.hex || color.code || index}`"
           class="color-pallete"
-          :style="{ 
-            backgroundColor: '#' + color.hex || color.code,
-            borderColor: '#' + color.hex && '#' + color.hex !== '#FFFFFF' && '#' + color.hex !== '#ffffff' ? 'rgba(0,0,0,0.1)' : '#e5e7eb'
-          }"
+          :class="{ 'has-image': color.image && !color.originalName }"
+          :style="(color.image) 
+            ? { 
+                backgroundImage: `url(${color.image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundColor: '#' + (color.hex || color.code),
+                borderColor: '#e5e7eb'
+              }
+            : { 
+                backgroundColor: '#' + (color.hex || color.code),
+                borderColor: '#' + color.hex && '#' + color.hex !== '#FFFFFF' && '#' + color.hex !== '#ffffff' ? 'rgba(0,0,0,0.1)' : '#e5e7eb'
+              }"
           :title="color.name || color.code || `Color ${index + 1}`"
         >
       </div>
@@ -1734,6 +1814,12 @@ img {
     display: inline-block;
     position: relative;
     overflow: hidden;
+  }
+
+  .color-pallete.has-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   .color-pallete:hover {

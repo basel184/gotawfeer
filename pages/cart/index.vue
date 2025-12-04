@@ -442,6 +442,27 @@ const grandTotal = computed(() => {
   console.log('grandTotal calculation:', total)
   return total
 })
+
+// Check if checkout is allowed (minimum 50 SAR)
+const canCheckout = computed(() => grandTotal.value > 49)
+
+// Minimum order message with remaining amount
+const minimumOrderMessage = computed(() => {
+  const remaining = 50 - grandTotal.value
+  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 50 ريال. المتبقي:'} ${money(remaining)}`
+})
+
+// Handle checkout click
+const handleCheckoutClick = (e: Event) => {
+  if (!canCheckout.value) {
+    e.preventDefault()
+    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 50 ريال')
+    return false
+  }
+  // Allow navigation if amount is sufficient
+  return true
+}
+
 // booleans for template conditions to avoid ref-vs-number TS issues
 const hasTaxExcluded = computed(() => taxExcluded.value > 0)
 const hasTaxIncluded = computed(() => taxIncluded.value > 0)
@@ -832,7 +853,18 @@ function hasDiscount(it: any): boolean {
         </div>
             
             <div class="checkout-actions">
-              <NuxtLink to="/checkout" class="checkout-btn">
+              <div v-if="!canCheckout" class="minimum-order-message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                {{ minimumOrderMessage }}
+              </div>
+              <NuxtLink 
+                to="/checkout" 
+                class="checkout-btn"
+                :class="{ 'disabled': grandTotal <= 49 }"
+                @click.prevent="handleCheckoutClick"
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M20 8H4V6h16v2m-7-4H9V2H7v2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3V2h-2v2m-7 8h2v2h-2v-2m4 0h2v2h-2v-2m4 0h2v2h-2v-2m-8 4h2v2h-2v-2m4 0h2v2h-2v-2m4 0h2v2h-2v-2Z"/>
                 </svg>
@@ -1631,9 +1663,34 @@ function hasDiscount(it: any): boolean {
   transition: left 0.5s ease;
 }
 
-.checkout-btn:hover {
+.checkout-btn:hover:not(.disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 15px -3px rgba(5, 150, 105, 0.4);
+}
+
+.checkout-btn.disabled {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.minimum-order-message {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.minimum-order-message svg {
+  flex-shrink: 0;
 }
 
 .checkout-btn:hover::before {

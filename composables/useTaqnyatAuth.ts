@@ -39,7 +39,18 @@ export function useTaqnyatAuth() {
       return false
     } catch (err: any) {
       console.error('Request OTP error:', err)
-      error.value = err?.data?.message || err?.message || t('taqnyat.request_failed') || 'فشل في إرسال رمز التحقق'
+      // Handle nested data structure: err.data.data.message or err.data.message
+      let errorMessage = ''
+      if (err?.data?.data?.message) {
+        errorMessage = err.data.data.message
+      } else if (err?.data?.message) {
+        errorMessage = err.data.message
+      } else if (err?.message) {
+        errorMessage = err.message
+      } else {
+        errorMessage = t('taqnyat.request_failed') || 'فشل في إرسال رمز التحقق'
+      }
+      error.value = errorMessage
       return false
     } finally {
       requestingOtp.value = false
@@ -116,7 +127,18 @@ export function useTaqnyatAuth() {
         const errorMessages = err.data.errors.map((e: any) => e.message).join(', ')
         error.value = errorMessages
       } else {
-        error.value = err?.data?.message || err?.message || t('taqnyat.verify_failed') || 'فشل في التحقق من رمز التحقق'
+        // Handle nested data structure: err.data.data.message or err.data.message
+        let errorMessage = ''
+        if (err?.data?.data?.message) {
+          errorMessage = err.data.data.message
+        } else if (err?.data?.message) {
+          errorMessage = err.data.message
+        } else if (err?.message) {
+          errorMessage = err.message
+        } else {
+          errorMessage = t('taqnyat.verify_failed') || 'فشل في التحقق من رمز التحقق'
+        }
+        error.value = errorMessage
       }
       return false
     } finally {
@@ -152,7 +174,18 @@ export function useTaqnyatAuth() {
       return false
     } catch (err: any) {
       console.error('Resend OTP error:', err)
-      error.value = err?.data?.message || err?.message || t('taqnyat.resend_failed') || 'فشل في إعادة إرسال رمز التحقق'
+      // Handle nested data structure: err.data.data.message or err.data.message
+      let errorMessage = ''
+      if (err?.data?.data?.message) {
+        errorMessage = err.data.data.message
+      } else if (err?.data?.message) {
+        errorMessage = err.data.message
+      } else if (err?.message) {
+        errorMessage = err.message
+      } else {
+        errorMessage = t('taqnyat.resend_failed') || 'فشل في إعادة إرسال رمز التحقق'
+      }
+      error.value = errorMessage
       return false
     } finally {
       resendingOtp.value = false
