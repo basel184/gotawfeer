@@ -260,14 +260,14 @@
         "discounts": "خصومات",
         "best_sellers": "الأكثر مبيعًا"
       },
-             "company": {
-               "title": "جو توفير",
-               "about": "من جو توفير",
-               "blog": "المدونة",
-               "privacy_policy": "سياسة الخصوصية",
-               "intellectual_property": "الحقوق الملكية الفكرية",
-               "shipping_return_policy": "سياسة الشحن والإرجاع"
-             },
+      "company": {
+        "title": "جو توفير",
+        "about": "من جو توفير",
+        "blog": "المدونة",
+        "privacy_policy": "سياسة الخصوصية",
+        "intellectual_property": "الحقوق الملكية الفكرية",
+        "shipping_return_policy": "سياسة الشحن والإرجاع"
+      },
       "account": {
         "title": "الحساب",
         "my_account": "حسابي",
