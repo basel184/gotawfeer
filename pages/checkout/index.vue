@@ -111,7 +111,7 @@ const paymentMethods = computed(() => {
   const methods = [
     { id: 'tabby', name: localeTranslations.tabby, icon: '💳', available: true },
     { id: 'tamara', name: localeTranslations.tamara, icon: '🛒', available: true },
-    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '💳', available: true, integration_id: 9985 },
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '💳', available: true, integration_id: 9668	 },
     { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: '🍎', available: true, integration_id: 9984 }
   ]
   
