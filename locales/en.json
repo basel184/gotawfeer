@@ -160,6 +160,20 @@
     "card": "Credit Card",
     "bank_transfer": "Bank Transfer"
   },
+  "checkout.success": {
+    "title": "Order Placed Successfully!",
+    "message": "Thank you for your order. Your order details have been sent to your email.",
+    "order_id": "Order ID",
+    "payment_method": "Payment Method",
+    "view_orders": "View My Orders",
+    "continue_shopping": "Continue Shopping"
+  },
+  "tamara": {
+    "success": {
+      "title": "Payment Successful with Tamara",
+      "message": "The amount will be deducted in installments according to the selected plan"
+    }
+  },
   "checkout.errors": {
     "load_addresses": "Error loading addresses. Please make sure you're logged in.",
     "invalid_coupon": "Invalid coupon code",

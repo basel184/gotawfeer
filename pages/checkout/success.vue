@@ -1,5 +1,5 @@
 <template>
-  <main class="checkout-success-page" dir="rtl">
+  <main class="checkout-success-page" :dir="dir">
     <div class="container">
       <div class="success-content">
         <div class="success-icon">
@@ -13,10 +13,22 @@
           {{ t('checkout.success.message') || 'شكراً لك على طلبك. تم إرسال تفاصيل الطلب إلى بريدك الإلكتروني.' }}
         </p>
 
-        <div v-if="orderId" class="order-info">
+        <div v-if="loading" class="loading-message">
+          <p>جاري معالجة الطلب...</p>
+        </div>
+
+        <div v-if="error" class="error-message">
+          <p>{{ error }}</p>
+        </div>
+
+        <div v-if="orderIds && orderIds.length > 0" class="order-info">
           <div class="info-item">
-            <span class="label">{{ t('checkout.success.order_id') || 'رقم الطلب' }}</span>
-            <span class="value">#{{ orderId }}</span>
+            <span class="label">{{ t('checkout.success.order_id') || 'أرقام الطلبات' }}</span>
+            <span class="value">
+              <span v-for="(orderId, index) in orderIds" :key="orderId">
+                #{{ orderId }}<span v-if="index < orderIds.length - 1">, </span>
+              </span>
+            </span>
           </div>
           <div v-if="paymentMethod" class="info-item">
             <span class="label">{{ t('checkout.success.payment_method') || 'طريقة الدفع' }}</span>
@@ -24,15 +36,22 @@
           </div>
         </div>
 
+        <div v-else-if="!loading && !error" class="order-info">
+          <div class="info-item">
+            <span class="label">{{ t('checkout.success.order_id') || 'رقم الطلب' }}</span>
+            <span class="value">#{{ orderId || 'قيد المعالجة' }}</span>
+          </div>
+        </div>
+
         <div class="success-actions">
-          <NuxtLink to="/account/orders" class="view-orders-btn">
+          <NuxtLink :to="getLocalizedPath('/account/orders')" class="view-orders-btn">
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
             </svg>
             {{ t('checkout.success.view_orders') || 'عرض طلباتي' }}
           </NuxtLink>
           
-          <NuxtLink to="/" class="continue-shopping-btn">
+          <NuxtLink :to="getLocalizedPath('/')" class="continue-shopping-btn">
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a1 1 0 0 0-1 1v11a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a1 1 0 0 0-1-1zM10 6a2 2 0 0 1 4 0v1h-4V6zm8 13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9h2v1a1 1 0 0 0 2 0V9h4v1a1 1 0 0 0 2 0V9h2v10z"/>
             </svg>
@@ -62,11 +81,37 @@ import { useI18n } from 'vue-i18n'
 
 const { t, locale } = useI18n()
 const route = useRoute()
+const dir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')
+
+// State
+const loading = ref(true)
+const error = ref<string | null>(null)
+const orderId = ref<string | null>(null)
+const orderIds = ref<string[]>([])
+const paymentMethod = ref<string | null>(null)
+
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  const currentLocale = locale.value || 'ar'
+  
+  if (currentLocale === 'en') {
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    return `/en${cleanPath}`
+  }
+  
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
 
 // SEO Configuration
 const seo = useSeo()
 
-// Set SEO for checkout success page
 seo.setSeo({
   title: locale.value === 'ar' ? 'تم إتمام الطلب بنجاح' : 'Order Success',
   description: locale.value === 'ar' 
@@ -76,12 +121,8 @@ seo.setSeo({
     ? 'طلب ناجح، إتمام الطلب، جو توفير'
     : 'order success, checkout, Go Tawfeer',
   image: '/images/go-tawfeer-1-1.webp',
-  noindex: true // Success pages shouldn't be indexed
+  noindex: true
 })
-
-// Get order details from URL params
-const orderId = ref<string | null>(null)
-const paymentMethod = ref<string | null>(null)
 
 // Payment method names
 const paymentMethodNames = {
@@ -90,14 +131,16 @@ const paymentMethodNames = {
     wallet: 'المحفظة الرقمية',
     card: 'بطاقة ائتمان',
     bank_transfer: 'تحويل بنكي',
-    tamara: 'تمارا - ادفع على أقساط'
+    tamara: 'تمارا - ادفع على أقساط',
+    paymob_accept: 'باي موب'
   },
   en: {
     cash_on_delivery: 'Cash on Delivery',
     wallet: 'Digital Wallet',
     card: 'Credit Card',
     bank_transfer: 'Bank Transfer',
-    tamara: 'Tamara - Pay in Installments'
+    tamara: 'Tamara - Pay in Installments',
+    paymob_accept: 'PayMob'
   }
 }
 
@@ -107,10 +150,83 @@ const getPaymentMethodName = (method: string) => {
   return localeTranslations[method as keyof typeof localeTranslations] || method
 }
 
+// Process payment success from Laravel API
+const processPaymentSuccess = async () => {
+  try {
+    loading.value = true
+    error.value = null
+
+    // Get parameters from URL
+    const token = route.query.token as string
+    const merchantOrderId = route.query.merchant_order_id as string
+    const success = route.query.success as string
+    const transactionId = route.query.id as string
+
+    // Extract payment method from token if available
+    if (token) {
+      try {
+        const decodedToken = atob(token)
+        const tokenParams = new URLSearchParams(decodedToken.replace(/&&/g, '&'))
+        paymentMethod.value = tokenParams.get('payment_method') || 'paymob_accept'
+      } catch (e) {
+        paymentMethod.value = 'paymob_accept'
+      }
+    }
+
+    // If success is true, call Laravel API to process payment
+    if (success === 'true' || merchantOrderId || token) {
+      const apiUrl = 'https://gotawfeer.com/project/api/v1/paymob/process-success'
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          token: token,
+          merchant_order_id: merchantOrderId,
+          success: success,
+          id: transactionId,
+          ...route.query
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        if (data.order_ids && data.order_ids.length > 0) {
+          orderIds.value = data.order_ids
+          orderId.value = data.order_ids[0] // Set first order ID for display
+        } else {
+          orderId.value = transactionId || merchantOrderId || 'قيد المعالجة'
+        }
+        
+        console.log('Payment processed successfully:', data)
+      } else {
+        error.value = data.message || 'حدث خطأ أثناء معالجة الدفع'
+        console.error('Payment processing failed:', data)
+      }
+    } else {
+      // If no success parameter, just get order_id from URL
+      orderId.value = route.query.order_id as string || null
+    }
+
+  } catch (err: any) {
+    error.value = 'حدث خطأ أثناء معالجة الطلب. يرجى التحقق من طلباتك.'
+    console.error('Error processing payment:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
-  // Get order ID from URL params
+  // Get order ID from URL params (fallback)
   orderId.value = route.query.order_id as string || null
   paymentMethod.value = route.query.payment_method as string || null
+
+  // Process payment success
+  processPaymentSuccess()
 })
 </script>
 
@@ -192,6 +308,22 @@ h1 {
   line-height: 1.6;
   position: relative;
   z-index: 2;
+}
+
+.loading-message,
+.error-message {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
 }
 
 .order-info {
@@ -359,3 +491,4 @@ h1 {
   }
 }
 </style>
+
