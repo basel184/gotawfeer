@@ -1,5 +1,5 @@
 <template>
-  <main class="checkout-failure-page" dir="rtl">
+  <main class="checkout-failure-page" :dir="dir">
     <div class="container">
       <div class="failure-content">
         <div class="failure-icon">
@@ -12,6 +12,10 @@
         <p class="failure-message">
           {{ t('checkout.failure.message') || 'عذراً، حدث خطأ في معالجة طلبك. يرجى المحاولة مرة أخرى أو التواصل معنا.' }}
         </p>
+
+        <div v-if="error" class="error-message">
+          <p>{{ error }}</p>
+        </div>
 
         <div v-if="paymentMethod" class="payment-info">
           <div class="info-item">
@@ -40,14 +44,14 @@
             {{ t('checkout.failure.retry') || 'إعادة المحاولة' }}
           </button>
           
-          <NuxtLink to="/checkout" class="back-to-checkout-btn">
+          <NuxtLink :to="getLocalizedPath('/checkout')" class="back-to-checkout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
             </svg>
             {{ t('checkout.failure.back_to_checkout') || 'العودة للدفع' }}
           </NuxtLink>
           
-          <NuxtLink to="/" class="continue-shopping-btn">
+          <NuxtLink :to="getLocalizedPath('/')" class="continue-shopping-btn">
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a1 1 0 0 0-1 1v11a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a1 1 0 0 0-1-1zM10 6a2 2 0 0 1 4 0v1h-4V6zm8 13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9h2v1a1 1 0 0 0 2 0V9h4v1a1 1 0 0 0 2 0V9h2v10z"/>
             </svg>
@@ -84,11 +88,34 @@ import { useI18n } from 'vue-i18n'
 
 const { t, locale } = useI18n()
 const route = useRoute()
+const dir = computed(() => locale.value === 'ar' ? 'rtl' : 'ltr')
+
+// State
+const error = ref<string | null>(null)
+const paymentMethod = ref<string | null>(null)
+
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  const currentLocale = locale.value || 'ar'
+  
+  if (currentLocale === 'en') {
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    return `/en${cleanPath}`
+  }
+  
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
 
 // SEO Configuration
 const seo = useSeo()
 
-// Set SEO for checkout failure page
 seo.setSeo({
   title: locale.value === 'ar' ? 'فشل في إتمام الطلب' : 'Order Failed',
   description: locale.value === 'ar' 
@@ -98,11 +125,8 @@ seo.setSeo({
     ? 'فشل الطلب، خطأ، جو توفير'
     : 'order failed, error, Go Tawfeer',
   image: '/images/go-tawfeer-1-1.webp',
-  noindex: true // Failure pages shouldn't be indexed
+  noindex: true
 })
-
-// Get payment method from URL params
-const paymentMethod = ref<string | null>(null)
 
 // Payment method names
 const paymentMethodNames = {
@@ -111,14 +135,18 @@ const paymentMethodNames = {
     wallet: 'المحفظة الرقمية',
     card: 'بطاقة ائتمان',
     bank_transfer: 'تحويل بنكي',
-    tamara: 'تمارا - ادفع على أقساط'
+    tamara: 'تمارا - ادفع على أقساط',
+    paymob_accept: 'باي موب',
+    tabby: 'تابي - ادفع على أقساط'
   },
   en: {
     cash_on_delivery: 'Cash on Delivery',
     wallet: 'Digital Wallet',
     card: 'Credit Card',
     bank_transfer: 'Bank Transfer',
-    tamara: 'Tamara - Pay in Installments'
+    tamara: 'Tamara - Pay in Installments',
+    paymob_accept: 'PayMob',
+    tabby: 'Tabby - Pay in Installments'
   }
 }
 
@@ -130,12 +158,18 @@ const getPaymentMethodName = (method: string) => {
 
 const retryPayment = () => {
   // Go back to checkout page
-  navigateTo('/checkout')
+  navigateTo(getLocalizedPath('/checkout'))
 }
 
 onMounted(() => {
   // Get payment method from URL params
   paymentMethod.value = route.query.payment_method as string || null
+  
+  // Get error message from URL if available
+  const errorMessage = route.query.error as string
+  if (errorMessage) {
+    error.value = decodeURIComponent(errorMessage)
+  }
 })
 </script>
 
@@ -220,6 +254,17 @@ h1 {
   z-index: 2;
 }
 
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 2;
+}
+
 .payment-info {
   background: #f8fafc;
   border-radius: 12px;
@@ -292,11 +337,12 @@ h1 {
 
 .failure-actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  justify-content: center;
   margin-bottom: 40px;
   position: relative;
   z-index: 2;
+  flex-wrap: wrap;
 }
 
 .retry-btn,
@@ -432,6 +478,18 @@ h1 {
   .tamara-error-card {
     flex-direction: column;
     text-align: center;
+  }
+  
+  .failure-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .retry-btn,
+  .back-to-checkout-btn,
+  .continue-shopping-btn {
+    width: 100%;
+    justify-content: center;
   }
   
   .support-actions {

@@ -14,7 +14,7 @@
         </p>
 
         <div v-if="loading" class="loading-message">
-          <p>جاري معالجة الطلب...</p>
+          <p>{{ t('checkout.success.processing') || 'جاري معالجة الطلب...' }}</p>
         </div>
 
         <div v-if="error" class="error-message">
@@ -23,7 +23,7 @@
 
         <div v-if="orderIds && orderIds.length > 0" class="order-info">
           <div class="info-item">
-            <span class="label">{{ t('checkout.success.order_id') || 'أرقام الطلبات' }}</span>
+            <span class="label">{{ t('checkout.success.order_ids') || 'أرقام الطلبات' }}</span>
             <span class="value">
               <span v-for="(orderId, index) in orderIds" :key="orderId">
                 #{{ orderId }}<span v-if="index < orderIds.length - 1">, </span>
@@ -39,7 +39,7 @@
         <div v-else-if="!loading && !error" class="order-info">
           <div class="info-item">
             <span class="label">{{ t('checkout.success.order_id') || 'رقم الطلب' }}</span>
-            <span class="value">#{{ orderId || 'قيد المعالجة' }}</span>
+            <span class="value">#{{ orderId || t('checkout.success.processing_status') || 'قيد المعالجة' }}</span>
           </div>
         </div>
 
@@ -199,12 +199,12 @@ const processPaymentSuccess = async () => {
           orderIds.value = data.order_ids
           orderId.value = data.order_ids[0] // Set first order ID for display
         } else {
-          orderId.value = transactionId || merchantOrderId || 'قيد المعالجة'
+          orderId.value = transactionId || merchantOrderId || t('checkout.success.processing_status') || 'قيد المعالجة'
         }
         
         console.log('Payment processed successfully:', data)
       } else {
-        error.value = data.message || 'حدث خطأ أثناء معالجة الدفع'
+        error.value = data.message || t('checkout.success.payment_error') || 'حدث خطأ أثناء معالجة الدفع'
         console.error('Payment processing failed:', data)
       }
     } else {
@@ -213,7 +213,7 @@ const processPaymentSuccess = async () => {
     }
 
   } catch (err: any) {
-    error.value = 'حدث خطأ أثناء معالجة الطلب. يرجى التحقق من طلباتك.'
+    error.value = t('checkout.success.order_error') || 'حدث خطأ أثناء معالجة الطلب. يرجى التحقق من طلباتك.'
     console.error('Error processing payment:', err)
   } finally {
     loading.value = false
@@ -223,9 +223,33 @@ const processPaymentSuccess = async () => {
 onMounted(() => {
   // Get order ID from URL params (fallback)
   orderId.value = route.query.order_id as string || null
-  paymentMethod.value = route.query.payment_method as string || null
+  paymentMethod.value = route.query.payment_method as string || 'tabby'
+  
+  // Get order_ids from URL if available (for Tabby)
+  const orderIdsParam = route.query.order_ids as string
+  if (orderIdsParam) {
+    try {
+      orderIds.value = JSON.parse(decodeURIComponent(orderIdsParam))
+      if (orderIds.value && orderIds.value.length > 0) {
+        orderId.value = orderIds.value[0]
+        loading.value = false
+        return
+      }
+    } catch (e) {
+      console.error('Error parsing order_ids:', e)
+    }
+  }
+  
+  // Get payment_id for Tabby
+  const paymentId = route.query.payment_id as string
+  if (paymentId && paymentMethod.value === 'tabby') {
+    // For Tabby, we can show the payment_id as order_id if no order_ids yet
+    orderId.value = paymentId
+    loading.value = false
+    return
+  }
 
-  // Process payment success
+  // Process payment success (for other payment methods)
   processPaymentSuccess()
 })
 </script>

@@ -164,14 +164,33 @@
     "title": "Order Placed Successfully!",
     "message": "Thank you for your order. Your order details have been sent to your email.",
     "order_id": "Order ID",
+    "order_ids": "Order IDs",
     "payment_method": "Payment Method",
     "view_orders": "View My Orders",
-    "continue_shopping": "Continue Shopping"
+    "continue_shopping": "Continue Shopping",
+    "processing": "Processing order...",
+    "processing_status": "Processing",
+    "payment_error": "An error occurred while processing payment",
+    "order_error": "An error occurred while processing the order. Please check your orders."
+  },
+  "checkout.failure": {
+    "title": "Order Failed",
+    "message": "Sorry, an error occurred while processing your order. Please try again or contact us.",
+    "payment_method": "Payment Method",
+    "retry": "Retry",
+    "back_to_checkout": "Back to Checkout",
+    "continue_shopping": "Continue Shopping",
+    "need_help": "Need Help?",
+    "contact_support": "Contact our support team"
   },
   "tamara": {
     "success": {
       "title": "Payment Successful with Tamara",
       "message": "The amount will be deducted in installments according to the selected plan"
+    },
+    "failure": {
+      "title": "Payment Failed with Tamara",
+      "message": "Payment with Tamara was not completed. Please try again or choose another payment method."
     }
   },
   "checkout.errors": {
