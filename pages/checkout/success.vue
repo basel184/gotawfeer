@@ -10,7 +10,7 @@
         
         <h1>{{ t('checkout.success.title') || 'تم إتمام الطلب بنجاح!' }}</h1>
         <p class="success-message">
-          {{ t('checkout.success.message') || 'شكراً لك على طلبك. تم إرسال تفاصيل الطلب إلى بريدك الإلكتروني.' }}
+          {{ t('checkout.success.message') || 'شكراً لك على طلبك. تم إرسال تفاصيل الطلب إلى رقم هاتفك.' }}
         </p>
 
         <div v-if="loading" class="loading-message">
