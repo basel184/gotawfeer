@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
   if (!s || !s.trim()) {
     if (process.client) console.warn('[ProductCard] fixPath: empty input')

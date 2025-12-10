@@ -11,7 +11,7 @@ export function useApi() {
   
   // ALWAYS use relative path to route through server proxy (prevents CORS)
   // This ensures all API requests go through same-origin Nuxt server
-  if (!base || base.startsWith('http') || base === 'https://gotawfeer.com/project/api') {
+  if (!base || base.startsWith('http') || base === 'https://admin.gotawfeer.com/api') {
     // Force relative path to use Nuxt server proxy
     base = '/api'
   }

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   
   // Ensure path starts with /
   const cleanPath = path.startsWith('/') ? path : '/' + path
-  const targetBase = 'https://gotawfeer.com/project/api'
+  const targetBase = 'https://admin.gotawfeer.com/api'
   const targetUrl = targetBase + cleanPath
   
   // Set CORS headers

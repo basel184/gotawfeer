@@ -435,7 +435,7 @@ const normalizeImagePath = (imagePath: string | null | undefined): string => {
   }
   // Otherwise build full URL
   const cfg = useRuntimeConfig() as any
-  const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
   const fixedPath = trimmed.replace(/^public\//, '').replace(/^storage\/app\/public\//, '').replace(/^storage\//, '')
   return `${assetBase}/storage/app/public/${fixedPath}`
 }
@@ -444,7 +444,7 @@ const normalizeImagePath = (imagePath: string | null | undefined): string => {
 const getProductColors = (product: any): any[] => {
   if (!product) return []
   const cfg = useRuntimeConfig() as any
-  const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
   
   // Try colors_formatted first
   if (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) {
@@ -781,7 +781,7 @@ const hasSectionItems = computed(() => Array.isArray((sectionItems as any).value
 
 // Minimal image helpers for side banners
 const cfg2 = useRuntimeConfig() as any
-const assetBase = (cfg2?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg2?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
 // Prefer Laravel web host for server-rendered pages (collections). Fallbacks handle dev (3000->8000)
 const webBase = computed(() => {
   let base = assetBase || ''
@@ -1116,6 +1116,8 @@ const onImgErr = (e: any) => {
                   </div>
                 </div>
               </div>
+
+             
               <!-- Normal layout for other sections -->
               <ProductGrid v-else :products="s.products" />
             </template>

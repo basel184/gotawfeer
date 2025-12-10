@@ -175,7 +175,7 @@ const processPaymentSuccess = async () => {
 
     // If success is true, call Laravel API to process payment
     if (success === 'true' || merchantOrderId || token) {
-      const apiUrl = 'https://gotawfeer.com/project/api/v1/paymob/process-success'
+      const apiUrl = 'https://admin.gotawfeer.com/api/v1/paymob/process-success'
       
       const response = await fetch(apiUrl, {
         method: 'POST',

@@ -448,6 +448,8 @@
         "categories": "Categories",
         "share": "Share",
         "changing_image": "Changing image...",
+        "zoom_image": "Zoom Image",
+        "zoom_out": "Zoom Out",
         "sku": "Product SKU",
         "day": "Day",
       },
@@ -810,7 +812,9 @@
          },
          "bulk_orders": {
            "title": "Special and Bulk Orders",
-           "content": "If you need bulk orders of our products in the Saudi market, we can meet your needs with the best prices and appropriate packaging. Contact us to discuss requirements."
+           "content": "If you need bulk orders of our distinctive and unique products in the Saudi market, we are here to help you meet your needs efficiently and effectively. We can provide support and assistance in large order operations with the best prices, highest quality, and appropriate packaging. Do not hesitate to contact us to discuss your requirements and ensure that all your needs are met perfectly.",
+           "whatsapp_button": "Click here to contact us on WhatsApp",
+           "contact_button": "Contact Us"
          },
     "important_notes": {
       "title": "Important Notes",

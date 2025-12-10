@@ -304,7 +304,7 @@ const getItemImage = (item: any): string => {
   if (/^(https?:|data:|blob:)/i.test(raw)) return raw
   
   // Build path
-  const assetBase = (runtimeConfig?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const assetBase = (runtimeConfig?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
   let path = String(raw).trim().replace(/\\/g, '/')
   path = path.replace(/^public\//, '').replace(/^app\/public\//, '').replace(/^storage\//, '')
   

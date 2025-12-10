@@ -353,7 +353,7 @@ watch(() => product.value, (newProduct) => {
 
 // Helpers to normalize media paths similar to ProductCard
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
 const fixPath = (s: string) => {
   let p = (s || '').trim().replace(/\\/g, '/')
   
@@ -957,6 +957,113 @@ const onImgErr = (e: Event) => {
   if (!el) return
   el.src = placeholderImage
 }
+
+// Zoom functionality
+const isZooming = ref(false)
+const zoomImage = ref<HTMLImageElement | null>(null)
+const currentZoomContainer = ref<HTMLElement | null>(null)
+
+const toggleZoom = (e?: Event) => {
+  if (e) {
+    e.stopPropagation()
+    e.preventDefault()
+  }
+  isZooming.value = !isZooming.value
+  
+  if (isZooming.value) {
+    // Find the currently active image
+    nextTick(() => {
+      const swiper = mainSwiper.value
+      if (swiper && swiper.slides) {
+        const activeSlide = swiper.slides[swiper.activeIndex]
+        if (activeSlide) {
+          const img = activeSlide.querySelector('.zoom-image') as HTMLImageElement
+          if (img) {
+            zoomImage.value = img
+            img.style.transformOrigin = 'center center'
+            currentZoomContainer.value = activeSlide.querySelector('.image-container') as HTMLElement
+          }
+        }
+      } else if (zoomImage.value) {
+        // Fallback to stored reference
+        zoomImage.value.style.transformOrigin = 'center center'
+      }
+    })
+  }
+}
+
+const handleZoom = (e: MouseEvent) => {
+  if (!isZooming.value || isMobile.value) return
+  
+  e.stopPropagation()
+  
+  const container = e.currentTarget as HTMLElement
+  if (!container) return
+  
+  const img = container.querySelector('.zoom-image') as HTMLImageElement
+  if (!img) return
+  
+  // Update zoomImage reference to current image
+  zoomImage.value = img
+  currentZoomContainer.value = container
+  
+  const rect = container.getBoundingClientRect()
+  const x = ((e.clientX - rect.left) / rect.width) * 100
+  const y = ((e.clientY - rect.top) / rect.height) * 100
+  
+  // Clamp values to prevent zoom outside image bounds
+  const clampedX = Math.max(0, Math.min(100, x))
+  const clampedY = Math.max(0, Math.min(100, y))
+  
+  img.style.transformOrigin = `${clampedX}% ${clampedY}%`
+}
+
+// Update zoom image when slide changes (keep zoom active)
+watch(mainIndex, async () => {
+  if (isZooming.value) {
+    await nextTick()
+    // Find the currently visible image
+    const swiper = mainSwiper.value
+    if (swiper && swiper.slides && swiper.activeIndex !== undefined) {
+      const activeSlide = swiper.slides[swiper.activeIndex]
+      if (activeSlide) {
+        const img = activeSlide.querySelector('.zoom-image') as HTMLImageElement
+        const container = activeSlide.querySelector('.image-container') as HTMLElement
+        if (img) {
+          zoomImage.value = img
+          img.style.transformOrigin = 'center center'
+          if (container) {
+            currentZoomContainer.value = container
+          }
+        }
+      }
+    }
+  }
+})
+
+// Disable zoom on window resize or when swiper is interacted with
+let clickOutsideHandler: ((e: MouseEvent) => void) | null = null
+
+onMounted(() => {
+  clickOutsideHandler = (e: MouseEvent) => {
+    if (isZooming.value && currentZoomContainer.value) {
+      const target = e.target as HTMLElement
+      if (!currentZoomContainer.value.contains(target) && !target.closest('.zoom-toggle-btn')) {
+        isZooming.value = false
+      }
+    }
+  }
+  
+  if (process.client) {
+    document.addEventListener('click', clickOutsideHandler, true)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (process.client && clickOutsideHandler) {
+    document.removeEventListener('click', clickOutsideHandler, true)
+  }
+})
 
 // Swiper configuration
 const mainSwiper = ref<any>(null)
@@ -3826,6 +3933,47 @@ const productCategory = computed(() => {
   return null
 })
 
+// Get child category for breadcrumb (second category in array)
+const productChildCategory = computed(() => {
+  if (!product.value) return null
+  
+  // Try category_ids first (array of categories)
+  const categoryIds = product.value?.category_ids || product.value?.product?.category_ids
+  if (Array.isArray(categoryIds) && categoryIds.length > 1) {
+    const secondCategory = categoryIds[1]
+    if (secondCategory && (secondCategory.name || secondCategory.id)) {
+      return {
+        id: secondCategory.id || secondCategory.category_id || '',
+        name: secondCategory.name || secondCategory.category_name || secondCategory.title || '',
+        slug: secondCategory.slug || ''
+      }
+    }
+  }
+  
+  // Try to get second category from product data
+  const categories = getProductCategories(product.value)
+  if (categories.length > 1) {
+    const secondCat = categories[1]
+    // Get full category data from category_ids if available
+    const categoryIds = product.value?.category_ids || product.value?.product?.category_ids
+    if (Array.isArray(categoryIds) && categoryIds.length > 1) {
+      const secondCategoryData = categoryIds[1]
+      return {
+        id: secondCategoryData.id || secondCategoryData.category_id || secondCat.id || '',
+        name: secondCategoryData.name || secondCategoryData.category_name || secondCategoryData.title || secondCat.name || '',
+        slug: secondCategoryData.slug || ''
+      }
+    }
+    return {
+      id: secondCat.id || '',
+      name: secondCat.name || '',
+      slug: ''
+    }
+  }
+  
+  return null
+})
+
 const getProductLink = (product: any): string => {
   if (!product) return '#'
   const slug = product?.slug || product?.product?.slug
@@ -3992,6 +4140,10 @@ const handleProductDetails = () => {
       <template v-if="productCategory">
         <NuxtLink :to="getLocalizedPath(`/shop?category=${productCategory.id}`)">{{ productCategory.name }}</NuxtLink>
         <span>/</span>
+        <template v-if="productChildCategory">
+          <NuxtLink :to="getLocalizedPath(`/shop?category=${productChildCategory.id}`)">{{ productChildCategory.name }}</NuxtLink>
+          <span>/</span>
+        </template>
       </template>
       <NuxtLink :to="getLocalizedPath('/shop')">{{ t('product.shop') }}</NuxtLink>
       <span>/</span>
@@ -4089,20 +4241,41 @@ const handleProductDetails = () => {
             '--swiper-pagination-color': '#fff',
           }"
           :space-between="10"
-          :navigation="images.length > 1"
+          :navigation="images.length > 1 && !isZooming"
           :modules="modules"
                 :loop="false"
                 :thumbs="{ swiper: thumbnailSwiper }"
           @swiper="setMainSwiper"
+          :allow-touch-move="!isZooming"
           class="mySwiper2"
+          :class="{ 'zoom-mode': isZooming }"
         >
           <SwiperSlideComponent v-for="(img, i) in images" :key="`main-${i}-${img}`">
-            <div class="image-container">
-              <img :src="img" :alt="title" @error="onImgErr" />
+            <div 
+              class="image-container" 
+              :class="{ 'zoom-active': isZooming }"
+              @mousemove.stop="handleZoom"
+              @click.stop="() => {}"
+            >
+              <img 
+                :src="img" 
+                :alt="title" 
+                @error="onImgErr"
+                class="zoom-image"
+                :class="{ 'zoom-active': isZooming }"
+                @click.stop="() => {}"
+              />
               <div v-if="imageChanging && i === mainIndex" class="image-loading">
                 <div class="loading-spinner"></div>
                     <span>{{ t('product.changing_image') }}</span>
               </div>
+              <button 
+                class="zoom-toggle-btn"
+                @click.stop="toggleZoom"
+                :aria-label="isZooming ? (t('product.zoom_out') || 'تصغير الصورة') : (t('product.zoom_image') || 'تكبير الصورة')"
+              >
+                <i :class="isZooming ? 'fa-solid fa-magnifying-glass-minus' : 'fa-solid fa-magnifying-glass-plus'"></i>
+              </button>
             </div>
           </SwiperSlideComponent>
         </SwiperComponent>
@@ -5379,10 +5552,85 @@ const handleProductDetails = () => {
   .mySwiper2 .swiper-slide{ 
     transition:opacity 0.3s ease, transform 0.3s ease;
   }
+  .mySwiper2.zoom-mode {
+    pointer-events: auto;
+  }
+  .mySwiper2.zoom-mode .swiper-button-next,
+  .mySwiper2.zoom-mode .swiper-button-prev {
+    display: none !important;
+  }
+  .mySwiper2.zoom-mode .swiper-slide {
+    pointer-events: auto;
+  }
   .image-container{ 
     position:relative; 
     width:100%; 
     height:100%;
+    overflow: hidden;
+    cursor: default;
+    touch-action: none;
+  }
+  .image-container.zoom-active {
+    cursor: move;
+  }
+  .zoom-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.1s ease-out;
+    will-change: transform;
+    pointer-events: none;
+    user-select: none;
+  }
+  .zoom-image.zoom-active {
+    transform: scale(2.5);
+    cursor: move;
+    pointer-events: auto;
+  }
+  .zoom-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .zoom-toggle-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  .zoom-toggle-btn:active {
+    transform: scale(0.95);
+  }
+  .zoom-toggle-btn i {
+    font-size: 18px;
+    pointer-events: none;
+  }
+  @media (max-width: 768px) {
+    .zoom-toggle-btn {
+      width: 40px;
+      height: 40px;
+      top: 8px;
+      right: 8px;
+    }
+    .zoom-toggle-btn i {
+      font-size: 16px;
+    }
+    .zoom-image.zoom-active {
+      transform: scale(2);
+    }
   }
   .image-loading{ 
     position:absolute; 

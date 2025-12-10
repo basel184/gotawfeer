@@ -951,7 +951,7 @@ const applyFilters = () => {
 
 // Helper functions for modal (same as before)
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
 
 const fixPath = (s: string) => {
   let p = s.trim().replace(/\\/g, '/')
@@ -1149,7 +1149,7 @@ const normalizeImagePath = (imagePath: string | null | undefined, assetBase: str
 const getProductColors = (product: any): any[] => {
   if (!product) return []
   const cfg = useRuntimeConfig() as any
-  const assetBase = (cfg?.public?.apiBase || 'https://gotawfeer.com/project/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
   
   // Try colors_formatted first
   if (product?.colors_formatted && Array.isArray(product.colors_formatted) && product.colors_formatted.length > 0) {

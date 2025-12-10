@@ -429,13 +429,13 @@ const formatTime = (date: Date) => {
 // Helper functions for VirtualTryOnResult
 const getResultImages = () => {
   return {
-    main: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    front: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    side: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    back: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    generated_0: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    generated_1: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
-    generated_2: 'https://gotawfeer.com/project/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg'
+    main: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    front: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    side: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    back: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    generated_0: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    generated_1: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg',
+    generated_2: 'https://admin.gotawfeer.com/storage/virtual-try-on/customer-photos/processed/e2049c12-57ba-469a-b507-70c9d8184821.jpg'
   }
 }
 
@@ -448,7 +448,7 @@ const getProductImage = (product: any) => {
       return product.thumbnail.path
     }
     if (product.thumbnail.key) {
-      return `https://gotawfeer.com/project${product.thumbnail.key}`
+      return `https://admin.gotawfeer.com${product.thumbnail.key}`
     }
   }
   
@@ -457,7 +457,7 @@ const getProductImage = (product: any) => {
     if (product.thumbnail.startsWith('http')) {
       return product.thumbnail
     }
-    return `https://gotawfeer.com/project${product.thumbnail}`
+    return `https://admin.gotawfeer.com${product.thumbnail}`
   }
   
   return '/images/placeholder.svg'

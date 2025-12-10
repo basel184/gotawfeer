@@ -46,7 +46,7 @@
           <!-- Main Links -->
             <div class="link-section">
               <ul class="link-list">
-                <li><NuxtLink :to="getLocalizedPath('/blog')" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
+                <li><NuxtLink :to="getLocalizedPath('/special_requests')" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
                 <li><NuxtLink :to="getLocalizedPath('/intellectual-property-rights')" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
               </ul>
             </div>
