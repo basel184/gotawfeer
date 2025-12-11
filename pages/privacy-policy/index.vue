@@ -68,9 +68,10 @@ const { t } = useI18n()
               <h5 class="fw-bold">{{ t('privacy_policy.sections.contact.title') }}</h5>
               <p>{{ t('privacy_policy.sections.contact.intro') }}</p>
               <ul>
-                <li>{{ t('privacy_policy.sections.contact.phone') }} <strong>+966537030838</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.phone') }} <strong>00966537030838</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.sms') }} <strong>00966537030838</strong></li>
                 <li>{{ t('privacy_policy.sections.contact.email') }} <strong>gotawfeer@gmail.com</strong></li>
-                <li>{{ t('privacy_policy.sections.contact.response_time') }} <strong>48 {{ t('privacy_policy.sections.contact.work_hours') }}</strong></li>
+                <li>{{ t('privacy_policy.sections.contact.response_time') }} <strong>{{ t('privacy_policy.sections.contact.work_hours') }}</strong></li>
               </ul>
             </section>
 
@@ -82,17 +83,18 @@ const { t } = useI18n()
             <section class="mb-3">
               <h5 class="fw-bold">{{ t('privacy_policy.sections.principles.title') }}</h5>
               <p>{{ t('privacy_policy.sections.principles.intro') }}</p>
+              <h6 class="fw-bold mt-3 mb-2">{{ t('privacy_policy.sections.principles.subtitle') }}</h6>
               <ol>
-                <li><strong>{{ t('privacy_policy.sections.principles.responsibility') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.transparency') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.choice') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.limit_collection') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.retention') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.access') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.limit_disclosure') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.security') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.quality') }}</strong></li>
-                <li><strong>{{ t('privacy_policy.sections.principles.monitoring') }}</strong></li>
+                <li>{{ t('privacy_policy.sections.principles.responsibility') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.transparency') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.choice') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.limit_collection') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.retention') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.access') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.limit_disclosure') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.security') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.quality') }}</li>
+                <li>{{ t('privacy_policy.sections.principles.monitoring') }}</li>
               </ol>
             </section>
 

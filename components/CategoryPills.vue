@@ -1,14 +1,45 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ categories: any[] }>()
+const { locale } = useI18n()
+
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
 
 const toLink = (c: any) => {
   const id = c?.id || c?.category_id
-  const slug = c?.slug || c?.category_slug
-  if (slug) return `/category/${encodeURIComponent(String(slug))}`
-  if (id) return `/category/${encodeURIComponent(String(id))}`
-  return null
+  if (!id) return null
+  
+  // Create shop link with category query parameter
+  const shopPath = `/shop?category=${encodeURIComponent(String(id))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(shopPath)
 }
 
 const cfg = useRuntimeConfig() as any
@@ -68,6 +99,91 @@ onMounted(() => {
   checkScrollButtons()
   if (sliderRef.value) {
     sliderRef.value.addEventListener('scroll', checkScrollButtons)
+    
+    // Enable smooth mouse drag scrolling on desktop
+    let isDown = false
+    let startX: number
+    let scrollLeft: number
+    let velocity = 0
+    let lastX: number
+    let lastTime: number
+    let animationFrame: number | null = null
+
+    const container = sliderRef.value
+
+    const smoothScroll = () => {
+      if (Math.abs(velocity) > 0.5) {
+        container.scrollLeft -= velocity
+        velocity *= 0.95 // Friction
+        animationFrame = requestAnimationFrame(smoothScroll)
+      } else {
+        velocity = 0
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame)
+          animationFrame = null
+        }
+      }
+    }
+
+    container.addEventListener('mousedown', (e: MouseEvent) => {
+      isDown = true
+      container.style.cursor = 'grabbing'
+      container.style.scrollBehavior = 'auto' // Disable smooth scroll during drag
+      startX = e.pageX - container.offsetLeft
+      scrollLeft = container.scrollLeft
+      lastX = e.pageX
+      lastTime = Date.now()
+      velocity = 0
+      
+      // Cancel any ongoing momentum scroll
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame)
+        animationFrame = null
+      }
+    })
+
+    container.addEventListener('mouseleave', () => {
+      if (isDown) {
+        isDown = false
+        container.style.cursor = 'grab'
+        container.style.scrollBehavior = 'smooth'
+        // Start momentum scrolling
+        if (Math.abs(velocity) > 1) {
+          smoothScroll()
+        }
+      }
+    })
+
+    container.addEventListener('mouseup', () => {
+      if (isDown) {
+        isDown = false
+        container.style.cursor = 'grab'
+        container.style.scrollBehavior = 'smooth'
+        // Start momentum scrolling
+        if (Math.abs(velocity) > 1) {
+          smoothScroll()
+        }
+      }
+    })
+
+    container.addEventListener('mousemove', (e: MouseEvent) => {
+      if (!isDown) return
+      e.preventDefault()
+      
+      const x = e.pageX - container.offsetLeft
+      const walk = (x - startX) * 1.5 // Smooth scroll speed
+      container.scrollLeft = scrollLeft - walk
+      
+      // Calculate velocity for momentum scrolling
+      const currentTime = Date.now()
+      const timeDelta = currentTime - lastTime
+      if (timeDelta > 0) {
+        const xDelta = e.pageX - lastX
+        velocity = (xDelta / timeDelta) * 16 // Normalize to 60fps
+      }
+      lastX = e.pageX
+      lastTime = currentTime
+    })
   }
 })
 
@@ -153,6 +269,18 @@ onUnmounted(() => {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 4px 0;
+  /* Enable smooth scrolling on desktop */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  cursor: grab;
+  /* Smooth scrolling */
+  will-change: scroll-position;
+  transition: scroll-behavior 0.1s ease-out;
+}
+
+.pills-container:active {
+  cursor: grabbing;
+  scroll-behavior: auto;
 }
 
 .pills-container::-webkit-scrollbar {

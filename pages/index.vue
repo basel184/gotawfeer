@@ -131,15 +131,10 @@ onBeforeUnmount(() => {
     countdownInterval = null
   }
   
-  // Remove scroll listener
-  if (process.client) {
-    window.removeEventListener('scroll', handleScroll)
-    
-    // Disconnect intersection observer
-    if (sectionObserver) {
-      sectionObserver.disconnect()
-      sectionObserver = null
-    }
+  // Disconnect intersection observer
+  if (process.client && sectionObserver) {
+    sectionObserver.disconnect()
+    sectionObserver = null
   }
 })
 
@@ -159,25 +154,6 @@ const cfgPending = ref(false)
 const wishlist = useWishlist()
 const cart = useCart()
 
-// Scroll to top button state
-const showScrollTop = ref(false)
-
-// Scroll to top function
-const scrollToTop = () => {
-  if (process.client) {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    })
-  }
-}
-
-// Handle scroll event to show/hide button
-const handleScroll = () => {
-  if (process.client) {
-    showScrollTop.value = window.scrollY > 300
-  }
-}
 
 // Lazy load sections on scroll
 const visibleSections = ref<Set<number>>(new Set())
@@ -244,13 +220,8 @@ onMounted(async () => {
   // Initialize countdown
   initializeCountdown()
   
-  // Setup scroll listener for scroll to top button
+  // Setup Intersection Observer for lazy loading sections
   if (process.client) {
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    // Check initial scroll position
-    handleScroll()
-    
-    // Setup Intersection Observer for lazy loading sections
     sectionObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -272,6 +243,94 @@ onMounted(async () => {
         const sections = document.querySelectorAll('[data-section-index]')
         sections.forEach((section) => {
           sectionObserver?.observe(section)
+        })
+      })
+    })
+
+    // Enable smooth mouse drag scrolling for features-pills on desktop
+    nextTick(() => {
+      const pillsContainers = document.querySelectorAll('.features-pills .pills-container')
+      pillsContainers.forEach((container: any) => {
+        let isDown = false
+        let startX: number
+        let scrollLeft: number
+        let velocity = 0
+        let lastX: number
+        let lastTime: number
+        let animationFrame: number | null = null
+
+        const smoothScroll = () => {
+          if (Math.abs(velocity) > 0.5) {
+            container.scrollLeft -= velocity
+            velocity *= 0.95 // Friction
+            animationFrame = requestAnimationFrame(smoothScroll)
+          } else {
+            velocity = 0
+            if (animationFrame) {
+              cancelAnimationFrame(animationFrame)
+              animationFrame = null
+            }
+          }
+        }
+
+        container.addEventListener('mousedown', (e: MouseEvent) => {
+          isDown = true
+          container.style.cursor = 'grabbing'
+          container.style.scrollBehavior = 'auto' // Disable smooth scroll during drag
+          startX = e.pageX - container.offsetLeft
+          scrollLeft = container.scrollLeft
+          lastX = e.pageX
+          lastTime = Date.now()
+          velocity = 0
+          
+          // Cancel any ongoing momentum scroll
+          if (animationFrame) {
+            cancelAnimationFrame(animationFrame)
+            animationFrame = null
+          }
+        })
+
+        container.addEventListener('mouseleave', () => {
+          if (isDown) {
+            isDown = false
+            container.style.cursor = 'grab'
+            container.style.scrollBehavior = 'smooth'
+            // Start momentum scrolling
+            if (Math.abs(velocity) > 1) {
+              smoothScroll()
+            }
+          }
+        })
+
+        container.addEventListener('mouseup', () => {
+          if (isDown) {
+            isDown = false
+            container.style.cursor = 'grab'
+            container.style.scrollBehavior = 'smooth'
+            // Start momentum scrolling
+            if (Math.abs(velocity) > 1) {
+              smoothScroll()
+            }
+          }
+        })
+
+        container.addEventListener('mousemove', (e: MouseEvent) => {
+          if (!isDown) return
+          e.preventDefault()
+          
+          const x = e.pageX - container.offsetLeft
+          const walk = (x - startX) * 1.5 // Smooth scroll speed
+          container.scrollLeft = scrollLeft - walk
+          
+          // Calculate velocity for momentum scrolling
+          const currentTime = Date.now()
+          const timeDelta = currentTime - lastTime
+          if (timeDelta > 0) {
+            const xDelta = e.pageX - lastX
+            velocity = (xDelta / timeDelta) * 16 // Normalize to 60fps
+          }
+          lastX = e.pageX
+          lastTime = currentTime
         })
       })
     })
@@ -1007,20 +1066,6 @@ const onImgErr = (e: any) => {
 <template>
   <div>
   <main class="home" dir="rtl">
-    <!-- Whatsapp -->
-     <a 
-      v-show="showScrollTop"
-      @click.prevent="scrollToTop" 
-      class="arrow-up d-flex align-items-center justify-content-center" 
-      id="scrollTopBtn"
-      role="button"
-      :aria-label="t('home.back_to_top')"
-    >
-      <i class="fa-solid fa-chevron-up"></i>
-    </a>
-     <a href="https://wa.me/#" target="_blank" class="whatsapp d-flex align-items-center justify-content-center">
-      <i class="fa-brands fa-whatsapp"></i>
-    </a>
 
       <!-- Dynamic Home Sections from Admin -->
     <!-- Show loading state while sections are loading (only if no data yet) -->
@@ -1684,6 +1729,18 @@ const onImgErr = (e: any) => {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 4px 0;
+  /* Enable smooth scrolling on desktop */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  cursor: grab;
+  /* Smooth scrolling */
+  will-change: scroll-position;
+  transition: scroll-behavior 0.1s ease-out;
+}
+
+.features-pills .pills-container:active {
+  cursor: grabbing;
+  scroll-behavior: auto;
 }
 
 .features-pills .pills-container::-webkit-scrollbar {
@@ -2024,81 +2081,6 @@ const onImgErr = (e: any) => {
   font-size: 16px;
 }
 
-/* Scroll to Top Button */
-.arrow-up {
-  position: fixed;
-  bottom: 100px;
-  left: 20px;
-  width: 50px;
-  height: 50px;
-  background: #F58040;
-  color: white;
-  border-radius: 50%;
-  z-index: 1000;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.3);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.arrow-up:hover {
-  background: #e06a2e;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(245, 128, 64, 0.4);
-}
-
-.arrow-up i {
-  font-size: 20px;
-}
-
-/* WhatsApp Button */
-.whatsapp {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  width: 50px;
-  height: 50px;
-  background: #25D366;
-  color: white;
-  border-radius: 50%;
-  z-index: 1000;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.whatsapp:hover {
-  background: #20ba5a;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
-}
-
-.whatsapp i {
-  font-size: 24px;
-}
-
-@media (max-width: 768px) {
-  .arrow-up {
-    bottom: 90px;
-    left: 15px;
-    width: 45px;
-    height: 45px;
-  }
-  
-  .whatsapp {
-    bottom: 15px;
-    left: 15px;
-    width: 45px;
-    height: 45px;
-  }
-}
 
 @media (max-width: 768px) {
   .countdown-item {

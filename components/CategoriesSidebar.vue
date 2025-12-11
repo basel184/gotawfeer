@@ -77,15 +77,12 @@
               @click="goToSubcategory(subcategory)"
             >
               <h5>{{ subcategory.name }}</h5>
-              <p v-if="subcategory?.product_count || subcategory?.products_count">
-                ( {{ subcategory.product_count || subcategory.products_count }} 
-                {{ (subcategory.product_count || subcategory.products_count) === 1 
-                  ? t('product') 
+              <p>
+                ( {{ getProductCount(subcategory) }} 
+                {{ getProductCount(subcategory) <= 1 
+                  ? t('shop.products') 
                   : t('products') 
                 }} )
-              </p>
-              <p v-else class="no-count">
-                ( {{ t('products') }} )
               </p>
             </div>
           </div>
@@ -159,18 +156,64 @@ const handleSubcategoriesLeave = () => {
   setHideTimer()
 }
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 const goToCategory = (category: any) => {
-  router.push({ path: '/shop', query: { category: category.id } })
+  // Create shop link with category query parameter
+  const shopPath = `/shop?category=${category.id}`
+  
+  // Apply i18n localization and navigate
+  navigateTo(getLocalizedPath(shopPath))
+  
   isSidebarExpanded.value = false
   hoveredCategory.value = null
   hoveredCategoryId.value = null
 }
 
 const goToSubcategory = (subcategory: any) => {
-  router.push({ path: '/shop', query: { category: subcategory.id } })
+  // Create shop link with category query parameter
+  const shopPath = `/shop?category=${subcategory.id}`
+  
+  // Apply i18n localization and navigate
+  navigateTo(getLocalizedPath(shopPath))
+  
   isSidebarExpanded.value = false
   hoveredCategory.value = null
   hoveredCategoryId.value = null
+}
+
+const getProductCount = (subcategory: any): number => {
+  if (subcategory?.product_count !== undefined && subcategory?.product_count !== null) {
+    return Number(subcategory.product_count)
+  }
+  if (subcategory?.products_count !== undefined && subcategory?.products_count !== null) {
+    return Number(subcategory.products_count)
+  }
+  return 0
 }
 
 const getCategoryImage = (category: any) => {

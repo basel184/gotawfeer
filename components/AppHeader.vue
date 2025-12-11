@@ -228,10 +228,10 @@ const mainCategories = computed<Cat[]>(() => {
   const cats = categories.value
   // If we have categories from API, take first 5
   if (cats.length > 0) {
-    return cats.slice(0, 5)
+    return cats.slice(0, 10)
   }
   // Fallback to predefined categories
-  return fallbackCats.slice(0, 5)
+  return fallbackCats.slice(0, 10)
 })
 
 // UI State
@@ -403,25 +403,25 @@ const decreaseQty = async (item: any) => {
 }
 
 const getRemainingForFreeShipping = (): number => {
-  const FREE_SHIPPING_THRESHOLD = 200 // Adjust based on your requirement
+  const FREE_SHIPPING_THRESHOLD = 299 // Adjust based on your requirement
   const remaining = FREE_SHIPPING_THRESHOLD - cartTotal.value
   return Math.max(0, remaining)
 }
 
-// Check if checkout is allowed (minimum 50 SAR)
+// Check if checkout is allowed (minimum 49 SAR)
 const canCheckout = computed(() => cartTotal.value > 49)
 
 // Minimum order message with remaining amount
 const minimumOrderMessage = computed(() => {
-  const remaining = 50 - cartTotal.value
-  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 50 ريال. المتبقي:'} ${money(remaining)}`
+  const remaining = 49 - cartTotal.value
+  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 49 ريال. المتبقي:'} ${money(remaining)}`
 })
 
 // Handle checkout click
 const handleCheckoutClick = (e: Event) => {
   if (!canCheckout.value) {
     e.preventDefault()
-    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 50 ريال')
+    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 49 ريال')
     closeCart()
     return false
   }
@@ -461,6 +461,18 @@ const getLocalizedPath = (path: string): string => {
   }
   
   return cleanPath
+}
+
+// Get category link with localization
+const getCategoryLink = (category: any): string => {
+  const id = category?.id || category?.category_id
+  if (!id) return '/shop'
+  
+  // Create shop link with category query parameter
+  const shopPath = `/shop?category=${encodeURIComponent(String(id))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(shopPath)
 }
 
 // Check if nav link is active
@@ -743,8 +755,11 @@ function goSearch(term?: string) {
   const [best] = getCorrections(query, 1)
   const finalQ = (products.value.length === 0 && best && best !== query) ? best : query
   
-  // Use navigateTo for proper SPA navigation
-  navigateTo(`/shop?q=${encodeURIComponent(finalQ)}`)
+  // Create shop link with search query parameter
+  const shopPath = `/shop?q=${encodeURIComponent(finalQ)}`
+  
+  // Apply i18n localization and navigate
+  navigateTo(getLocalizedPath(shopPath))
   
   // Complete loading after navigation
   if (process.client) {
@@ -1178,9 +1193,9 @@ async function handleRegisterSubmit() {
                         <div class="info-content text-center ">
                           <p style="font-size: 12px;"  class="mb-0 fw-bold text-white">{{ t('support_24_7') || 'دعم 24/7' }}
                             <br>
-                            <span style="color: #232323">
-                              537030838
-                            </span>
+                            <a href="tel:+966537030838" dir="ltr" style="color: #232323; text-decoration: none;">
+                              +966 53 703 0838
+                            </a>
                             
                           </p>
                         </div>
@@ -1602,12 +1617,13 @@ async function handleRegisterSubmit() {
           <div class="mobile-menu-content">
             <!-- Categories -->
             <div class="mobile-menu-section">
+
               <h4>{{ t('all_categories') || 'جميع الأقسام' }}</h4>
               <div class="mobile-menu-links">
                 <NuxtLink 
                   v-for="category in mainCategories" 
                   :key="category.id"
-                  :to="`/category/${category.id}`" 
+                  :to="getCategoryLink(category)" 
                   class="mobile-menu-link"
                   @click="mobileMenuOpen = false"
                 >
@@ -1618,27 +1634,38 @@ async function handleRegisterSubmit() {
             
             <!-- Quick Links -->
             <div class="mobile-menu-section">
+              
+
               <h4>{{ t('quick_links') || 'روابط سريعة' }}</h4>
               <div class="mobile-menu-links">
+                <NuxtLink :to="getLocalizedPath('/')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  {{ t('product.home') || 'الرئيسية' }}
+                </NuxtLink>
                 <NuxtLink :to="getLocalizedPath('/shop')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                   {{ t('all_products') || 'المتجر' }}
+                </NuxtLink>
+                <NuxtLink :to="getLocalizedPath('/categories')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                    {{ t('categories') || 'التصنيفات' }}
+                  </NuxtLink>
+                  <NuxtLink :to="getLocalizedPath('/shop?sort=newest')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  {{ t('newest') || 'الأحدث' }}
+                </NuxtLink>
+                <NuxtLink :to="getLocalizedPath('/shop?sort=best_selling')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  {{ t('best_selling') || 'الأكثر مبيعاً' }}
+                </NuxtLink>
+                <NuxtLink :to="getLocalizedPath('/shop?has_discount=true')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  {{ t('offers') || 'العروض' }}
                 </NuxtLink>
                 <NuxtLink :to="getLocalizedPath('/brands')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                   {{ t('brands') || 'العلامات التجارية' }}
                 </NuxtLink>
-                <NuxtLink :to="getLocalizedPath('/categories')" class="mobile-menu-link" @click="mobileMenuOpen = false">
-                  {{ t('categories') || 'التصنيفات' }}
-                </NuxtLink>
 
-                <NuxtLink :to="getLocalizedPath('/shop?has_discount=true')" class="mobile-menu-link" @click="mobileMenuOpen = false">
-                  {{ t('offers') || 'العروض' }}
-                </NuxtLink>
               </div>
             </div>
             
             <!-- Account Links -->
             <div class="mobile-menu-section">
-              <h4>{{ t('account') || 'الحساب' }}</h4>
+              <h4>{{ t('footer.links.account.title') || 'الحساب' }}</h4>
               <div class="mobile-menu-links">
                 <template v-if="auth?.user?.value">
                   <NuxtLink :to="getLocalizedPath('/account')" class="mobile-menu-link" @click="mobileMenuOpen = false">

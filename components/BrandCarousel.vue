@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'
+import { useI18n } from 'vue-i18n'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/pagination'
 
 const props = defineProps<{ brands: any[] }>()
+const { locale } = useI18n()
 
 // Swiper modules
 const swiperModules = [Navigation, Pagination, Autoplay]
@@ -80,11 +82,42 @@ const getBestImage = (brand: any) => {
   return brand?.image_full_url || brand?.logo_full_url || brand?.image || brand?.logo || ''
 }
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 // Create brand link function (goes to shop with brand filter)
 const toLink = (b: any) => {
   const id = b?.id || b?.brand_id
-  if (id) return `/shop?brand=${encodeURIComponent(String(id))}`
-  return null
+  if (!id) return null
+  
+  // Create shop link with brand query parameter
+  const shopPath = `/shop?brand=${encodeURIComponent(String(id))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(shopPath)
 }
 </script>
 

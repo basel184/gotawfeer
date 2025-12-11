@@ -4130,6 +4130,95 @@ const handleProductDetails = () => {
     }
   }
 }
+
+// Product Page Social Media Share Functions
+const productShareUrl = computed(() => {
+  if (process.client && typeof window !== 'undefined') {
+    return window.location.href
+  }
+  const baseUrl = seo?.siteUrl?.value || (process.client ? window.location.origin : '')
+  return `${baseUrl}${route.path}`
+})
+
+const productShareText = computed(() => {
+  const productName = title.value || productTitle.value || 'Product'
+  return `${productName} - ${locale.value === 'ar' ? 'تسوق الآن من جو توفير' : 'Shop now from Go Tawfeer'}`
+})
+
+const productShareImage = computed(() => {
+  return productImage.value || '/images/go-tawfeer-1-1.webp'
+})
+
+const shareProductOnFacebook = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+  } catch (error) {
+    console.error('Error sharing on Facebook:', error)
+  }
+}
+
+const shareProductOnTwitter = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    const text = productShareText.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+  } catch (error) {
+    console.error('Error sharing on Twitter:', error)
+  }
+}
+
+const shareProductOnWhatsApp = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    const text = productShareText.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    const shareUrl = `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`
+    window.open(shareUrl, '_blank')
+  } catch (error) {
+    console.error('Error sharing on WhatsApp:', error)
+  }
+}
+
+const copyProductLink = async () => {
+  if (process.client) {
+    try {
+      await navigator.clipboard.writeText(productShareUrl.value)
+      showSuccess(locale.value === 'ar' ? 'تم نسخ الرابط بنجاح' : 'Link copied successfully')
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = productShareUrl.value
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        showSuccess(locale.value === 'ar' ? 'تم نسخ الرابط بنجاح' : 'Link copied successfully')
+      } catch (err) {
+        showSuccess(locale.value === 'ar' ? 'فشل نسخ الرابط' : 'Failed to copy link')
+      }
+      document.body.removeChild(textArea)
+    }
+  }
+}
 </script>
 
 <template>
@@ -4237,7 +4326,7 @@ const handleProductDetails = () => {
           v-if="swiperReady"
                 :key="`main-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
           :style="{
-            '--swiper-navigation-color': '#fff',
+            '--swiper-navigation-color': '#000',
             '--swiper-pagination-color': '#fff',
           }"
           :space-between="10"
@@ -4317,7 +4406,25 @@ const handleProductDetails = () => {
               </div>
               <span class="rating-text">({{ reviewsCount }}) {{ t('product.reviews') }}</span>
             </div>
-            <p v-if="metaDescription" class="benefit-text">{{ metaDescription }}</p>
+
+            <!-- Social Share Buttons -->
+            <div class="social-share-section search-box-mobile">
+              <span class="share-label">{{ t('product.share') || 'مشاركة المنتج' }}:</span>
+              <div class="share-buttons">
+                <button @click="shareProductOnFacebook" class="share-btn facebook" :aria-label="t('product.share_facebook') || 'مشاركة على فيسبوك'">
+                  <i class="fa-brands fa-facebook-f"></i>
+                </button>
+                <button @click="shareProductOnTwitter" class="share-btn twitter" :aria-label="t('product.share_twitter') || 'مشاركة على تويتر'">
+                  <i class="fa-brands fa-twitter"></i>
+                </button>
+                <button @click="shareProductOnWhatsApp" class="share-btn whatsapp" :aria-label="t('product.share_whatsapp') || 'مشاركة على واتساب'">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </button>
+                <button @click="copyProductLink" class="share-btn copy" :aria-label="t('product.copy_link') || 'نسخ الرابط'">
+                  <i class="fa-solid fa-link"></i>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="specifications">
             <div v-if="description" class="description-text" v-html="description"></div>
@@ -4363,6 +4470,8 @@ const handleProductDetails = () => {
           </div>
           <span class="rating-text">({{ reviewsCount }}) {{ t('product.reviews') }}</span>
         </div>
+
+
 
         <!-- Price -->
         <div class="price-section">
@@ -4519,7 +4628,24 @@ const handleProductDetails = () => {
             </li>
           </ul>
         </div>
-
+        <!-- Social Share Buttons -->
+        <div class="social-share-section search-box-desktop">
+          <span class="share-label">{{ t('product.share') || 'مشاركة المنتج' }}:</span>
+          <div class="share-buttons">
+            <button @click="shareProductOnFacebook" class="share-btn facebook" :aria-label="t('product.share_facebook') || 'مشاركة على فيسبوك'">
+              <i class="fa-brands fa-facebook-f"></i>
+            </button>
+            <button @click="shareProductOnTwitter" class="share-btn twitter" :aria-label="t('product.share_twitter') || 'مشاركة على تويتر'">
+              <i class="fa-brands fa-twitter"></i>
+            </button>
+            <button @click="shareProductOnWhatsApp" class="share-btn whatsapp" :aria-label="t('product.share_whatsapp') || 'مشاركة على واتساب'">
+              <i class="fa-brands fa-whatsapp"></i>
+            </button>
+            <button @click="copyProductLink" class="share-btn copy" :aria-label="t('product.copy_link') || 'نسخ الرابط'">
+              <i class="fa-solid fa-link"></i>
+            </button>
+          </div>
+        </div>
         <!-- Payment Options -->
         <div class="payment-options ">
           <div class="payment-option">
@@ -4550,7 +4676,6 @@ const handleProductDetails = () => {
             <strong>{{ t('product.expected_delivery') }}</strong>
           </div>
           <div class="d-flex flex-column ">
-            <p class="mb-3">{{ t('product.delivery_jeddah_makkah') }}</p>
             <p class="mb-3">{{ t('product.delivery_all_kingdom') }}</p>
           </div>
         </div>
@@ -5201,6 +5326,15 @@ const handleProductDetails = () => {
 </template>
 
 <style scoped>
+  .gallery :deep(.mySwiper2 .swiper-button-prev::after),
+  .gallery :deep(.mySwiper2 .swiper-button-next::after) {
+    color: #000 !important;
+    font-size: 22px;
+  }
+  .gallery :deep(.mySwiper2 .swiper-button-prev),
+  .gallery :deep(.mySwiper2 .swiper-button-next) {
+    color: #000;
+  }
   .wrap{ padding:20px; max-width:1400px; margin:0 auto }
   .crumbs{ display:flex; align-items:center; gap:8px; color:#6b7280; margin-bottom:20px; font-size:14px }
   .crumbs a{ color:#6b7280; text-decoration:none }
@@ -5867,6 +6001,54 @@ const handleProductDetails = () => {
   .star.filled{ color:#f59e0b }
   .rating-text{ color:#6b7280; font-size:14px }
 
+  /* Social Share Section */
+  .social-share-section{ 
+    display:flex; 
+    align-items:center; 
+    gap:12px; 
+    margin-bottom:16px;
+    padding:12px;
+    background:#f9fafb;
+    border-radius:8px;
+    border:1px solid #e5e7eb;
+  }
+  .share-label{ 
+    font-size:14px; 
+    font-weight:600; 
+    color:#6b7280;
+    white-space:nowrap;
+  }
+  .share-buttons{ 
+    display:flex; 
+    gap:8px; 
+    align-items:center;
+  }
+  .share-btn{ 
+    width:36px; 
+    height:36px; 
+    border:none; 
+    border-radius:8px; 
+    cursor:pointer; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    transition:all 0.3s ease;
+    color:#fff;
+    font-size:16px;
+  }
+  .share-btn:hover{ 
+    transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.2);
+  }
+  .share-btn.facebook{ background:#1877f2 }
+  .share-btn.facebook:hover{ background:#166fe5 }
+  .share-btn.twitter{ background:#1da1f2 }
+  .share-btn.twitter:hover{ background:#1a91da }
+  .share-btn.whatsapp{ background:#25d366 }
+  .share-btn.whatsapp:hover{ background:#20ba5a }
+  .share-btn.copy{ background:#6b7280 }
+  .share-btn.copy:hover{ background:#4b5563 }
+
   .price-section{ display:flex; align-items:center; gap:12px; margin-bottom:16px }
   .price-main{ font-size:28px; font-weight:700; color:#111827 }
   .price-old{ font-size:18px; color:#9ca3af; text-decoration:line-through }
@@ -6230,7 +6412,7 @@ const handleProductDetails = () => {
 
   .product-description h3{ font-size:20px; font-weight:700; color:#111827; margin:0 0 12px }
   .benefit-text{ font-size:16px; font-weight:600; color:#111827; margin:0 0 16px }
-  .description-text{ color:#6b7280; line-height:1.6; margin-bottom:16px }
+  .description-text{ line-height:1.6; margin-bottom:16px }
   .how-to-use{ color:#6b7280; line-height:1.6 }
   .no-content{ color:#9ca3af; font-style:italic; text-align:center; padding:40px 0 }
 
@@ -6992,13 +7174,7 @@ const handleProductDetails = () => {
     transform: translateY(-50%);
   }
 
-  .recommended-swiper-container :deep(.swiper-button-prev) {
-    left: -20px;
-  }
 
-  .recommended-swiper-container :deep(.swiper-button-next) {
-    right: -20px;
-  }
 
   .recommended-swiper-container :deep(.swiper-button-prev::after),
   .recommended-swiper-container :deep(.swiper-button-next::after) {
@@ -7011,16 +7187,6 @@ const handleProductDetails = () => {
     cursor: not-allowed;
   }
 
-  /* RTL Support for Swiper */
-  [dir="rtl"] .recommended-swiper-container :deep(.swiper-button-prev) {
-    left: auto;
-    right: -20px;
-  }
-
-  [dir="rtl"] .recommended-swiper-container :deep(.swiper-button-next) {
-    right: auto;
-    left: -20px;
-  }
 
   /* Success Toast Styles */
   .success-toast {

@@ -280,6 +280,46 @@ const status = computed(() => {
   const p: any = props.product || {}
   return p?.condition || p?.product?.condition 
 })
+
+const statusClass = computed(() => {
+  const statusValue = status.value
+  if (!statusValue) return ''
+  
+  // Convert to lowercase for case-insensitive matching
+  const statusLower = String(statusValue).toLowerCase().trim()
+  
+  if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
+    return 'most-popular'
+  } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
+    return 'best-offers'
+  } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
+    return 'best-selling'
+  } else if (statusLower === 'new' || statusLower === 'جديد') {
+    return 'new'
+  }
+  
+  return 'available' // Default class
+})
+
+const translatedStatus = computed(() => {
+  const statusValue = status.value
+  if (!statusValue) return ''
+  
+  // Convert to lowercase for case-insensitive matching
+  const statusLower = String(statusValue).toLowerCase().trim()
+  
+  if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
+    return t('product.status.most_popular') || 'الأكثر شهرة'
+  } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
+    return t('product.status.best_offers') || 'أقوى العروض'
+  } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
+    return t('product.status.best_selling') || 'الأكثر مبيعاً'
+  } else if (statusLower === 'new' || statusLower === 'جديد') {
+    return t('product.status.new') || 'جديد'
+  }
+  
+  return statusValue // Return original value if no translation found
+})
 const { ensure: ensureBrands, nameOf: brandNameOf, ensureBrand } = useBrands() as any
 const cart = useCart()
 const wishlist = useWishlist()
@@ -672,7 +712,10 @@ const toggleWish = async (e: Event) => {
     await wishlist.toggle(String(productId))
     
     // Show success message
-    console.log(wished.value ? t('product.product_added_to_wishlist') : t('product.product_removed_from_wishlist'))
+    const message = wished.value 
+      ? t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
+      : t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة'
+    showSuccessToast(message)
   } catch (error: any) {
     console.error('Wishlist error:', error)
     
@@ -708,25 +751,31 @@ const toggleCompare = async (e: Event) => {
       // Remove from compare
       const success = compare.remove(Number(productId))
       if (success) {
-        console.log(t('product.product_removed_from_compare'))
+        const message = t('product.product_removed_from_compare') || 'تم إزالة المنتج من المقارنة'
+        showSuccessToast(message)
       }
     } else {
       // Check if compare is full
       if (compare.isFull.value) {
-        alert(t('product.compare_max_products'))
+        const message = t('product.compare_max_products') || 'تم الوصول إلى الحد الأقصى للمنتجات في المقارنة'
+        showSuccessToast(message)
         return
       }
       
       // Add to compare
       const success = compare.add(props.product)
       if (success) {
-        console.log(t('product.product_added_to_compare'))
+        const message = t('product.product_added_to_compare') || 'تم إضافة المنتج إلى المقارنة'
+        showSuccessToast(message)
       } else {
-        console.error(compare.error.value || t('product.error_adding_product_to_compare'))
+        const errorMsg = compare.error.value || t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء إضافة المنتج إلى المقارنة'
+        showSuccessToast(errorMsg)
       }
     }
   } catch (error: any) {
     console.error('Error toggling compare:', error)
+    const errorMsg = t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء تحديث المقارنة'
+    showSuccessToast(errorMsg)
   }
 }
 const currencySymbol = computed(() => {
@@ -945,9 +994,11 @@ const isBusy = computed(() => !!props.busy || isAddingToCart.value || isUpdating
 
 // Success message state
 const showSuccessMessage = ref(false)
+const successMessage = ref('')
 
 // Function to show success message
-const showSuccessToast = () => {
+const showSuccessToast = (message: string) => {
+  successMessage.value = message
   showSuccessMessage.value = true
   setTimeout(() => {
     showSuccessMessage.value = false
@@ -1012,7 +1063,7 @@ const handleAdd = async (e: Event) => {
     await nextTick()
     
     // Show success message
-    showSuccessToast()
+    showSuccessToast(t('product.cart_added_successfully') || 'تم إضافة المنتج إلى السلة بنجاح')
     
     // Open cart dropdown
     openCartDropdown()
@@ -1207,8 +1258,8 @@ const openProductModal = async (e: Event) => {
           </svg>
         </button>
       </div>
-      <div v-if="status != null" class="status-card available">
-        {{ status }}
+      <div v-if="status != null" class="status-card" :class="statusClass">
+        {{ translatedStatus }}
       </div>
       <div v-if="current_stock === 0" class="status-card out">
         {{ t('product.out_of_stock_quantity') }}
@@ -1278,7 +1329,6 @@ const openProductModal = async (e: Event) => {
               <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 0 0 2-2v-2a2 2 0 1 0-4 0v2a2 2 0 0 0 2 2m6-6h-1V9a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2m-3 0H9V9a3 3 0 0 1 6 0z"/></svg>
             </span>
           </template>
-          <span v-if="(isBusy as any)" class="mini-spin" aria-hidden="true" :title="t('loading')"></span>
         </div>
 
       </div>
@@ -1327,7 +1377,7 @@ const openProductModal = async (e: Event) => {
           <!-- <span class="save-amount">حفظ {{ formatPrice((oldPrice as any) - (finalPrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span> -->
         </div>
         <div class="price-row">
-          <span class="price final">{{ formatPrice((finalPrice as any)) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+          <span class="price final">{{ formatPrice((finalPrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span>
           <div v-if="hasDiscount" class="badge">-{{ discountPercent }}%</div>
         </div>
 
@@ -1342,7 +1392,7 @@ const openProductModal = async (e: Event) => {
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </svg>
-            <span>{{ t('product.cart_added_successfully') }}</span>
+            <span>{{ successMessage || t('product.cart_added_successfully') }}</span>
           </div>
         </div>
       </Transition>
@@ -1681,7 +1731,7 @@ img {
 }
 
 .price.final { 
-  color: #ef4444; 
+  color: #000000; 
   font-weight: 800; 
   font-size: 16px;
 }
@@ -1835,5 +1885,34 @@ img {
     align-items: center;
     justify-content: center;
     min-width: 32px;
+  }
+
+
+  .status-card.most-popular {
+    background-color: #15803d; /* أخضر غامق */
+  }
+
+  .status-card.best-offers {
+    background-color: #dc2626; /* أحمر */
+  }
+
+  .status-card.best-selling {
+    background-color: #f97316; /* برتقالي */
+  }
+
+  .status-card.new {
+    background-color: #22c55e; /* أخضر فاتح */
+  }
+
+  .status-card.available {
+    background-color: #10b981; /* أخضر افتراضي */
+  }
+
+  .status-card.out {
+    background-color: #6b7280; /* رمادي */
+  }
+
+  .status-card.count-down {
+    background-color: #ef4444; /* أحمر للعد التنازلي */
   }
 </style>

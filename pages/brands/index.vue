@@ -112,6 +112,32 @@ const items = computed(() => {
   return []
 })
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 // Navigate to shop with brand filter
 const goToBrand = (brand: any) => {
   // Start loading
@@ -125,10 +151,11 @@ const goToBrand = (brand: any) => {
     }
   }, 100)
   
-  router.push({ 
-    path: '/shop', 
-    query: { brand: String(brand.id) } 
-  })
+  // Create shop link with brand query parameter
+  const shopPath = `/shop?brand=${String(brand.id)}`
+  
+  // Apply i18n localization and navigate
+  navigateTo(getLocalizedPath(shopPath))
   
   // Complete loading
   setTimeout(() => {

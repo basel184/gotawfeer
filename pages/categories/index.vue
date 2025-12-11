@@ -147,6 +147,32 @@ const items = computed(() => {
   return []
 })
 
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
 // Navigate to shop with category filter
 const goToCategory = (category: any) => {
   // Use navigateTo for SPA navigation
@@ -166,8 +192,11 @@ const goToCategory = (category: any) => {
     })
   }
   
-  // Navigate to shop with category filter
-  navigateTo(`/shop?category=${categoryId}`)
+  // Create shop link with category query parameter
+  const shopPath = `/shop?category=${categoryId}`
+  
+  // Apply i18n localization
+  navigateTo(getLocalizedPath(shopPath))
 }
 
 // Handle image error
@@ -187,15 +216,12 @@ const handleImageLoad = (event: Event) => {
 </script>
 
 <template>
-  <div class="categories-page" dir="rtl">
+  <div class="categories-page">
     <!-- Header Section -->
     <div class="categories-header">
       <div class="container">
         <div class="header-content">
           <h1 class="page-title">
-            <svg width="32" height="32" viewBox="0 0 24 24" class="title-icon">
-              <path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/>
-            </svg>
             {{ t('categories') || 'التصنيفات' }}
           </h1>
         </div>

@@ -459,20 +459,20 @@ const grandTotal = computed(() => {
   return total
 })
 
-// Check if checkout is allowed (minimum 50 SAR)
+// Check if checkout is allowed (minimum 49 SAR)
 const canCheckout = computed(() => grandTotal.value > 49)
 
 // Minimum order message with remaining amount
 const minimumOrderMessage = computed(() => {
-  const remaining = 50 - grandTotal.value
-  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 50 ريال. المتبقي:'} ${money(remaining)}`
+  const remaining = 49 - grandTotal.value
+  return `${t('cart.minimum_order_message') || 'الحد الأدنى للطلب هو 49 ريال. المتبقي:'} ${money(remaining)}`
 })
 
 // Handle checkout click
 const handleCheckoutClick = (e: Event) => {
   if (!canCheckout.value) {
     e.preventDefault()
-    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 50 ريال')
+    alert(t('cart.minimum_order_amount') || 'الحد الأدنى للطلب هو 49 ريال')
     return false
   }
   // Allow navigation if amount is sufficient

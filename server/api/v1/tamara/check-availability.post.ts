@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     
     // Check if order meets minimum requirements
     const orderTotal = body.order_data?.total_amount || 0
-    const minAmount = 50 // Minimum amount for Tamara
+    const minAmount = 49 // Minimum amount for Tamara
     
     if (orderTotal < minAmount) {
       return {

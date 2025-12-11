@@ -22,9 +22,6 @@
               <a href="mailto:gotawfeer@gmail.com" dir="ltr" class="text-white text-decoration-none ">gotawfeer@gmail.com</a>
             </div>
           </div>
-          <p class="brand-description">
-            {{ t('footer.brand.description2') }}
-          </p>
           <div class="social-links">
             <a href="https://snapchat.com/t/dpmi7a5g" class="social-link" aria-label="Google">
               <i class="fa-brands fa-snapchat"></i>
@@ -46,7 +43,7 @@
           <!-- Main Links -->
             <div class="link-section">
               <ul class="link-list">
-                <li><NuxtLink :to="getLocalizedPath('/special_requests')" class="footer-link">الطلبات الخاصة و الجملة</NuxtLink></li>
+                <li><NuxtLink :to="getLocalizedPath('/special_requests')" class="footer-link">{{ t('footer.links.company.special_requests') }}</NuxtLink></li>
                 <li><NuxtLink :to="getLocalizedPath('/intellectual-property-rights')" class="footer-link">{{ t('footer.links.company.intellectual_property') }}</NuxtLink></li>
               </ul>
             </div>
@@ -69,7 +66,9 @@
               <li><NuxtLink :to="getLocalizedPath('/privacy-policy')" class="footer-link">{{ t('footer.links.company.privacy_policy') }}</NuxtLink></li>
               <li><NuxtLink :to="getLocalizedPath('/shipping-return-policy')" class="footer-link">{{ t('footer.links.company.shipping_return_policy') }}</NuxtLink></li>
             </ul>
-            <img src="/images/footer-social.jpg" :style="{ width: '50px' , borderRadius: '10px' }" alt="logo" class="logo-img">
+            <a href="/Certificate.pdf" target="_blank" rel="noopener noreferrer">
+              <img src="/images/footer-social.jpg" :style="{ width: '50px' , borderRadius: '10px' }" alt="logo" class="logo-img">
+            </a>
           </div>
         </div>
       </div>

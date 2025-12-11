@@ -19,7 +19,7 @@
         <div v-else>
           {{ t('blog.not_found') }}
         </div>
-        <NuxtLink to="/blogs" class="btn btn-sm btn-outline-primary mt-3">
+        <NuxtLink :to="getLocalizedPath('/blogs')" class="btn btn-sm btn-outline-primary mt-3">
           {{ t('blog.back_to_list') }}
         </NuxtLink>
       </div>
@@ -30,7 +30,7 @@
         <div class="col-lg-8">
           <article class="blog-article">
             <!-- Back Button -->
-            <NuxtLink to="/blogs" class="back-link mb-4 d-inline-flex align-items-center">
+            <NuxtLink :to="getLocalizedPath('/blogs')" class="back-link mb-4 d-inline-flex align-items-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="me-2">
                 <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
               </svg>
@@ -47,24 +47,7 @@
               {{ blog.title || blog.name }}
             </h1>
 
-            <!-- Meta Info -->
-            <div class="blog-meta mb-4 pb-3 border-bottom">
-              <div class="d-flex align-items-center flex-wrap gap-3">
-                <small class="text-muted d-flex align-items-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-1">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                  </svg>
-                  {{ formatDate(blog.created_at || blog.published_at) }}
-                </small>
-                <small v-if="blog.author" class="text-muted d-flex align-items-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-1">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                  </svg>
-                  {{ blog.author.name || blog.author }}
-                </small>
-              </div>
-            </div>
-
+           
             <!-- Featured Image -->
             <div v-if="blog.image" class="blog-featured-image mb-4">
               <img
@@ -111,7 +94,7 @@
                   class="popular-blog-item mb-3"
                 >
                   <NuxtLink
-                    :to="`/blog/${popularBlog.slug}`"
+                    :to="getBlogLink(popularBlog)"
                     class="popular-blog-link d-flex text-decoration-none"
                   >
                     <!-- Image -->
@@ -149,7 +132,7 @@
                   class="mb-2"
                 >
                   <NuxtLink
-                    :to="`/blog?category=${category.slug || category.id}`"
+                    :to="getBlogCategoryLink(category)"
                     class="text-decoration-none d-flex align-items-center"
                   >
                     <span class="me-2">→</span>
@@ -166,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t, locale } = useI18n()
@@ -280,6 +263,56 @@ const categories = computed(() => {
     ? data
     : (data.data || data.categories || [])
 })
+
+// Helper function to get localized path with proper i18n handling
+const getLocalizedPath = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  
+  // Get current locale from i18n
+  const currentLocale = locale.value || 'ar'
+  
+  // If English locale, add /en prefix
+  if (currentLocale === 'en') {
+    // Don't add prefix if already present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath
+    }
+    // Add /en prefix
+    return `/en${cleanPath}`
+  }
+  
+  // For Arabic (default), remove /en prefix if present
+  if (cleanPath.startsWith('/en')) {
+    return cleanPath.substring(3) || '/'
+  }
+  
+  return cleanPath
+}
+
+// Get blog link with localization
+const getBlogLink = (blog: any): string => {
+  const slug = blog?.slug || blog?.id
+  if (!slug) return '/blogs'
+  
+  // Create blog path with encoded slug
+  const blogPath = `/blog/${encodeURIComponent(String(slug))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(blogPath)
+}
+
+// Get blog category link with localization
+const getBlogCategoryLink = (category: any): string => {
+  const slug = category?.slug || category?.id
+  if (!slug) return '/blogs'
+  
+  // Create blog category path with query parameter
+  const blogPath = `/blogs?category=${encodeURIComponent(String(slug))}`
+  
+  // Apply i18n localization
+  return getLocalizedPath(blogPath)
+}
 
 // Helper functions
 const formatDate = (dateString: string | null | undefined): string => {

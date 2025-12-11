@@ -5,7 +5,27 @@
   "deliver.to": "Deliver to Riyadh",
   "login": "Login",
   "logout": "Logout",
-  
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Stay updated with the latest news and tips from Go Tawfeer",
+    "error_loading": "Error loading blog posts",
+    "loading": "Loading blog posts...",
+    "no_posts": "No blog posts found",
+    "no_posts_title": "We couldn't find any blog posts at the moment",
+    "no_posts_description": "Try again later or contact our support team",
+    "no_blogs": "No blogs found",
+    "no_blogs_title": "We couldn't find any blogs at the moment",
+    "no_blogs_description": "Try again later or contact our support team",
+    "read_more": "Read More",
+    "read_more_title": "Read More",
+    "read_more_description": "Read More",
+    "read_more_button": "Read More",
+    "back_to_list": "Back to List",
+    "back_to_list_title": "Back to List",
+    "back_to_list_description": "Back to List",
+    "back_to_list_button": "Back to List"
+    
+  },
   "home": {
     "day": "Day",
       "hour": "Hour",
@@ -134,7 +154,7 @@
   "cart.view_cart": "View Cart",
   "cart.to_cart_for_free_shipping": "to cart for free shipping!",
   "cart.add_for_free_shipping": "Add",
-  "cart.minimum_order_message": "The minimum order amount is 50 SAR. The remaining amount:",
+  "cart.minimum_order_message": "The minimum order amount is 49 SAR. The remaining amount:",
   "all_categories": "All Categories",
   "email": "Email",
   "password": "Password",
@@ -355,6 +375,7 @@
                "title": "Go Tawfeer",
                "about": "About Us",
                "blog": "Blog",
+               "special_requests": "Special Requests and Bulk Orders",
                "privacy_policy": "Privacy Policy",
                "intellectual_property": "Intellectual Property Rights",
                "shipping_return_policy": "Shipping and Return Policy"
@@ -450,8 +471,14 @@
         "changing_image": "Changing image...",
         "zoom_image": "Zoom Image",
         "zoom_out": "Zoom Out",
+        "status": {
+          "most_popular": "Most Popular",
+          "best_offers": "Best Offers",
+          "best_selling": "Best Selling",
+          "new": "New"
+        },
         "sku": "Product SKU",
-        "day": "Day",
+        "day": "Day"
       },
        "account": {
          "title": "My Account",
@@ -662,86 +689,88 @@
        },
        "privacy_policy": {
          "title": "Privacy Policy",
-         "intro": "The Go Tawfeer website recognizes the importance of privacy and protection of your data, and we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all website visitors. This page explains the privacy policy applied to the platform and its affiliated applications.",
-         "intro_html": "The <strong>Go Tawfeer</strong> website recognizes the importance of privacy and protection of your data, and we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all website visitors. This page explains the privacy policy applied to the platform and its affiliated applications.",
+         "intro": "The Go Tawfeer website recognizes the importance of privacy and protection of your data, and therefore we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all visitors to this website. We have prepared this policy specifically to clarify all of the following:",
+         "intro_html": "The <strong>Go Tawfeer</strong> website recognizes the importance of privacy and protection of your data, and therefore we are committed to maintaining the confidentiality of sensitive information and protecting the rights of all visitors to this website. We have prepared this policy specifically to clarify all of the following:",
          "sections": {
            "consent": {
              "title": "Consent to Privacy Policy",
-             "content": "By using the Go Tawfeer website or its applications, you agree to the provisions of this privacy policy. If you do not agree, please do not use any of the services provided through the platform."
+             "content": "Your use of the Go Tawfeer website and its applications means your consent to this privacy policy, and the controls and terms that govern the platform and application. If you do not agree to this policy, you must not use any of the services provided through the Go Tawfeer platform and website."
            },
            "who_collects": {
              "title": "Who Collects User Data?",
-             "content": "When you visit the platform, our server automatically records your Internet Protocol (IP) address, in addition to technical information such as browser type, search engine, date and time of visit, and the URL of the website that referred you to Go Tawfeer. This data is collected in general and does not reveal your personal identity."
+             "content": "As soon as you visit the Go Tawfeer platform website, the platform's server, which operates automatically, records your Internet Protocol (IP) address (your Internet Protocol address is the unique number of the computer you use, which allows other devices connected to the Internet to identify the destination of data sent from it, and collects some information such as browser type and search engine, date and time of visit, and the URL of any website from which you are referred to the Go Tawfeer website portal, but without identifying your personal identity)."
            },
            "external_links": {
-             "title": "Links to Other Websites and Third Parties",
-             "content": "This privacy policy applies only to the Go Tawfeer platform. If you move to an external website, please review that website's privacy policy to learn about its data protection practices."
+             "title": "Links to Other Websites and Third Parties on the Internet",
+             "content": "This privacy approach applies only to the Go Tawfeer platform. If you move to another website, you must read that website's privacy approach to determine the information security practices and privacy policy adopted there."
            },
            "data_collected": {
              "title": "What Data is Collected?",
              "cookies": {
-               "title": "Cookies:",
-               "content": "The website may store cookies on your device to improve your experience and analyze platform usage. You can change your browser settings to reject or accept cookies, noting that some website functions may be affected when disabled."
+               "title": "Cookies",
+               "content": "The website may store what are called \"Cookies\" on your computer when you visit the platform. Cookies are part of the data that uniquely identifies you as a user, and can also be used to develop knowledge of the platform and to better understand the user base of this platform. Most browsers are initially set to accept cookies, and you can reset your browser to reject all cookies or to alert when cookies are sent. Please also note that some services displayed on this platform may not work correctly if you reject cookies, as we may / may not link the information we store in cookies to any personally identifiable information you provide on our site."
              },
              "personal_info": {
-               "title": "Personal Information:",
-               "content": "The Go Tawfeer website collects only authorized and licensed information and does not retain unnecessary information. We adhere to general data protection principles and data sharing according to applicable regulations."
+               "title": "Personal Information",
+               "content": "The Go Tawfeer website collects information that is permitted and recognized for platform users, and the platform and its affiliated application do not store this information. The Go Tawfeer platform complies with and adheres to the main principles and general rules for personal data protection, as well as the main principles and general rules for data sharing."
              },
              "location": {
-               "title": "Geographic Location:",
-               "content": "We may request your permission to access geographic location to benefit from customized services, and you can refuse this at any time."
+               "title": "Geographic Location",
+               "content": "The user may sometimes be asked to consent to determining their geographic location, to benefit from some services provided on the Go Tawfeer platform."
              }
            },
            "purpose": {
              "title": "What is the Purpose of Data Collection?",
-             "content": "We use your data to improve server performance, diagnose technical problems, conduct usage statistics (such as number of visitors and system language), and provide better services. We do not share your IP address with any party outside the website's technical team."
+             "content": "The platform's use of your Internet Protocol helps diagnose problems that occur in its servers, and also helps it conduct the necessary statistics to measure website usage (number of visitors and the language of the computer you use). The platform does not allow any party outside the framework of its technical team to view your Internet Protocol."
            },
            "secure_transfer": {
              "title": "Secure Information Transfer",
-             "content": "We apply the highest security standards to protect sensitive information (such as credit card data) through encryption and protection systems compatible with legal requirements."
+             "content": "We guarantee that this website has the highest security measures to protect the information you provide to it. The website encrypts information that is considered sensitive (such as credit card numbers) or data that must be kept confidential in accordance with legal requirements."
            },
            "protection": {
              "title": "Personal Information Protection",
-             "content": "Your personal information is only available to authorized employees within the platform who are necessary to perform their duties. We do not share or sell this information to third parties without your prior consent, and access is only allowed to qualified persons."
+             "content": "Your personal information will not be available except to platform employees who need to view it. That information will not be available to the public. Furthermore, none of that information will be exchanged, traded, or sold to any other party without the user's prior consent, and access to information will only be allowed to qualified persons who provide platform services."
            },
            "user_rights": {
              "title": "User Rights",
-             "intro": "Users have the right to:",
-             "access": "Access their personal information.",
-             "copy": "Obtain a copy of the information.",
+             "intro": "Any user who provides the platform with their personal information has the right to:",
+             "access": "Access to information.",
+             "copy": "Obtain information.",
              "review": "Review and modify information.",
              "withdraw": "Withdraw consent and delete information.",
-             "contact_note": "Please send your request via email or the contact methods listed below."
+             "contact_note": "This is done by sending an email to the email address specified on the platform"
            },
            "contact": {
              "title": "Contact Us",
-             "intro": "For any questions or complaints regarding the privacy policy, please contact us via:",
-             "phone": "Phone and SMS:",
+             "intro": "If you have any questions regarding our privacy policy, or need assistance or wish to file a complaint, please contact us via:",
+             "phone": "Phone:",
+             "sms": "SMS:",
              "email": "Email:",
              "response_time": "Expected response time:",
-             "work_hours": "working hours"
+             "work_hours": "48 working hours"
            },
            "changes": {
-             "title": "Changes to Privacy Policy",
-             "content": "We reserve the right to update this privacy policy at any time. Please review the last update date at the bottom of the page to see the latest modifications."
+             "title": "Changes That May Occur to the Privacy Policy",
+             "content": "The Go Tawfeer platform has the freedom to update this privacy policy at any time. To know the last update made to it; the user must review the update date at the bottom of this page."
            },
            "principles": {
-             "title": "More Information — General Data Protection Principles",
-             "intro": "The following paragraphs list the main principles adopted in our platform to ensure personal data protection:",
-             "responsibility": "Responsibility: Documenting, adopting, and publishing privacy policies to relevant parties.",
-             "transparency": "Transparency: Clearly explaining the purposes of data processing.",
-             "choice": "Choice and Consent: Providing options to users and obtaining their consent when needed.",
-             "limit_collection": "Limit Data Collection: Collecting the minimum necessary amount of data to achieve specified purposes.",
-             "retention": "Retention and Disposal: Maintaining data as long as necessary and then disposing of it securely.",
-             "access": "Data Access: Providing means to review and update personal data.",
-             "limit_disclosure": "Limit Disclosure: Restricting data sharing with external parties for authorized purposes only.",
-             "security": "Data Security: Protecting data from leakage, loss, or unauthorized access.",
-             "quality": "Data Quality: Maintaining accuracy and completeness of data.",
-             "monitoring": "Monitoring and Compliance: Monitoring compliance with policies and handling complaints."
+             "title": "More Information",
+             "intro": "The privacy policy on the Go Tawfeer website platform is subject to the main principles, as commonly recognized.",
+             "subtitle": "Main Principles for Personal Data Protection",
+             "responsibility": "First Principle: Responsibility — To identify and document privacy policies and procedures of the controlling entity and adopt them by the first responsible person in the entity (or his delegate), and publish them to all parties concerned with their implementation.",
+             "transparency": "Second Principle: Transparency — To prepare a notice about the privacy policies and procedures of the controlling entity that specifies the purposes for which personal data was processed in a specific, clear, and explicit manner.",
+             "choice": "Third Principle: Choice and Consent — To identify all possible options for the data owner and obtain their consent (implicit or explicit) regarding the collection, use, or disclosure of their data.",
+             "limit_collection": "Fourth Principle: Limit Data Collection — To limit the collection of personal data to the minimum amount of data that can achieve the purposes specified in the privacy notice.",
+             "retention": "Fifth Principle: Limit Use, Retention, and Disposal of Data — To restrict the processing of personal data to the purposes specified in the privacy notice for which the data owner provided their implicit or explicit consent, and to retain it as long as necessary to achieve the specified purposes or as required by the regulations, bylaws, and policies in force in the Kingdom, and to destroy it in a secure manner that prevents leakage, loss, theft, misuse, or unauthorized access.",
+             "access": "Sixth Principle: Access to Data — To identify and provide the means through which the data owner can access their personal data to review, update, and correct it.",
+             "limit_disclosure": "Seventh Principle: Limit Data Disclosure — To restrict the disclosure of personal data to external parties to the purposes specified in the privacy notice for which the data owner provided their implicit or explicit consent.",
+             "security": "Eighth Principle: Data Security — To protect personal data from leakage, damage, loss, theft, misuse, modification, or unauthorized access.",
+             "quality": "Ninth Principle: Data Quality — To maintain personal data in an accurate, complete, and directly related manner to the purposes specified in the privacy notice.",
+             "monitoring": "Tenth Principle: Monitoring and Compliance — To monitor compliance with the privacy policies and procedures of the controlling entity, and to handle inquiries, complaints, and disputes related to privacy."
            },
            "sharing": {
-             "title": "General Principles and Rules for Data Sharing",
-             "content": "We apply security controls for shared data, document the purpose, means, storage methods, and disposal mechanisms, and apply necessary agreements and controls in accordance with regulations."
+             "title": "Main Principles and General Rules for Data",
+             "content": "Eligibility of data access by qualified and properly trained persons. All necessary information for data exchange is shared, including required data, the purpose of collection, means of transfer, storage methods, controls used to protect it, and disposal mechanisms. Security controls stipulated in the data sharing agreement are applied. Appropriate security controls are applied to protect data and share it in a secure and reliable environment in accordance with relevant regulations and legislation"
            }
          }
        },
@@ -751,8 +780,9 @@
            "intro_1": "At our company, we recognize the importance of timely delivery. Our dedicated team works hard to process and ship your orders quickly, aiming to deliver them to your doorstep within the expected timeframe.",
            "intro_2": "We strive to provide fast and reliable shipping for our customers. Here's everything you need to know about our shipping process:",
            "processing": "Order processing: within 24 hours.",
-           "delivery": "Delivery time for all parts of the Kingdom: 5 business days.",
-           "free_shipping": "Free shipping on all products when purchasing a value of no less than 299 Saudi Riyals.",
+           "delivery_jeddah_makkah": "Delivery time for Jeddah and Makkah: 3 business days.",
+           "delivery_kingdom": "Delivery time for all parts of the Kingdom: 5 business days.",
+           "free_shipping": "Free shipping on all products when purchasing a value of no less than 199 Saudi Riyals.",
            "note": "Please note that delivery times are estimates and may vary based on factors such as product availability, destination, and shipping company delays."
          },
          "return": {
@@ -765,7 +795,7 @@
              "damaged": "Products damaged due to misuse or showing signs of wear, even if still under warranty.",
              "used": "Products that have been used, modified, assembled, or installed, unless defective."
            },
-           "non_returnable_title": "To ensure your safety, the following products cannot be returned or exchanged:",
+           "non_returnable_title": "To ensure your safety, the following products cannot be returned or exchanged, including products that have been used or opened:",
            "non_returnable": {
              "care": "Care products",
              "cosmetics": "Cosmetics",
@@ -777,6 +807,33 @@
              "scented_powder": "Scented powder",
              "food": "Food items"
            }
+         },
+         "disclaimer": {
+           "title": "Disclaimer",
+           "content": "Disclaimer: Some products sold are prohibited from use except in front of mahrams, as Allah Almighty said ( وَلَا يُبْدِينَ زِينَتَهُنَّ إِلَّا لِبُعُولَتِهِنَّ أَوْ آبَائِهِنَّ أَوْ آبَاءِ بُعُولَتِهِنَّ أَوْ أَبْنَائِهِنَّ أَوْ أَبْنَاءِ بُعُولَتِهِنَّ أَوْ إِخْوَانِهِنَّ أَوْ بَنِي إِخْوَانِهِنَّ أَوْ بَنِي أَخَوَاتِهِنَّ ) Surat An-Nur, verse 31 (to the end of the verse)"
+         },
+         "terms_conditions": {
+           "title": "Terms and Conditions",
+           "time_limit": "Goods exchange will not be accepted after 7 days from the order date.",
+           "packaging_difference": "There may be a slight difference in the external design \"package - carton\" of the product received by the customer, and some may request to exchange it. This is due to the manufacturer releasing a newer design for the package or outer carton of the product, and it does not differ from the product content. (The website guarantees this and always strives to update and renew product display images periodically).",
+           "refund_time": "In case of accepting the return, the value of purchased products will be refunded via bank cards to the bank card account within a period of up to 7 business days.",
+           "returnable_products": "For your satisfaction, the following products will be returned:",
+           "damaged_product": "If you received a damaged product, or a product different from the order by mistake, please notify us through customer service to return the product in its original condition and within 7 days of receiving the order. Products must be well-matched, in good condition, and unused.",
+           "cosmetics_return": "You can also return cosmetic products, provided they have not been used or inspected, and they must be in their original condition as received from the seller, sealed.",
+           "counterfeit_products": "If the products are counterfeit, and the original packaging is poor and attached with the returned product.",
+           "proof": "Proof of purchase must be attached, such as order confirmation or receipt.",
+           "processing": "Once products are received and after verification and inspection, the refund request will be processed and submitted:",
+           "verify": "Please verify and check the products to be returned before shipping. We will not be responsible for returning any incorrect / missing products.",
+           "return_fees": "When requesting a return for any reason other than a manufacturing defect or damaged products, return fees will be deducted (which will be determined upon request).",
+           "no_defect_note": "Note: If a product is returned due to a customer easily claiming a defect, and upon inspection, we found that the product has no defect, shipping and return fees will not be refunded.",
+           "shipping_fees": "Please note that shipping and return fees for any order are non-refundable, except in the case where the reason for product return is damage / defect.",
+           "faq_question": "Q: Can I return a cosmetic product in its original condition?",
+           "faq_answer": "A: To ensure your safety, cosmetic products cannot be returned even if they are in their original condition."
+         },
+         "cancellation": {
+           "title": "Cancellation Policy",
+           "content_1": "Cancellation operations depend on whether your order has been shipped or not. If your order is still being processed, you can cancel the order simply through the customer service communication team via WhatsApp, and no cancellation request will be accepted after 24 hours from registering the order on the website.",
+           "content_2": "Note: If the order has been shipped, it will not be cancelled, and it will be considered a return. For more details, please refer to our product return policy."
          }
        },
        "terms": {
@@ -822,14 +879,54 @@
     }
   },
   "about": {
-    "lead": "Welcome to Go Tawfeer, your premier destination for online shopping in Saudi Arabia.",
-    "description": "We are an online store specializing in providing a wide range of high-quality products at competitive prices. We strive to provide an enjoyable and easy shopping experience for our valued customers.",
-    "mission": "Our Mission",
-    "mission_content": "Our mission is to provide the best products at the best prices while ensuring high quality and excellent customer service. We believe that every customer deserves the best possible shopping experience.",
+    "lead": "Providing Original and Diverse Products",
+    "description": "We strive to provide a comprehensive and reliable shopping experience for middle-income families, by providing original and diverse products at competitive prices, while supporting local and international brands",
     "vision": "Our Vision",
-    "vision_content": "We strive to be the leading online store in Saudi Arabia by offering diverse products, high quality, and excellent customer service.",
-    "values": "Our Values",
-    "values_content": "We believe in transparency, quality, and commitment to customer service. We are committed to providing the best products at the best prices while ensuring our valued customers' satisfaction."
+    "vision_title": "Best Value and Exceptional Shopping Experience",
+    "vision_content": "To be the first e-marketplace for middle-income families and people who care about their personal hygiene and beauty, where we provide everything the family needs under one roof with the best value and exceptional shopping experience",
+    "mission": "Our Mission",
+    "mission_title": "Providing a Safe and Easy E-commerce Environment",
+    "mission_content": "We are committed to providing a safe and easy-to-use e-commerce environment that focuses on the needs of middle-income families, offers high value for money, while emphasizing quality, diversity, and exclusivity.",
+    "why_us": "Why Us?",
+    "why_us_title": "Our Commitment to Quality and Excellence",
+    "why_us_items": {
+      "unique_experience": {
+        "title": "Unique Experience",
+        "content": "We provide a comfortable and comprehensive shopping experience through our online store."
+      },
+      "transparency": {
+        "title": "Transparency",
+        "content": "Building and maintaining trust through transparency, authenticity, and commitment to delivering what is promised to customers."
+      },
+      "competitive_prices": {
+        "title": "Competitive Prices",
+        "content": "Providing high quality at prices suitable for all categories."
+      },
+      "product_variety": {
+        "title": "Product Variety",
+        "content": "A wide range of products that meet various personal care needs."
+      }
+    },
+    "everything_you_need": "Everything You Need to Know",
+    "faq_title": "Frequently Asked Questions",
+    "faq": {
+      "natural_products": {
+        "question": "Are the products natural and safe to use?",
+        "answer": "Yes, all our products are carefully made from natural ingredients to ensure their safety and effectiveness. We are committed to providing products that meet the highest quality standards."
+      },
+      "shipping": {
+        "question": "Is shipping available to all areas?",
+        "answer": "Yes, we provide shipping services to all areas within the Kingdom of Saudi Arabia with guaranteed fast and secure delivery to your doorstep."
+      },
+      "track_order": {
+        "question": "How can I track my order status?",
+        "answer": "After completing your order, you will receive a confirmation message containing a tracking number that you can use to easily track your shipment status."
+      },
+      "offers": {
+        "question": "Do you offer promotions and discounts?",
+        "answer": "Yes, we regularly offer special promotions and discounts on our products. Make sure to follow our store to get the best offers."
+      }
+    }
   },
   "taqnyat": {
     "email_login": "Email",
@@ -883,6 +980,8 @@
     "search": "Search",
     "latest": "Latest",
     "best_selling": "Best Selling",
+    "product": "Product",
+    "products":"products",
     "price_low_high": "Price: Low to High",
     "price_high_low": "Price: High to Low",
     "no_brands": "No brands available"

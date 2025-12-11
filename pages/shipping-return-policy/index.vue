@@ -13,25 +13,26 @@ const { t } = useI18n()
             <h2 class="mb-3">{{ t('shipping_return.shipping.title') }}</h2>
             <p>{{ t('shipping_return.shipping.intro_1') }}</p>
             <p>{{ t('shipping_return.shipping.intro_2') }}</p>
-    <ul>
+            <ul>
               <li>{{ t('shipping_return.shipping.processing') }}</li>
-              <li>{{ t('shipping_return.shipping.delivery') }}</li>
+              <li>{{ t('shipping_return.shipping.delivery_jeddah_makkah') }}</li>
+              <li>{{ t('shipping_return.shipping.delivery_kingdom') }}</li>
               <li>{{ t('shipping_return.shipping.free_shipping') }}</li>
-    </ul>
+            </ul>
             <p>{{ t('shipping_return.shipping.note') }}</p>
 
-            <h2 class="mb-3">{{ t('shipping_return.return.title') }}</h2>
+            <h2 class="mb-3 mt-4">{{ t('shipping_return.return.title') }}</h2>
             <p><strong>{{ t('shipping_return.return.question') }}</strong></p>
             <p>{{ t('shipping_return.return.contact') }}</p>
             <p>{{ t('shipping_return.return.refund_period') }}</p>
-    <ul>
+            <ul>
               <li>{{ t('shipping_return.return.conditions.clarification') }}</li>
               <li>{{ t('shipping_return.return.conditions.damaged') }}</li>
               <li>{{ t('shipping_return.return.conditions.used') }}</li>
-    </ul>
+            </ul>
 
             <h3 class="mb-3">{{ t('shipping_return.return.non_returnable_title') }}</h3>
-    <ul>
+            <ul>
               <li>{{ t('shipping_return.return.non_returnable.care') }}</li>
               <li>{{ t('shipping_return.return.non_returnable.cosmetics') }}</li>
               <li>{{ t('shipping_return.return.non_returnable.perfumes') }}</li>
@@ -41,8 +42,36 @@ const { t } = useI18n()
               <li>{{ t('shipping_return.return.non_returnable.scented_creams') }}</li>
               <li>{{ t('shipping_return.return.non_returnable.scented_powder') }}</li>
               <li>{{ t('shipping_return.return.non_returnable.food') }}</li>
-    </ul>
-</div>
+            </ul>
+
+            <h2 class="mb-3 mt-4">{{ t('shipping_return.disclaimer.title') }}</h2>
+            <p>{{ t('shipping_return.disclaimer.content') }}</p>
+
+            <h2 class="mb-3 mt-4">{{ t('shipping_return.terms_conditions.title') }}</h2>
+            <ul>
+              <li>{{ t('shipping_return.terms_conditions.time_limit') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.packaging_difference') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.refund_time') }}</li>
+            </ul>
+            <p><strong>{{ t('shipping_return.terms_conditions.returnable_products') }}</strong></p>
+            <ul>
+              <li>{{ t('shipping_return.terms_conditions.damaged_product') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.cosmetics_return') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.counterfeit_products') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.proof') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.processing') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.verify') }}</li>
+              <li>{{ t('shipping_return.terms_conditions.return_fees') }}</li>
+            </ul>
+            <p>{{ t('shipping_return.terms_conditions.no_defect_note') }}</p>
+            <p>{{ t('shipping_return.terms_conditions.shipping_fees') }}</p>
+            <p><strong>{{ t('shipping_return.terms_conditions.faq_question') }}</strong></p>
+            <p>{{ t('shipping_return.terms_conditions.faq_answer') }}</p>
+
+            <h2 class="mb-3 mt-4">{{ t('shipping_return.cancellation.title') }}</h2>
+            <p>{{ t('shipping_return.cancellation.content_1') }}</p>
+            <p>{{ t('shipping_return.cancellation.content_2') }}</p>
+          </div>
           </article>
         </div>
       </div>
