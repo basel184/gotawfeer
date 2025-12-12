@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   },
   
   nitro: {
-    preset: 'vercel',
+    preset: 'node-server',
     compatibilityDate: '2025-09-11',
     routeRules: {
       '/api/**': { 
