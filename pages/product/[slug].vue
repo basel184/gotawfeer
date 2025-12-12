@@ -1656,6 +1656,14 @@ const currentVariantStock = computed(() => {
   return inStock.value
 })
 
+const current_stock = computed(() => {
+  const p: any = product.value || {}
+  if (selectedVariant.value && selectedVariant.value.qty !== undefined) {
+    return selectedVariant.value.qty
+  }
+  return p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
+})
+
 const currentVariantSku = computed(() => {
   if (selectedVariant.value && selectedVariant.value.sku) {
     return selectedVariant.value.sku
@@ -4196,6 +4204,71 @@ const shareProductOnWhatsApp = () => {
   }
 }
 
+const shareProductOnTelegram = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    const text = productShareText.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+  } catch (error) {
+    console.error('Error sharing on Telegram:', error)
+  }
+}
+
+const shareProductOnTikTok = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    // TikTok doesn't have a direct share URL, so we'll open their website
+    // Users can copy the link and share it manually
+    const shareUrl = `https://www.tiktok.com/upload?lang=en`
+    window.open(shareUrl, '_blank', 'width=600,height=400')
+    // Also copy the link to clipboard
+    copyProductLink()
+  } catch (error) {
+    console.error('Error sharing on TikTok:', error)
+  }
+}
+
+const shareProductOnSnapchat = () => {
+  if (!process.client || typeof window === 'undefined') return
+  try {
+    const url = productShareUrl.value
+    if (!url) {
+      console.error('Share URL is empty')
+      return
+    }
+    // Snapchat uses a custom URL scheme for sharing
+    // For web, we'll use the Snapchat web share or copy link
+    if (navigator.share) {
+      navigator.share({
+        title: productShareText.value,
+        text: productShareText.value,
+        url: url
+      }).catch(() => {
+        // Fallback to copying link
+        copyProductLink()
+      })
+    } else {
+      // Fallback: copy link
+      copyProductLink()
+    }
+  } catch (error) {
+    console.error('Error sharing on Snapchat:', error)
+    // Fallback to copying link
+    copyProductLink()
+  }
+}
+
 const copyProductLink = async () => {
   if (process.client) {
     try {
@@ -4418,7 +4491,18 @@ const copyProductLink = async () => {
                   <i class="fa-brands fa-twitter"></i>
                 </button>
                 <button @click="shareProductOnWhatsApp" class="share-btn whatsapp" :aria-label="t('product.share_whatsapp') || 'مشاركة على واتساب'">
-                  <i class="fa-brands fa-whatsapp"></i>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.372a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                </button>
+                <button @click="shareProductOnTelegram" class="share-btn telegram" :aria-label="t('product.share_telegram') || 'مشاركة على تيليجرام'">
+                  <i class="fa-brands fa-telegram"></i>
+                </button>
+                <button @click="shareProductOnTikTok" class="share-btn tiktok" :aria-label="t('product.share_tiktok') || 'مشاركة على تيك توك'">
+                  <i class="fa-brands fa-tiktok"></i>
+                </button>
+                <button @click="shareProductOnSnapchat" class="share-btn snapchat" :aria-label="t('product.share_snapchat') || 'مشاركة على سناب شات'">
+                  <i class="fa-brands fa-snapchat"></i>
                 </button>
                 <button @click="copyProductLink" class="share-btn copy" :aria-label="t('product.copy_link') || 'نسخ الرابط'">
                   <i class="fa-solid fa-link"></i>
@@ -4609,10 +4693,6 @@ const copyProductLink = async () => {
           </button>
         </div>
 
-        <!-- Promotions -->
-        <div v-if="hasDiscount" class="promotion-banner">
-          <span class="promo-text">{{ t('product.promo_1_plus_1') }}</span>
-        </div>
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
@@ -4639,7 +4719,18 @@ const copyProductLink = async () => {
               <i class="fa-brands fa-twitter"></i>
             </button>
             <button @click="shareProductOnWhatsApp" class="share-btn whatsapp" :aria-label="t('product.share_whatsapp') || 'مشاركة على واتساب'">
-              <i class="fa-brands fa-whatsapp"></i>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.372a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              </svg>
+            </button>
+            <button @click="shareProductOnTelegram" class="share-btn telegram" :aria-label="t('product.share_telegram') || 'مشاركة على تيليجرام'">
+              <i class="fa-brands fa-telegram"></i>
+            </button>
+            <button @click="shareProductOnTikTok" class="share-btn tiktok" :aria-label="t('product.share_tiktok') || 'مشاركة على تيك توك'">
+              <i class="fa-brands fa-tiktok"></i>
+            </button>
+            <button @click="shareProductOnSnapchat" class="share-btn snapchat" :aria-label="t('product.share_snapchat') || 'مشاركة على سناب شات'">
+              <i class="fa-brands fa-snapchat"></i>
             </button>
             <button @click="copyProductLink" class="share-btn copy" :aria-label="t('product.copy_link') || 'نسخ الرابط'">
               <i class="fa-solid fa-link"></i>
@@ -4670,13 +4761,13 @@ const copyProductLink = async () => {
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
         </div>
-        <div class="order-now border py-2 px-3 d-flex justify-content-between align-items-center mb-3 rounded-3 ">
+        <div class="order-now border py-2 px-3 d-flex align-items-center mb-3 rounded-3 ">
           <div class="ship d-flex align-items-center gap-2">
             <i class="fa-solid fa-truck-fast"></i>
             <strong>{{ t('product.expected_delivery') }}</strong>
           </div>
           <div class="d-flex flex-column ">
-            <p class="mb-3">{{ t('product.delivery_all_kingdom') }}</p>
+            <p class="mb-0">{{ t('product.delivery_all_kingdom') }}</p>
           </div>
         </div>
         <div class="payment-image mt-4 mb-3 d-flex align-items-center gap-2">
@@ -4700,8 +4791,8 @@ const copyProductLink = async () => {
           </div>
         </div>
         <!-- Stock Status -->
-        <div class="stock-status" :class="{ in: currentVariantStock, out: !currentVariantStock }">
-          {{ currentVariantStock ? `${t('product.in_stock')} (${currentVariantStock} ${t('product.pieces')})` : t('product.out_of_stock') }}
+        <div class="stock-status" :class="{ in: current_stock, out: !current_stock }">
+          {{ current_stock ? `${t('product.in_stock')} (${current_stock} ${t('product.pieces')})` : t('product.out_of_stock') }}
         </div>
         <div class="offer-products mt-3">
           <h4>{{ t('product.offer_products') }}</h4>
@@ -6044,8 +6135,15 @@ const copyProductLink = async () => {
   .share-btn.facebook:hover{ background:#166fe5 }
   .share-btn.twitter{ background:#1da1f2 }
   .share-btn.twitter:hover{ background:#1a91da }
-  .share-btn.whatsapp{ background:#25d366 }
+  .share-btn.whatsapp{ background:#25d366;position:relative; }
   .share-btn.whatsapp:hover{ background:#20ba5a }
+  .share-btn.telegram{ background:#0088cc }
+  .share-btn.telegram:hover{ background:#0077b5 }
+  .share-btn.tiktok{ background:#000000 }
+  .share-btn.tiktok:hover{ background:#1a1a1a }
+  .share-btn.snapchat{ background:#fffc00 }
+  .share-btn.snapchat:hover{ background:#e6e300 }
+  .share-btn.snapchat{ color:#000 }
   .share-btn.copy{ background:#6b7280 }
   .share-btn.copy:hover{ background:#4b5563 }
 
