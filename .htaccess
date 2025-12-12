@@ -1,19 +1,26 @@
 # Nuxt.js on Hostinger Configuration
-# This file helps with routing for Nuxt.js SSR
+# Allow access to all files and directories
+Options -Indexes +FollowSymLinks
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   
-  # Handle API routes
-  RewriteCond %{REQUEST_URI} ^/api/
-  RewriteRule ^api/(.*)$ /api/$1 [L]
+  # Allow access to static files
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
   
-  # Handle static files
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+  # Allow access to directories
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
   
-  # For Nuxt.js SSR - redirect to Node.js server
-  # This assumes Node.js app is running on a different port
-  # Adjust according to your Hostinger setup
+  # For Node.js apps on Hostinger, all requests should go to Node.js
+  # The Node.js server will handle routing
+</IfModule>
+
+# Security headers (optional)
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
