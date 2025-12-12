@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": ".output/public",
+  "outputDirectory": ".vercel/output",
   "framework": "nuxtjs",
   "headers": [
     {

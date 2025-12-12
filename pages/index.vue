@@ -1069,7 +1069,7 @@ const onImgErr = (e: any) => {
 
       <!-- Dynamic Home Sections from Admin -->
     <!-- Show loading state while sections are loading (only if no data yet) -->
-    <div v-if="sectionsPending && !hasSectionItems" class="sections-loading text-center py-5">
+    <div v-if="sectionsPending " class="sections-loading text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">{{ t('loading') }}</span>
       </div>
@@ -1295,7 +1295,7 @@ const onImgErr = (e: any) => {
             </template>
           </div>
         </div>
-      </section>
+    </section>
 
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-products">
