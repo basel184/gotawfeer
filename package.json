@@ -22,7 +22,7 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build && npm run copy-to-dist",
-    "copy-to-dist": "node copy-to-dist.js",
+    "copy-to-dist": "node copy-to-dist.cjs",
     "preview": "nuxt preview",
     "start": "node dist/server/index.mjs"
   },
