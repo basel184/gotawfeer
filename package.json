@@ -21,10 +21,9 @@
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build && npm run copy-to-dist",
-    "copy-to-dist": "node copy-to-dist.cjs",
+    "build": "nuxt build",
     "preview": "nuxt preview",
-    "start": "node dist/server/index.mjs"
+    "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",

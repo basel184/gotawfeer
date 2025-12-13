@@ -13,9 +13,6 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'node-server',
-    output: {
-      dir: '.output'
-    },
     compatibilityDate: '2025-09-11',
     routeRules: {
       '/api/**': { 

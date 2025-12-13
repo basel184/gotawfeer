@@ -1,4 +1,7 @@
 # Nuxt.js on Hostinger Configuration
+# NOTE: If using Node.js App, you may not need this file at all
+# Try deleting this file if you get 403 Forbidden errors
+
 # Allow access to all files and directories
 Options -Indexes +FollowSymLinks
 
@@ -15,12 +18,5 @@ Options -Indexes +FollowSymLinks
   
   # For Node.js apps on Hostinger, all requests should go to Node.js
   # The Node.js server will handle routing
-</IfModule>
-
-# Security headers (optional)
-<IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "*"
-  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 </IfModule>
 
