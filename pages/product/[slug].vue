@@ -53,11 +53,11 @@ const productTitle = computed(() => {
   const p: any = product.value || {}
   return p?.name || p?.product_name || p?.product?.name || ''
 })
-const tabby = '/images/pays/tabby-badge.png'
-const tamara = '/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'
-const applePay = '/images/pays/apple-pay.png'
-const stcPay = '/images/pays/Stc_pay_1.webp'
-const tapPay = '/images/pays/tap-pay.png'
+const tabby = 'public/images/pays/tabby-badge.png'
+const tamara = 'public/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'
+const applePay = '/public/images/pays/apple-pay.png'
+const stcPay = '/public/images/pays/Stc_pay_1.webp'
+const tapPay = 'public/images/pays/tap-pay.png'
 const productDescription = computed(() => {
   const p: any = product.value || {}
   return metaDescription.value || 
