@@ -53,11 +53,27 @@ const productTitle = computed(() => {
   const p: any = product.value || {}
   return p?.name || p?.product_name || p?.product?.name || ''
 })
-const tabby = 'public/images/pays/tabby-badge.png'
-const tamara = 'public/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'
-const applePay = '/public/images/pays/apple-pay.png'
-const stcPay = '/public/images/pays/Stc_pay_1.webp'
-const tapPay = 'public/images/pays/tap-pay.png'
+// Payment images - computed to ensure they work in production
+// Get base URL for absolute paths if needed
+const getBaseUrl = () => {
+  if (process.client && typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return ''
+}
+
+const getPaymentImage = (filename: string) => {
+  const path = `/images/pays/${filename}`
+  // For static assets, relative paths should work, but ensure absolute if needed
+  const base = getBaseUrl()
+  return base ? `${base}${path}` : path
+}
+
+const tabby = computed(() => getPaymentImage('tabby-badge.png'))
+const tamara = computed(() => getPaymentImage('5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'))
+const applePay = computed(() => getPaymentImage('apple-pay.png'))
+const stcPay = computed(() => getPaymentImage('Stc_pay_1.webp'))
+const tapPay = computed(() => getPaymentImage('tap-pay.png'))
 const productDescription = computed(() => {
   const p: any = product.value || {}
   return metaDescription.value || 
