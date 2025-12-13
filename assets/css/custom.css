@@ -124,7 +124,7 @@
 .whatsapp {
   position: fixed;
   bottom: 2%;
-  inset-inline-start: 2%;
+  inset-inline-start: 0;
   z-index: 99999;
   background-color: rgb(77, 194, 71) !important;
   width: 50px;
@@ -143,10 +143,6 @@
   border-radius: 50%;
   text-decoration: none;
   color: var(--primary-color);
-}
-html[dir="rtl"] .whatsapp {
-      inset-inline-start: unset;
-      inset-inline-end: 2%;
 }
 @media (max-width: 1200px) {
     .whatsapp {

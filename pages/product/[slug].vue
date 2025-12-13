@@ -4743,17 +4743,18 @@ const copyProductLink = async () => {
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
               <picture>
-                <img src="https://gotawfeer.com/wp-content/uploads/2022/12/1-150x84.png" alt="">
+                <img src="/public/images/pays/tabby-badge.png" style="width: 100px;" alt="">
               </picture>
               <div class="payment-logo">Tabby</div>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
-            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+            <div class="payment-amount">{{ Math.round(finalPrice / 4) }} 
+              <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
           <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/3-150x84.png" alt="">
+              <img src="/public/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
             </picture>
               <div class="payment-logo">تمارا</div>
             </div>
@@ -4774,19 +4775,13 @@ const copyProductLink = async () => {
           <strong>{{ t('product.payment_methods') }}:</strong>
           <div class="payment-image-container d-flex align-items-center gap-4">
             <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/4-150x84.png" alt="">
+              <img src="/public/images/pays/apple-pay.png" alt="">
             </picture>
             <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/3-150x84.png" alt="">
+              <img src="/public/images/pays/Stc_pay_1.webp" alt="">
             </picture>
             <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/2-150x84.png" alt="">
-            </picture>
-            <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/1-150x84.png" alt="">
-            </picture>
-            <picture>
-              <img src="https://gotawfeer.com/wp-content/uploads/2022/12/5-150x84.png" alt="">
+              <img src="/public/images/pays/tap-pay.png" style="width: 200px;" alt="">
             </picture>
           </div>
         </div>
