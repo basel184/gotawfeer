@@ -42,9 +42,10 @@
                     </button>
                     <div class="product-image" v-if="item.image">
                       <img 
-                        :src="item.image" 
+                        :src="getImageUrl(item.image)" 
                         :alt="item.name" 
                         style="width: 100%; height: 100%; object-fit: contain;"
+                        @error="(e: any) => { e.target.src = '/images/placeholder.png' }"
                       />
                     </div>
                     <h5 class="product-name">{{ item.name }}</h5>
@@ -228,6 +229,58 @@ function money(n: any): string {
     const val = Number(raw != null ? raw : 0)
     return `${val.toFixed(2)} ${sym}`
   }
+}
+
+// Image URL helper
+const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
+const fixPath = (s: string) => {
+  let p = s.trim().replace(/\\/g, '/')
+  
+  // Handle different path formats
+  if (p.startsWith('public/')) {
+    p = p.replace(/^public\//, '')
+  } else if (p.startsWith('app/public/')) {
+    p = p.replace(/^app\/public\//, 'storage/')
+  } else if (p.startsWith('storage/')) {
+    // Already correct format
+  } else if (!p.startsWith('http') && !p.startsWith('/')) {
+    // If it's just a filename, determine the correct storage path
+    if (p.includes('product')) {
+      p = `storage/product/${p}`
+    } else {
+      p = `storage/${p}`
+    }
+  }
+  
+  // Clean up slashes
+  p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  
+  return p
+}
+
+const getImageUrl = (imagePath: any): string => {
+  if (!imagePath) return ''
+  
+  if (Array.isArray(imagePath)) return getImageUrl(imagePath[0])
+  
+  let s: any = imagePath
+  if (typeof imagePath === 'string') {
+    const t = imagePath.trim()
+    if (t.startsWith('[') || t.startsWith('{')) {
+      try { return getImageUrl(JSON.parse(t)) } catch {}
+    }
+    s = t
+  } else if (typeof imagePath === 'object') {
+    s = (imagePath as any).path || (imagePath as any).url || (imagePath as any).image || ''
+  }
+  
+  s = (typeof s === 'string' ? s : '').trim()
+  if (!s) return ''
+  
+  // If already a full URL, return as is
+  if (/^(https?:|data:|blob:)/i.test(s)) return s
+  
+  return `${assetBase}/${fixPath(s)}`
 }
 
 

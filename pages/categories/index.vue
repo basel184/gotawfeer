@@ -26,23 +26,76 @@ seo.setSeo({
 // Loading state - use pending from useAsyncData
 const loadingProgress = ref(0)
 
+// Image URL helper
+const cfg = useRuntimeConfig() as any
+const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
+const fixPath = (s: string) => {
+  let p = s.trim().replace(/\\/g, '/')
+  
+  // Handle different path formats
+  if (p.startsWith('public/')) {
+    p = p.replace(/^public\//, '')
+  } else if (p.startsWith('app/public/')) {
+    p = p.replace(/^app\/public\//, 'storage/')
+  } else if (p.startsWith('storage/')) {
+    // Already correct format
+  } else if (!p.startsWith('http') && !p.startsWith('/')) {
+    // If it's just a filename, determine the correct storage path
+    if (p.includes('category') || p.includes('banner')) {
+      p = `storage/${p}`
+    } else {
+      p = `storage/${p}`
+    }
+  }
+  
+  // Clean up slashes
+  p = p.replace(/\/+/g, '/').replace(/^\//, '')
+  
+  return p
+}
+
+const toSrc = (u: any): string => {
+  if (!u) return ''
+  if (Array.isArray(u)) return toSrc(u[0])
+  let s: any = u
+  if (typeof u === 'string') {
+    const t = u.trim()
+    if (t.startsWith('[') || t.startsWith('{')) {
+      try { return toSrc(JSON.parse(t)) } catch {}
+    }
+    s = t
+  } else if (typeof u === 'object') {
+    s = (u as any).path || (u as any).url || (u as any).image || (u as any).banner || ''
+  }
+  s = (typeof s === 'string' ? s : '').trim()
+  if (!s) return ''
+  if (/^(https?:|data:|blob:)/i.test(s)) return s
+  return `${assetBase}/${fixPath(s)}`
+}
+
 // Get category image with proper fallback
 const getCategoryImage = (category: any) => {
   // Try different image sources in order of preference
   if (category?.icon_full_url?.path) {
-    return category.icon_full_url.path
+    return toSrc(category.icon_full_url.path)
   }
   if (category?.image_full_url?.path) {
-    return category.image_full_url.path
+    return toSrc(category.image_full_url.path)
   }
   if (category?.icon) {
-    return category.icon
+    return toSrc(category.icon)
   }
   if (category?.image) {
-    return category.image
+    return toSrc(category.image)
   }
   // Fallback to placeholder
   return '/images/category-placeholder.jpg'
+}
+
+// Get banner image URL
+const getBannerUrl = (banner: any): string => {
+  if (!banner) return ''
+  return toSrc(banner)
 }
 
 // Preload images for better performance
@@ -271,7 +324,7 @@ const handleImageLoad = (event: Event) => {
               <!-- Banner -->
               <div v-if="mainCategory.banner" class="category-banner">
                 <img 
-                  :src="mainCategory.banner" 
+                  :src="getBannerUrl(mainCategory.banner)" 
                   :alt="mainCategory?.name || 'Banner'"
                   class="banner-img"
                   loading="lazy"
