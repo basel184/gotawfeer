@@ -4743,7 +4743,7 @@ const copyProductLink = async () => {
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
               <picture>
-                <img src="/public/images/pays/tabby-badge.png" style="width: 100px;" alt="">
+                <img src="/images/pays/tabby-badge.png" style="width: 100px;" alt="">
               </picture>
               <div class="payment-logo">Tabby</div>
             </div>
@@ -4754,7 +4754,7 @@ const copyProductLink = async () => {
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
           <picture>
-              <img src="/public/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
+              <img src="/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
             </picture>
               <div class="payment-logo">تمارا</div>
             </div>
@@ -4775,13 +4775,13 @@ const copyProductLink = async () => {
           <strong>{{ t('product.payment_methods') }}:</strong>
           <div class="payment-image-container d-flex align-items-center gap-4">
             <picture>
-              <img src="/public/images/pays/apple-pay.png" alt="">
+              <img src="/images/pays/apple-pay.png" alt="">
             </picture>
             <picture>
-              <img src="/public/images/pays/Stc_pay_1.webp" alt="">
+              <img src="/images/pays/Stc_pay_1.webp" alt="">
             </picture>
             <picture>
-              <img src="/public/images/pays/tap-pay.png" style="width: 200px;" alt="">
+              <img src="/images/pays/tap-pay.png" style="width: 200px;" alt="">
             </picture>
           </div>
         </div>

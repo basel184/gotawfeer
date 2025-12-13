@@ -324,7 +324,7 @@ const handleImageLoad = (event: Event) => {
               <!-- Banner -->
               <div v-if="mainCategory.banner" class="category-banner">
                 <img 
-                  :src="getBannerUrl(mainCategory.banner)" 
+                  :src="mainCategory.banner" 
                   :alt="mainCategory?.name || 'Banner'"
                   class="banner-img"
                   loading="lazy"
