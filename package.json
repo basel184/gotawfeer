@@ -22,8 +22,11 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "build:deploy": "nuxt build && node post-build.js",
     "preview": "nuxt preview",
-    "start": "node .output/server/index.mjs"
+    "start": "node .output/server/index.mjs",
+    "postbuild": "node post-build.js",
+    "restore-htaccess": "node post-build.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
@@ -43,3 +46,4 @@
     "typescript": "^5.3.3"
   }
 }
+
