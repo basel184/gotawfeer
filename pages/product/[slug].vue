@@ -53,7 +53,11 @@ const productTitle = computed(() => {
   const p: any = product.value || {}
   return p?.name || p?.product_name || p?.product?.name || ''
 })
-
+const tabby = '/images/pays/tabby-badge.png'
+const tamara = '/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'
+const applePay = '/images/pays/apple-pay.png'
+const stcPay = '/images/pays/Stc_pay_1.webp'
+const tapPay = '/images/pays/tap-pay.png'
 const productDescription = computed(() => {
   const p: any = product.value || {}
   return metaDescription.value || 
@@ -4743,7 +4747,7 @@ const copyProductLink = async () => {
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
               <picture>
-                <img src="/images/pays/tabby-badge.png" style="width: 100px;" alt="">
+                <img :src="tabby" style="width: 100px;" alt="">
               </picture>
               <div class="payment-logo">Tabby</div>
             </div>
@@ -4754,7 +4758,7 @@ const copyProductLink = async () => {
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
           <picture>
-              <img src="/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
+              <img :src="tamara" style="width: 100px;" alt="">
             </picture>
               <div class="payment-logo">تمارا</div>
             </div>
@@ -4775,13 +4779,13 @@ const copyProductLink = async () => {
           <strong>{{ t('product.payment_methods') }}:</strong>
           <div class="payment-image-container d-flex align-items-center gap-4">
             <picture>
-              <img src="/images/pays/apple-pay.png" alt="">
+              <img :src="applePay" alt="">
             </picture>
             <picture>
-              <img src="/images/pays/Stc_pay_1.webp" alt="">
+              <img :src="stcPay" alt="">
             </picture>
             <picture>
-              <img src="/images/pays/tap-pay.png" style="width: 200px;" alt="">
+              <img :src="tapPay" style="width: 200px;" alt="">
             </picture>
           </div>
         </div>
