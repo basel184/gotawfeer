@@ -185,7 +185,7 @@ const groupedCategories = computed(() => {
     return {
       ...mainCat,
       subcategories: subcategories || [],
-      banner: bannerFile ? `/images/banners-categories/${bannerFile}` : null
+      banner: bannerFile ? `https://admin.gotawfeer.com/banners-categories/${bannerFile}` : null
     }
   })
 })

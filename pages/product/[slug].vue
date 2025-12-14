@@ -53,27 +53,9 @@ const productTitle = computed(() => {
   const p: any = product.value || {}
   return p?.name || p?.product_name || p?.product?.name || ''
 })
-// Payment images - computed to ensure they work in production
-// Get base URL for absolute paths if needed
-const getBaseUrl = () => {
-  if (process.client && typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return ''
-}
-
-const getPaymentImage = (filename: string) => {
-  const path = `/images/pays/${filename}`
-  // For static assets, relative paths should work, but ensure absolute if needed
-  const base = getBaseUrl()
-  return base ? `${base}${path}` : path
-}
-
-const tabby = computed(() => getPaymentImage('tabby-badge.png'))
-const tamara = computed(() => getPaymentImage('5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'))
-const applePay = computed(() => getPaymentImage('apple-pay.png'))
-const stcPay = computed(() => getPaymentImage('Stc_pay_1.webp'))
-const tapPay = computed(() => getPaymentImage('tap-pay.png'))
+const tabby = '/images/pays/tabby-badge.png'
+const tamara = '/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png'
+const applePay = '/images/pays/apple-pay.png'
 const productDescription = computed(() => {
   const p: any = product.value || {}
   return metaDescription.value || 
@@ -4769,12 +4751,12 @@ const copyProductLink = async () => {
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} 
-              <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+              <img src="https://admin.gotawfeer.com/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
           <picture>
-              <img :src="tamara" style="width: 100px;" alt="">
+              <img src="https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
             </picture>
               <div class="payment-logo">تمارا</div>
             </div>
@@ -4795,13 +4777,13 @@ const copyProductLink = async () => {
           <strong>{{ t('product.payment_methods') }}:</strong>
           <div class="payment-image-container d-flex align-items-center gap-4">
             <picture>
-              <img :src="applePay" alt="">
+              <img src="https://admin.gotawfeer.com/pays/apple-pay.png" alt="">
             </picture>
             <picture>
-              <img :src="stcPay" alt="">
+              <img src="https://admin.gotawfeer.com/pays/Stc_pay_1.webp" alt="">
             </picture>
             <picture>
-              <img :src="tapPay" style="width: 200px;" alt="">
+              <img src="https://admin.gotawfeer.com/pays/tap-pay.png" style="width: 200px;" alt="">
             </picture>
           </div>
         </div>
