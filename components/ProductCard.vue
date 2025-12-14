@@ -1376,7 +1376,8 @@ const openProductModal = async (e: Event) => {
           <!-- <span class="save-amount">حفظ {{ formatPrice((oldPrice as any) - (finalPrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span> -->
         </div>
         <div class="price-row">
-          <span class="price final">{{ formatPrice((finalPrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span>
+          <span v-if="hasDiscount" style="color: red;" class="price final">{{ formatPrice((finalPrice as any)) }} <img src="../images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+          <span v-else class="price final">{{ formatPrice((basePrice as any)) }} <img src="../images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span>
           <div v-if="hasDiscount" class="badge">-{{ discountPercent }}%</div>
         </div>
 
