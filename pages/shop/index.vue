@@ -71,17 +71,43 @@ const shopTitle = computed(() => {
       : `Search results for "${searchQuery}"`
   }
   if (categoryParam) {
-    // Get category name from ID - use categoriesData directly to avoid initialization error
+    // Get category name from ID - search recursively in all levels including childes
     const id = Number(categoryParam)
     if (!isNaN(id)) {
+      // Helper function to search recursively in categories and their childes
+      const findCategoryRecursive = (categories: any[]): any => {
+        for (const cat of categories || []) {
+          // Check if this category matches
+          if (Number(cat.id) === id || 
+              Number(cat.category_id) === id ||
+              String(cat.id) === String(categoryParam) ||
+              String(cat.category_id) === String(categoryParam)) {
+            return cat
+          }
+          
+          // Search in childes recursively
+          if (Array.isArray(cat.childes) && cat.childes.length > 0) {
+            const found = findCategoryRecursive(cat.childes)
+            if (found) return found
+          }
+          
+          // Also check children and subcategories
+          if (Array.isArray(cat.children) && cat.children.length > 0) {
+            const found = findCategoryRecursive(cat.children)
+            if (found) return found
+          }
+          
+          if (Array.isArray(cat.subcategories) && cat.subcategories.length > 0) {
+            const found = findCategoryRecursive(cat.subcategories)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      
       // Search in categories data
       const categoriesList = Array.isArray(categoriesData.value) ? categoriesData.value : []
-      const found = categoriesList.find((cat: any) => 
-        Number(cat.id) === id || 
-        Number(cat.category_id) === id ||
-        String(cat.id) === String(categoryParam) ||
-        String(cat.category_id) === String(categoryParam)
-      )
+      const found = findCategoryRecursive(categoriesList)
       
       if (found) {
         const categoryName = found.name || found.category_name || found.title || categoryParam
@@ -155,7 +181,11 @@ const recentSearches = ref<string[]>([])
 
 // Filter state - initialized from route query for SSR
 const q = ref<string>((route.query.q as string) || '')
-const sort_by = ref<string>((route.query.sort as string) || 'latest')
+// If has_discount=true, default to highest_discount sort
+const initialSort = route.query.has_discount === 'true' 
+  ? 'highest_discount' 
+  : ((route.query.sort as string) || 'latest')
+const sort_by = ref<string>(initialSort)
 const product_type = ref<string>('')
 const price_min = ref<number | null>(route.query.price_min ? Number(route.query.price_min) : null)
 const price_max = ref<number | null>(route.query.price_max ? Number(route.query.price_max) : null)
@@ -859,6 +889,9 @@ const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) =>
     // Update sort
     if (typeof newQuery.sort === 'string') {
       sort_by.value = newQuery.sort === 'newest' ? 'latest' : newQuery.sort
+    } else if (newQuery.has_discount === 'true' && !newQuery.sort) {
+      // If has_discount=true and no sort specified, default to highest_discount
+      sort_by.value = 'highest_discount'
     }
     
     // Reset and reload products
@@ -936,12 +969,39 @@ type FlatCat = { id: number | string; name: string; depth: number }
 const flatCategories = computed<FlatCat[]>(() => {
   const res: FlatCat[] = []
   const walk = (arr: any[], depth = 0) => {
-    for (const c of arr || []) {
-      res.push({ id: c.id, name: c.name, depth })
-      if (Array.isArray(c.childes) && c.childes.length) walk(c.childes, depth + 1)
+    if (!Array.isArray(arr)) return
+    
+    for (const c of arr) {
+      if (!c || typeof c !== 'object') continue
+      
+      // Get category name from multiple possible fields (try all variations)
+      const categoryName = c.name || 
+                           c.category_name || 
+                           c.title || 
+                           c.category_title ||
+                           c.name_ar ||
+                           c.name_en ||
+                           `Category ${c.id || c.category_id || ''}`
+      const categoryId = c.id || c.category_id || c.categoryId
+      
+      // Add category if we have at least an ID
+      if (categoryId) {
+        res.push({ 
+          id: categoryId, 
+          name: categoryName || `Category ${categoryId}`, 
+          depth 
+        })
+      }
+      
+      // Check for childes, children, or subcategories
+      const children = c.childes || c.children || c.subcategories
+      if (Array.isArray(children) && children.length > 0) {
+        walk(children, depth + 1)
+      }
     }
   }
   walk(cats.value)
+  
   return res
 })
 

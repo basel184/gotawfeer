@@ -4977,9 +4977,8 @@
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
               <picture>
-                <img :src="tabby" style="width: 100px;" alt="">
+                <img :src="tabby" style="width: 100px;height: 30px;" alt="">
               </picture>
-              <div class="payment-logo">Tabby</div>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} 
@@ -4988,9 +4987,8 @@
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
           <picture>
-              <img src="https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;" alt="">
+              <img src="https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png" style="width: 100px;height: 30px;" alt="">
             </picture>
-              <div class="payment-logo">تمارا</div>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
