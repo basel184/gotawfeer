@@ -66,7 +66,7 @@
               <li><NuxtLink :to="getLocalizedPath('/privacy-policy')" class="footer-link">{{ t('footer.links.company.privacy_policy') }}</NuxtLink></li>
               <li><NuxtLink :to="getLocalizedPath('/shipping-return-policy')" class="footer-link">{{ t('footer.links.company.shipping_return_policy') }}</NuxtLink></li>
             </ul>
-            <a href="/images/Certificate.pdf" target="_blank" rel="noopener noreferrer">
+            <a href=".https://admin.gotawfeer.com/pays/Certificate.pdf" target="_blank" rel="noopener noreferrer">
               <img src="/images/footer-social.jpg" :style="{ width: '50px' , borderRadius: '10px' }" alt="logo" class="logo-img">
             </a>
           </div>

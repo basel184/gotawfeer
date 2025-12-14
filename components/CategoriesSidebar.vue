@@ -37,11 +37,11 @@
         />
         <div class="category-info">
           <h4>{{ category.name }}</h4>
-          <p v-if="category.childes && category.childes.length > 0">
-            {{ category.childes.length }} {{ category.childes.length === 1 ? t('subcategory') : t('subcategories') }}
+          <p v-if="getProductCount(category) > 0">
+            {{ getProductCount(category) }} {{ getProductCount(category) === 1 ? t('shop.products') : t('products') }}
           </p>
           <p v-else>
-            {{ t('no_subcategories') }}
+            {{ t('no_products') || 'لا توجد منتجات' }}
           </p>
         </div>
       </div>

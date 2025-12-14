@@ -1668,6 +1668,71 @@ const availableVariationsWithQty = computed(() => {
   })
 })
 
+// Computed property for colors with qty info
+const availableColorsWithQty = computed(() => {
+  if (!product.value?.variation || !Array.isArray(product.value.variation)) {
+    return availableColors.value.map((color: any) => ({
+      ...color,
+      qty: 0,
+      available: false
+    }))
+  }
+  
+  return availableColors.value.map((color: any) => {
+    // Get color name to match - try colorName, displayName, or name
+    const colorNameToMatch = color.colorName || color.displayName || color.name || ''
+    const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+    
+    // Find all variations that match this color
+    const matchingVariations = product.value.variation.filter((v: any) => {
+      if (!v.type) return false
+      const vTypeNormalized = String(v.type).trim().toUpperCase()
+      
+      // If colorNameNormalized is empty, skip
+      if (!colorNameNormalized) return false
+      
+      // Try multiple matching strategies:
+      // 1. Exact match
+      if (vTypeNormalized === colorNameNormalized) return true
+      
+      // 2. Check if variation.type contains the color name
+      if (vTypeNormalized.includes(colorNameNormalized)) return true
+      
+      // 3. Check if color name contains variation type (for partial matches)
+      if (colorNameNormalized.includes(vTypeNormalized)) return true
+      
+      // 4. Extract last meaningful part from variation.type (e.g., "SOFT PINK" from "FM LIFT UP LP 001 SOFT PINK")
+      // and check if it matches color name
+      const vTypeParts = vTypeNormalized.split(/\s+/)
+      if (vTypeParts.length > 0) {
+        const lastPart = vTypeParts[vTypeParts.length - 1]
+        const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+        const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+        
+        if (colorNameNormalized.includes(lastPart) || colorNameNormalized.includes(lastTwoParts)) {
+          return true
+        }
+        if (lastPart.includes(colorNameNormalized) || lastTwoParts.includes(colorNameNormalized)) {
+          return true
+        }
+      }
+      
+      return false
+    })
+    
+    // Calculate total qty for this color
+    const totalQty = matchingVariations.reduce((sum: number, v: any) => {
+      return sum + (Number(v.qty) || 0)
+    }, 0)
+    
+    return {
+      ...color,
+      qty: totalQty,
+      available: totalQty > 0
+    }
+  })
+})
+
 const currentVariantPrice = computed(() => {
   if (selectedVariant.value && selectedVariant.value.price) {
     // استخدم سعر المتغير مباشرة
@@ -4649,14 +4714,21 @@ const copyProductLink = async () => {
           </div>
           <div class="color-options">
             <div
-              v-for="color in availableColors"
+              v-for="color in availableColorsWithQty"
               :key="color.code"
               class="color-option-wrapper"
-              :class="{ active: selectedColor === color.name }"
+              :class="{ 
+                active: selectedColor === color.name,
+                disabled: color.qty === 0
+              }"
             >
               <button
                 class="color-option"
-                :class="{ active: selectedColor === color.name, 'has-image': color.image && !color.originalName }"
+                :class="{ 
+                  active: selectedColor === color.name, 
+                  'has-image': color.image && !color.originalName,
+                  'out-of-stock': color.qty === 0
+                }"
                 :style="( !color.originalName  ) 
                   ? { 
                       backgroundImage: `url(${color.image})`,
@@ -4668,8 +4740,9 @@ const copyProductLink = async () => {
                   : { 
                       backgroundColor: color.hexCode || getColorValue(color.code) 
                     }"
-                @click="selectColor(color)"
-                :title="color.name || color.code || ''"
+                @click="color.qty > 0 ? selectColor(color) : null"
+                :disabled="color.qty === 0"
+                :title="color.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : (color.name || color.code || '')"
               >
               </button>
             </div>
@@ -6380,6 +6453,32 @@ const copyProductLink = async () => {
     border-color:#2563eb; 
     box-shadow:0 0 0 3px rgba(37, 99, 235, 0.2);
     transform:scale(1.05);
+  }
+  .color-option.out-of-stock,
+  .color-option:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+    position:relative;
+  }
+  .color-option.out-of-stock::after,
+  .color-option:disabled::after{
+    content:'';
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%) rotate(45deg);
+    width:2px;
+    height:100%;
+    background-color:#ef4444;
+    z-index:1;
+  }
+  .color-option-wrapper.disabled{
+    opacity:0.6;
+  }
+  .color-option-wrapper.disabled .color-option:hover{
+    border-color:#e5e7eb;
+    transform:scale(1);
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
   }
   .color-image{ 
     width:100%; 
