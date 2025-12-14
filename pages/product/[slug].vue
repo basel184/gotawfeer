@@ -157,9 +157,13 @@ watch(() => [product.value, locale.value], () => {
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
 
-// Wishlist data
-const isInWishlist = ref(false)
-const wishlistLoading = ref(false)
+// Wishlist data - use computed property like ProductCard.vue
+const isInWishlist = computed(() => {
+  const productId = product.value?.id
+  if (!productId) return false
+  return wishlist.isInWishlist(String(productId))
+})
+const wishlistLoading = computed(() => wishlist.loading.value)
 // Helper function to get localized path with proper i18n handling
 const getLocalizedPath = (path: string): string => {
   // Ensure path starts with /
@@ -3207,21 +3211,9 @@ function openLoginModal() {
   taqnyatAuth.clearMessages()
 }
 
-// Wishlist functions
-async function checkWishlistStatus() {
-  if (!auth?.user?.value || !product.value?.id) return
-  
-  try {
-    const response = await $get('v1/customer/wish-list/')
-    if (response && Array.isArray(response)) {
-      isInWishlist.value = response.some((item: any) => item.product_id === product.value.id)
-    }
-  } catch (error) {
-    console.error('Error checking wishlist status:', error)
-  }
-}
-
+// Wishlist functions - use wishlist.toggle() like ProductCard.vue
 async function toggleWishlist() {
+  // Check if user is logged in
   if (!auth?.user?.value) {
     showLoginModal.value = true
     // Reset OTP form when opening modal
@@ -3236,33 +3228,44 @@ async function toggleWishlist() {
     return
   }
   
-  if (!product.value?.id) return
-  
-  wishlistLoading.value = true
+  if (wishlistLoading.value) return
   
   try {
-    if (isInWishlist.value) {
-      // Remove from wishlist
-      await $del('v1/customer/wish-list/remove', {
-        params: { product_id: product.value.id }
-      })
-      isInWishlist.value = false
-      console.log('تم إزالة المنتج من المفضلة')
-    } else {
-      // Add to wishlist
-      await $post('v1/customer/wish-list/add', {
-        product_id: product.value.id
-      })
-      isInWishlist.value = true
-      console.log('تم إضافة المنتج إلى المفضلة')
+    const productId = product.value?.id
+    if (!productId) {
+      throw new Error('Product ID not found')
+    }
+    
+    // Store current state before toggle
+    const wasInWishlist = isInWishlist.value
+    
+    // Use wishlist.toggle to add/remove - this will automatically update the state
+    await wishlist.toggle(String(productId))
+    
+    // Show success message based on previous state (before toggle)
+    const message = wasInWishlist
+      ? t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة' 
+      : t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
+    
+    // Show toast if available
+    if (typeof window !== 'undefined' && (window as any).$toast) {
+      (window as any).$toast.success(message)
     }
   } catch (error: any) {
-    console.error('Error toggling wishlist:', error)
-    if (error?.data?.message) {
-      console.error('Error message:', error.data.message)
+    console.error('Wishlist error:', error)
+    
+    // Handle specific error cases
+    if (error?.status === 409 || error?.data?.message?.includes('Already in your wishlist')) {
+      console.log('المنتج موجود بالفعل في المفضلة')
+      return
     }
-  } finally {
-    wishlistLoading.value = false
+    
+    if (error?.status === 404 || error?.data?.message?.includes('not in your wishlist')) {
+      console.log('المنتج غير موجود في المفضلة')
+      return
+    }
+    
+    console.error('حدث خطأ أثناء تحديث المفضلة:', error?.data?.message || error.message)
   }
 }
 
@@ -3585,20 +3588,13 @@ onMounted(async () => {
     wishlist.list().catch(() => {}),
     cart.list().catch(() => {})
   ])
-  // Check wishlist status after product loads
+  // Wishlist status is now computed from wishlist.isInWishlist(), so no need for checkWishlistStatus
+  // Check compare status after product loads
   watch(product, () => {
     if (product.value) {
-      checkWishlistStatus()
       checkCompareStatus()
     }
   }, { immediate: true })
-  
-  // Check wishlist status when user logs in
-  watch(() => auth?.user?.value, () => {
-    if (auth?.user?.value && product.value) {
-      checkWishlistStatus()
-    }
-  })
   
   // Check compare status when compare items change
   watch(() => compare.items.value, () => {
@@ -4751,7 +4747,7 @@ const copyProductLink = async () => {
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} 
-              <img src="https://admin.gotawfeer.com/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+              <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
           <div class="payment-option">
             <div class="payment-option-container d-flex align-items-center justify-content-between ">

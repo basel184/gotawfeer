@@ -713,8 +713,7 @@ const toggleWish = async (e: Event) => {
     
     // Show success message
     const message = wished.value 
-      ? t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
-      : t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة'
+      ? t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة' : t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
     showSuccessToast(message)
   } catch (error: any) {
     console.error('Wishlist error:', error)
