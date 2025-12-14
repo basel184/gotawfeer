@@ -96,6 +96,35 @@ const shopTitle = computed(() => {
       : `Category: ${categoryParam}`
   }
   if (brandName) {
+    // Get brand name from ID - use brandsData directly to avoid initialization error
+    const id = Number(brandName)
+    if (!isNaN(id)) {
+      // Search in brands data
+      const resp = brandsData.value
+      let brandsList: any[] = []
+      if (Array.isArray(resp)) {
+        brandsList = resp
+      } else if (resp && Array.isArray(resp.brands)) {
+        brandsList = resp.brands
+      } else if (resp && Array.isArray(resp.data)) {
+        brandsList = resp.data
+      }
+      
+      const found = brandsList.find((brand: any) => 
+        Number(brand.id) === id || 
+        Number(brand.brand_id) === id ||
+        String(brand.id) === String(brandName) ||
+        String(brand.brand_id) === String(brandName)
+      )
+      
+      if (found) {
+        const actualBrandName = found.name || found.brand_name || found.title || brandName
+        return locale.value === 'ar' 
+          ? `البراند: ${actualBrandName}`
+          : `Brand: ${actualBrandName}`
+      }
+    }
+    // Fallback to ID if not found
     return locale.value === 'ar' 
       ? `البراند: ${brandName}`
       : `Brand: ${brandName}`
@@ -103,7 +132,7 @@ const shopTitle = computed(() => {
   return locale.value === 'ar' ? 'المتجر' : 'Shop'
 })
 
-watch(() => [route.query, locale.value, categoriesData.value], () => {
+watch(() => [route.query, locale.value, categoriesData.value, brandsData.value], () => {
   seo.setSeo({
     title: shopTitle.value,
     description: shopDescription.value,
