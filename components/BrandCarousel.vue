@@ -13,7 +13,7 @@ const { locale } = useI18n()
 const swiperModules = [Navigation, Pagination, Autoplay]
 
 const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '') + '/storage/app/public/brand/'
+const assetBase = 'https://admin.gotawfeer.com/storage/app/public/brand/'
 
 // Debug information
 console.log('BrandCarousel - assetBase:', assetBase)

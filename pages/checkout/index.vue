@@ -92,16 +92,16 @@ const loginSuccess = ref(false)
 const paymentMethods = computed(() => {
   const translations = {
     ar: {
-      tabby: 'تابي - ادفع على 4 أقساط',
-      tamara: 'تمارا - ادفع لاحقاً',
-      paymob_visa: 'Paymob - فيزا / ماستركارد',
-      paymob_apple_pay: 'Paymob - Apple Pay'
+      tabby: 'تابي ',
+      tamara: 'تمارا ',
+      paymob_visa: ' فيزا / ماستركارد / مدي',
+      paymob_apple_pay: ' Apple Pay'
     },
     en: {
-      tabby: 'Tabby - Pay in 4 Installments',
-      tamara: 'Tamara - Pay Later',
-      paymob_visa: 'Paymob - Visa / Mastercard',
-      paymob_apple_pay: 'Paymob - Apple Pay'
+      tabby: 'Tabby',
+      tamara: 'Tamara ',
+      paymob_visa: ' Visa / Mastercard / Mada',
+      paymob_apple_pay: ' Apple Pay'
     }
   }
   
@@ -109,10 +109,10 @@ const paymentMethods = computed(() => {
   const localeTranslations = translations[currentLocale as keyof typeof translations] || translations.ar
   
   const methods = [
-    { id: 'tabby', name: localeTranslations.tabby, icon: '💳', available: true },
-    { id: 'tamara', name: localeTranslations.tamara, icon: '🛒', available: true },
-    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '💳', available: true, integration_id: 9668	 },
-    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: '🍎', available: true, integration_id: 9984 }
+    { id: 'tabby', name: localeTranslations.tabby, icon: '/images/pays/tabby-badge.png', available: true },
+    { id: 'tamara', name: localeTranslations.tamara, icon: '/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '/images/pays/tap-pay.png', available: true, integration_id: 9668	 },
+    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: '/images/pays/apple-pay.png', available: true, integration_id: 9984 }
   ]
   
   return methods
@@ -127,7 +127,11 @@ const subtotal = computed(() => items.value.reduce((s: number, it: any) => s + (
 const discountTotal = computed(() => items.value.reduce((s: number, it: any) => s + (Number(it?.discount || 0) * Number(it?.quantity || it?.qty || 0)), 0))
 const subtotalAfterDiscount = computed(() => Math.max(0, subtotal.value - discountTotal.value))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
-const shipping = computed(() => items.value.reduce((s: number, it: any) => s + Number(it?.shipping_cost || 25), 0))
+// Fixed shipping cost: 25 SAR per order (not per item)
+const shipping = computed(() => {
+  if (items.value.length === 0) return 0
+  return 25 // Fixed shipping cost
+})
 
 // Coupon discount
 const couponDiscount = computed(() => {
@@ -942,7 +946,9 @@ onMounted(async () => {
                 }"
                 @click="selectPaymentMethod(method.id)"
               >
-                <div class="method-icon">{{ method.icon }}</div>
+                <div class="method-icon">
+                  <img :src="method.icon" :alt="method.name" />
+                </div>
                 <div class="method-info">
                   <h3>{{ method.name }}</h3>
                   <p v-if="!method.available">{{ t('checkout.not_available') || 'غير متوفر حالياً' }}</p>
@@ -1486,6 +1492,12 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     background: #f8fafc;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
     border-radius: 12px;
   }
 

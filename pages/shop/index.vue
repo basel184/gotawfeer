@@ -20,10 +20,49 @@ const wishlist = useWishlist()
 // SEO Configuration
 const seo = useSeo()
 
+// SSR-friendly data fetching - load in background (non-blocking)
+// This ensures page renders first, then data loads
+// Define categoriesData early to avoid initialization error
+const categoriesData = ref<any[]>([])
+const brandsData = ref<any>({ total_size: 0, brands: [] })
+
+// Load data in background (non-blocking)
+if (process.client) {
+  categories().then((data: any) => {
+    categoriesData.value = Array.isArray(data) ? data : []
+  }).catch(() => {
+    categoriesData.value = []
+  })
+  
+  brands({ limit: 100, offset: 1 }).then((data: any) => {
+    brandsData.value = data || { total_size: 0, brands: [] }
+  }).catch(() => {
+    brandsData.value = { total_size: 0, brands: [] }
+  })
+} else {
+  // SSR: use useAsyncData but don't await (let page render)
+  useAsyncData('shop-categories', () => categories().catch(() => [])).then((result: any) => {
+    if (result?.data?.value) {
+      categoriesData.value = Array.isArray(result.data.value) ? result.data.value : []
+    }
+  })
+  useAsyncData('shop-brands', () => brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))).then((result: any) => {
+    if (result?.data?.value) {
+      brandsData.value = result.data.value || { total_size: 0, brands: [] }
+    }
+  })
+}
+
+const shopDescription = computed(() => {
+  return locale.value === 'ar' 
+    ? 'تصفح آلاف المنتجات الأصيلة في متجر جو توفير. عطور، مكياج، إلكترونيات وأكثر بأسعار مميزة.'
+    : 'Browse thousands of authentic products at Go Tawfeer store. Perfumes, makeup, electronics and more at great prices.'
+})
+
 // Set SEO for shop page
 const shopTitle = computed(() => {
   const searchQuery = route.query.q as string
-  const categoryName = route.query.category as string
+  const categoryParam = route.query.category as string
   const brandName = route.query.brand as string
   
   if (searchQuery) {
@@ -31,10 +70,30 @@ const shopTitle = computed(() => {
       ? `نتائج البحث عن "${searchQuery}"`
       : `Search results for "${searchQuery}"`
   }
-  if (categoryName) {
+  if (categoryParam) {
+    // Get category name from ID - use categoriesData directly to avoid initialization error
+    const id = Number(categoryParam)
+    if (!isNaN(id)) {
+      // Search in categories data
+      const categoriesList = Array.isArray(categoriesData.value) ? categoriesData.value : []
+      const found = categoriesList.find((cat: any) => 
+        Number(cat.id) === id || 
+        Number(cat.category_id) === id ||
+        String(cat.id) === String(categoryParam) ||
+        String(cat.category_id) === String(categoryParam)
+      )
+      
+      if (found) {
+        const categoryName = found.name || found.category_name || found.title || categoryParam
+        return locale.value === 'ar' 
+          ? `التصنيف: ${categoryName}`
+          : `Category: ${categoryName}`
+      }
+    }
+    // Fallback to ID if not found
     return locale.value === 'ar' 
-      ? `التصنيف: ${categoryName}`
-      : `Category: ${categoryName}`
+      ? `التصنيف: ${categoryParam}`
+      : `Category: ${categoryParam}`
   }
   if (brandName) {
     return locale.value === 'ar' 
@@ -44,13 +103,7 @@ const shopTitle = computed(() => {
   return locale.value === 'ar' ? 'المتجر' : 'Shop'
 })
 
-const shopDescription = computed(() => {
-  return locale.value === 'ar' 
-    ? 'تصفح آلاف المنتجات الأصيلة في متجر جو توفير. عطور، مكياج، إلكترونيات وأكثر بأسعار مميزة.'
-    : 'Browse thousands of authentic products at Go Tawfeer store. Perfumes, makeup, electronics and more at great prices.'
-})
-
-watch(() => [route.query, locale.value], () => {
+watch(() => [route.query, locale.value, categoriesData.value], () => {
   seo.setSeo({
     title: shopTitle.value,
     description: shopDescription.value,
@@ -257,38 +310,6 @@ const done = computed(() => items.value.length >= total.value && total.value > 0
 const isBestSelling = computed(() => {
   return sort_by.value === 'best_selling' || route.query.sort === 'best_selling'
 })
-
-// SSR-friendly data fetching - load in background (non-blocking)
-// This ensures page renders first, then data loads
-const categoriesData = ref<any[]>([])
-const brandsData = ref<any>({ total_size: 0, brands: [] })
-
-// Load data in background (non-blocking)
-if (process.client) {
-  categories().then((data: any) => {
-    categoriesData.value = Array.isArray(data) ? data : []
-  }).catch(() => {
-    categoriesData.value = []
-  })
-  
-  brands({ limit: 100, offset: 1 }).then((data: any) => {
-    brandsData.value = data || { total_size: 0, brands: [] }
-  }).catch(() => {
-    brandsData.value = { total_size: 0, brands: [] }
-  })
-} else {
-  // SSR: use useAsyncData but don't await (let page render)
-  useAsyncData('shop-categories', () => categories().catch(() => [])).then((result: any) => {
-    if (result?.data?.value) {
-      categoriesData.value = Array.isArray(result.data.value) ? result.data.value : []
-    }
-  })
-  useAsyncData('shop-brands', () => brands({ limit: 100, offset: 1 }).catch(() => ({ total_size: 0, brands: [] }))).then((result: any) => {
-    if (result?.data?.value) {
-      brandsData.value = result.data.value || { total_size: 0, brands: [] }
-    }
-  })
-}
 
 // Normalize categories and brands data
 const cats = computed(() => {

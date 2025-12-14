@@ -3939,6 +3939,36 @@ const productCategory = computed(() => {
   return null
 })
 
+// Get all categories from category_ids for breadcrumb
+const productCategories = computed(() => {
+  if (!product.value) return []
+  
+  // Try category_ids first (array of categories)
+  const categoryIds = product.value?.category_ids || product.value?.product?.category_ids
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    return categoryIds
+      .filter((cat: any) => cat && (cat.name || cat.id))
+      .map((cat: any) => ({
+        id: cat.id || cat.category_id || '',
+        name: cat.name || cat.category_name || cat.title || '',
+        slug: cat.slug || ''
+      }))
+  }
+  
+  // Fallback: try to get categories from product data
+  const categories = getProductCategories(product.value)
+  if (categories.length > 0) {
+    return categories
+  }
+  
+  // Fallback: use productCategory if available
+  if (productCategory.value) {
+    return [productCategory.value]
+  }
+  
+  return []
+})
+
 // Get child category for breadcrumb (second category in array)
 const productChildCategory = computed(() => {
   if (!product.value) return null
@@ -4297,16 +4327,15 @@ const copyProductLink = async () => {
     <div class="crumbs">
       <NuxtLink :to="getLocalizedPath('/')">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
-      <template v-if="productCategory">
-        <NuxtLink :to="getLocalizedPath(`/shop?category=${productCategory.id}`)">{{ productCategory.name }}</NuxtLink>
-        <span>/</span>
-        <template v-if="productChildCategory">
-          <NuxtLink :to="getLocalizedPath(`/shop?category=${productChildCategory.id}`)">{{ productChildCategory.name }}</NuxtLink>
-          <span>/</span>
-        </template>
-      </template>
       <NuxtLink :to="getLocalizedPath('/shop')">{{ t('product.shop') }}</NuxtLink>
       <span>/</span>
+      <template v-if="productCategories && productCategories.length > 0">
+        <template v-for="(category, index) in productCategories" :key="category.id || index">
+          <NuxtLink :to="getLocalizedPath(`/shop?category=${category.id}`)">{{ category.name }}</NuxtLink>
+          <span v-if="index < productCategories.length - 1">/</span>
+        </template>
+        <span>/</span>
+      </template>
       <b>{{ title }}</b>
     </div>
 
