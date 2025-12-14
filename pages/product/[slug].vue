@@ -1634,6 +1634,40 @@ const filteredVariants = computed(() => {
   return filtered
 })
 
+// Computed property for variations with qty info
+const availableVariationsWithQty = computed(() => {
+  if (!product.value?.variation || !Array.isArray(product.value.variation)) {
+    return availableVariations.value.map((v: string) => ({
+      type: v,
+      qty: 0,
+      available: false
+    }))
+  }
+  
+  return availableVariations.value.map((variation: string) => {
+    // Find variant with matching type (case-insensitive, trim whitespace)
+    const variationNormalized = String(variation).trim().toUpperCase()
+    const variant = product.value.variation.find((v: any) => {
+      if (!v.type) return false
+      const vTypeNormalized = String(v.type).trim().toUpperCase()
+      // Exact match or ends with match
+      return vTypeNormalized === variationNormalized || 
+             vTypeNormalized.endsWith(variationNormalized) ||
+             variationNormalized.endsWith(vTypeNormalized)
+    })
+    
+    const qty = variant?.qty ?? 0
+    
+    return {
+      type: variation,
+      qty: qty,
+      price: variant?.price ?? 0,
+      sku: variant?.sku ?? '',
+      available: qty > 0
+    }
+  })
+})
+
 const currentVariantPrice = computed(() => {
   if (selectedVariant.value && selectedVariant.value.price) {
     // استخدم سعر المتغير مباشرة
@@ -3797,6 +3831,7 @@ watch(() => [product.value, locale.value], () => {
   if (product.value) {
     const categoryName = getCategoryNameForSeo.value
     
+    // @ts-ignore - useHead is auto-imported by Nuxt
     useHead({
       meta: [
         // Enhanced Open Graph for Products
@@ -4664,13 +4699,19 @@ const copyProductLink = async () => {
           </div>
           <div class="size-options">
             <button
-              v-for="variation in availableVariations"
-              :key="variation"
+              v-for="variation in availableVariationsWithQty"
+              :key="variation.type"
               class="size-option"
-              :class="{ active: selectedVariation === variation }"
-              @click="selectVariation(variation)"
+              :class="{ 
+                active: selectedVariation === variation.type,
+                'out-of-stock': variation.qty === 0
+              }"
+              @click="variation.qty > 0 ? selectVariation(variation.type) : null"
+              :disabled="variation.qty === 0"
+              :title="variation.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : ''"
             >
-              <span class="size-value">{{ variation }}</span>
+              <span class="size-value">{{ variation.type }}</span>
+              <span v-if="variation.qty === 0" class="out-of-stock-badge">{{ t('product.out_of_stock') || 'غير متوفر' }}</span>
             </button>
           </div>
         </div>
@@ -6419,6 +6460,30 @@ const copyProductLink = async () => {
     background:#f9fafb;
     border-color:#d1d5db;
   }
+  .size-option.out-of-stock{
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+    position: relative;
+  }
+  
+  .size-option.out-of-stock:hover{
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .out-of-stock-badge{
+    font-size: 10px;
+    color: #ef4444;
+    font-weight: 600;
+    margin-top: 4px;
+    display: block;
+  }
+  
   .size-option:disabled{ 
     cursor:not-allowed;
   }
