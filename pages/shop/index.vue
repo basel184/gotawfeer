@@ -142,7 +142,7 @@ watch(() => [route.query, locale.value, categoriesData.value, brandsData.value],
     image: '/images/go-tawfeer-1-1.webp'
   })
 }, { immediate: true })
-
+ 
 // Modal state - global state for product modal
 const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
 
