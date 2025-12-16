@@ -1401,6 +1401,21 @@ const openProductModal = async (e: Event) => {
 </template>
 
 <style scoped>
+html[dir="ltr"] .rating {
+  flex-direction: row-reverse;
+}
+html[dir="ltr"] .color-pallete-container {
+  flex-direction: row-reverse;
+}
+html[dir="ltr"] .brand {
+  text-align: left;
+}
+html[dir="ltr"] .title {
+  text-align: left;
+}
+html[dir="ltr"] .price-row {
+  flex-direction: row-reverse;
+}
 .card { 
   display: block; 
   text-decoration: none;

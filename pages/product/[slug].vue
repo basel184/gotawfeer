@@ -4994,7 +4994,7 @@
             <div class="payment-amount">{{ Math.round(finalPrice / 4) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           </div>
         </div>
-        <div class="order-now border py-2 px-3 d-flex align-items-center mb-3 rounded-3 ">
+        <div class="order-now border py-2 px-3 d-flex align-items-center mb-3 rounded-3 justify-content-evenly">
           <div class="ship d-flex align-items-center gap-2">
             <i class="fa-solid fa-truck-fast"></i>
             <strong>{{ t('product.expected_delivery') }}</strong>
@@ -6787,7 +6787,23 @@
 
   .product-description h3{ font-size:20px; font-weight:700; color:#111827; margin:0 0 12px }
   .benefit-text{ font-size:16px; font-weight:600; color:#111827; margin:0 0 16px }
-  .description-text{ line-height:1.6; margin-bottom:16px }
+  .description-text{ 
+    line-height:1.6; 
+    margin-bottom:16px;
+    width: 100%;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .description-text img,
+  .description-text video,
+  .description-text iframe {
+    max-width: 100%;
+    height: auto;
+  }
+  .description-text span {
+    font-size: 15px;
+  }
   .how-to-use{ color:#6b7280; line-height:1.6 }
   .no-content{ color:#9ca3af; font-style:italic; text-align:center; padding:40px 0 }
 
