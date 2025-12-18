@@ -1786,6 +1786,54 @@
     return p?.type || p?.product?.type || ''
   })
 
+  // Get selected color name for display
+  const selectedColorName = computed(() => {
+    if (!selectedColor.value) return ''
+    
+    // First, try to find in product.value.colors array (most reliable source)
+    if (product.value?.colors && Array.isArray(product.value.colors)) {
+      const normalizedSelected = normalizeColorCode(selectedColor.value)
+      const colorFromProduct = product.value.colors.find((c: any) => {
+        if (!c || typeof c !== 'object') return false
+        const colorCode = normalizeColorCode(c.code || c.hexCode || '')
+        const colorName = c.name || ''
+        return colorCode === normalizedSelected || 
+               colorName === selectedColor.value ||
+               c.code === selectedColor.value
+      })
+      
+      if (colorFromProduct && colorFromProduct.name) {
+        return colorFromProduct.name
+      }
+    }
+    
+    // Find the color object from availableColorsWithQty
+    const colorObj = availableColorsWithQty.value.find((c: any) => 
+      c.name === selectedColor.value || 
+      c.code === selectedColor.value ||
+      c.hexCode === selectedColor.value
+    )
+    
+    if (colorObj) {
+      // Return display name, colorName, or name
+      return colorObj.displayName || colorObj.colorName || colorObj.name || selectedColor.value
+    }
+    
+    // If not found in availableColorsWithQty, try availableColors
+    const colorFromAvailable = availableColors.value.find((c: any) => 
+      c.name === selectedColor.value || 
+      c.code === selectedColor.value ||
+      c.hexCode === selectedColor.value
+    )
+    
+    if (colorFromAvailable) {
+      return colorFromAvailable.displayName || colorFromAvailable.colorName || colorFromAvailable.name || selectedColor.value
+    }
+    
+    // Fallback to selectedColor value itself
+    return selectedColor.value
+  })
+
   // Initialize variants when product loads
   const initializeVariants = () => {
     if (!product.value) return
@@ -4795,7 +4843,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-              {{ t('product.select_color') }} : {{ currentVariantName }}
+              {{ t('product.select_color') }} : {{ selectedColorName || currentVariantName }}
           </h4>
             <button 
               v-if="selectedColor" 
@@ -4977,7 +5025,7 @@
             <div class="payment-option-container d-flex align-items-center justify-content-between ">
 
               <picture>
-                <img :src="tabby" style="width: 100px;height: 30px;" alt="">
+                <img src="https://admin.gotawfeer.com/pays/tabby-badge.png" style="width: 100px;height: 30px;" alt="">
               </picture>
             </div>
             <div class="payment-text">{{ t('product.payment_installments') }}</div>
@@ -5042,7 +5090,7 @@
                 <div class="offer-product-card-content">
                   <h6 class="text-black">{{ getProductTitle(offerProduct) }}</h6>
                   <div class="offer-product-card-price d-flex align-items-center gap-3">
-                    <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span>
                     <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
                   </div>
                 </div>

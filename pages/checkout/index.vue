@@ -109,10 +109,10 @@ const paymentMethods = computed(() => {
   const localeTranslations = translations[currentLocale as keyof typeof translations] || translations.ar
   
   const methods = [
-    { id: 'tabby', name: localeTranslations.tabby, icon: '/images/pays/tabby-badge.png', available: true },
-    { id: 'tamara', name: localeTranslations.tamara, icon: '/images/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
-    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: '/images/pays/tap-pay.png', available: true, integration_id: 9668	 },
-    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: '/images/pays/apple-pay.png', available: true, integration_id: 9984 }
+    { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: true },
+    { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: true, integration_id: 9668	 },
+    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: true, integration_id: 9984 }
   ]
   
   return methods
@@ -160,6 +160,25 @@ function money(n: any): string {
     const val = Number(raw != null ? raw : 0)
     return `${val.toFixed(2)} ${sym}`
   }
+}
+
+// Calculate item price after discount
+function getItemPriceAfterDiscount(item: any): number {
+  const price = Number(item?.price || 0)
+  const discount = Number(item?.discount || 0)
+  const quantity = Number(item?.quantity || item?.qty || 1)
+  
+  // Calculate price per unit after discount
+  const priceAfterDiscount = Math.max(0, price - discount)
+  
+  // Return total price for the quantity
+  return priceAfterDiscount * quantity
+}
+
+// Check if item has discount
+function hasItemDiscount(item: any): boolean {
+  const discount = Number(item?.discount || 0)
+  return discount > 0
 }
 
 // Image helper functions
@@ -1031,7 +1050,15 @@ onMounted(async () => {
                     </div>
                     
                     <p>{{ t('checkout.quantity') || 'الكمية' }}: {{ item.quantity || item.qty }}</p>
-                    <p class="item-price">{{ money((item.price || 0) * (item.quantity || item.qty)) }}</p>
+                    <div class="item-price">
+                      <template v-if="hasItemDiscount(item)">
+                        <span class="price-after-discount">{{ money(getItemPriceAfterDiscount(item)) }}</span>
+                        <span class="price-original">{{ money((item.price || 0) * (item.quantity || item.qty)) }}</span>
+                      </template>
+                      <template v-else>
+                        <span class="price-normal">{{ money((item.price || 0) * (item.quantity || item.qty)) }}</span>
+                      </template>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1722,6 +1749,24 @@ onMounted(async () => {
   .item-price {
     font-weight: 600;
     color: #059669;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .item-price .price-after-discount {
+    color: #059669;
+    font-weight: 700;
+    font-size: 1.1em;
+  }
+  .item-price .price-original {
+    color: #9ca3af;
+    text-decoration: line-through;
+    font-size: 0.9em;
+    font-weight: 400;
+  }
+  .item-price .price-normal {
+    color: #059669;
+    font-weight: 600;
   }
 
   /* Item Variant Styles */

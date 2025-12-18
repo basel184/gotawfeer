@@ -49,8 +49,8 @@ export default defineNuxtConfig({
         { name: 'format-detection', content: 'telephone=no' }
       ],
       link: [
-        { rel: 'icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp' },
-        { rel: 'apple-touch-icon', type: 'image/webp', href: '/images/go-tawfeer-1-1.webp'}
+        { rel: 'icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp' },
+        { rel: 'apple-touch-icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp'}
       ]
     }
   },

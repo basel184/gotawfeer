@@ -15,7 +15,6 @@ const { t } = useI18n()
             <p>{{ t('shipping_return.shipping.intro_2') }}</p>
             <ul>
               <li>{{ t('shipping_return.shipping.processing') }}</li>
-              <li>{{ t('shipping_return.shipping.delivery_jeddah_makkah') }}</li>
               <li>{{ t('shipping_return.shipping.delivery_kingdom') }}</li>
               <li>{{ t('shipping_return.shipping.free_shipping') }}</li>
             </ul>
@@ -56,7 +55,7 @@ const { t } = useI18n()
             <p><strong>{{ t('shipping_return.terms_conditions.returnable_products') }}</strong></p>
             <ul>
               <li>{{ t('shipping_return.terms_conditions.damaged_product') }}</li>
-              <li>{{ t('shipping_return.terms_conditions.cosmetics_return') }}</li>
+              <li v-if="t('shipping_return.terms_conditions.cosmetics_return')">{{ t('shipping_return.terms_conditions.cosmetics_return') }}</li>
               <li>{{ t('shipping_return.terms_conditions.counterfeit_products') }}</li>
               <li>{{ t('shipping_return.terms_conditions.proof') }}</li>
               <li>{{ t('shipping_return.terms_conditions.processing') }}</li>
@@ -67,6 +66,11 @@ const { t } = useI18n()
             <p>{{ t('shipping_return.terms_conditions.shipping_fees') }}</p>
             <p><strong>{{ t('shipping_return.terms_conditions.faq_question') }}</strong></p>
             <p>{{ t('shipping_return.terms_conditions.faq_answer') }}</p>
+
+            <h2 class="mb-3 mt-4">{{ t('shipping_return.warranty.title') }}</h2>
+            <p>{{ t('shipping_return.warranty.sonata') }}</p>
+            <p>{{ t('shipping_return.warranty.other_products') }}</p>
+            <p>{{ t('shipping_return.warranty.defect_note') }}</p>
 
             <h2 class="mb-3 mt-4">{{ t('shipping_return.cancellation.title') }}</h2>
             <p>{{ t('shipping_return.cancellation.content_1') }}</p>

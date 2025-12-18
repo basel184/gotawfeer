@@ -775,10 +775,10 @@
              "quality": "Ninth Principle: Data Quality — To maintain personal data in an accurate, complete, and directly related manner to the purposes specified in the privacy notice.",
              "monitoring": "Tenth Principle: Monitoring and Compliance — To monitor compliance with the privacy policies and procedures of the controlling entity, and to handle inquiries, complaints, and disputes related to privacy."
            },
-           "sharing": {
-             "title": "Main Principles and General Rules for Data",
-             "content": "Eligibility of data access by qualified and properly trained persons. All necessary information for data exchange is shared, including required data, the purpose of collection, means of transfer, storage methods, controls used to protect it, and disposal mechanisms. Security controls stipulated in the data sharing agreement are applied. Appropriate security controls are applied to protect data and share it in a secure and reliable environment in accordance with relevant regulations and legislation"
-           }
+          "sharing": {
+            "title": "Main Principles and General Rules for Data",
+            "content": "• Eligibility of data access by qualified and properly trained persons.\n• All necessary information for data exchange is shared, including required data, the purpose of collection, means of transfer, storage methods, controls used to protect it, and disposal mechanisms.\n• Security controls stipulated in the data sharing agreement are applied.\n• Appropriate security controls are applied to protect data and share it in a secure and reliable environment in accordance with relevant regulations and legislation."
+          }
          }
        },
        "shipping_return": {

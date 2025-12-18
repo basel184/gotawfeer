@@ -503,6 +503,17 @@ function nameOf(it: any): string {
   return direct || (t('cart.product') || 'منتج')
 }
 
+// Brand name helper: get brand name from product
+function brandNameOf(it: any): string {
+  const p = it?.product || {}
+  // Try multiple possible fields for brand name
+  return p?.brand_name || 
+         p?.brand?.name || 
+         it?.brand_name || 
+         it?.brand?.name || 
+         ''
+}
+
 // Discount helpers (display only; totals remain based on price field)
 function unitNet(it: any): number {
   let price = Number(it?.price || 0)
@@ -720,11 +731,11 @@ function hasDiscount(it: any): boolean {
                 <div class="item-details">
                   <h3 class="item-name">{{ nameOf(it) }}</h3>
                   <div class="item-meta">
-                    <span v-if="it?.shop?.name" class="shop-name">
+                    <span v-if="brandNameOf(it)" class="shop-name">
                       <svg width="12" height="12" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
-                      {{ it?.shop?.name }}
+                      {{ brandNameOf(it) }}
                     </span>
                     <span v-if="it?.color" class="color-info">
                       <svg width="12" height="12" viewBox="0 0 24 24">
