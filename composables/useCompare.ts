@@ -91,26 +91,105 @@ export function useCompare() {
     error.value = null
 
     try {
-      // Helper function to get full image URL
-      const getFullImageUrl = (imagePath: string) => {
-        if (!imagePath) return ''
+      // Helper function to extract URL from object or string
+      const extractUrlValue = (obj: any): string | null => {
+        if (!obj) return null
+        if (typeof obj === 'string') return obj
+        if (typeof obj === 'object') {
+          // Check if it's a valid URL object (not 404)
+          if (obj.path && obj.status !== 404) return obj.path
+          if (obj.key && (!obj.path || obj.status === 404)) return null
+          if (obj.path) return obj.path
+          if (obj.url) return obj.url
+          if (obj.image) return obj.image
+        }
+        return null
+      }
+
+      // Helper function to get product image URL (similar to ProductCard logic)
+      const getProductImageUrl = (product: any): string => {
+        const p = product || {}
         
-        if (/^(https?:|data:|blob:)/i.test(imagePath)) {
-          return imagePath
+        // Helper to check if URL object is valid
+        const isValidUrlObject = (obj: any): boolean => {
+          if (!obj || typeof obj !== 'object') return false
+          if (obj.path && obj.status !== 404) return true
+          if (obj.key && (!obj.path || obj.status === 404)) return false
+          return true
         }
         
-        // Get base URL from runtime config or use default
-        const cfg = useRuntimeConfig()
-        const assetBase = (cfg?.public?.apiBase || 'http://127.0.0.1:8000').replace(/\/api(?:\/v\d+)?$/, '')
+        // Try to get thumbnail_full_url, but check if it's valid
+        let thumbnailFullUrl = p?.thumbnail_full_url || p?.product?.thumbnail_full_url
+        if (thumbnailFullUrl && typeof thumbnailFullUrl === 'object') {
+          if (!isValidUrlObject(thumbnailFullUrl)) {
+            thumbnailFullUrl = null
+          } else {
+            thumbnailFullUrl = extractUrlValue(thumbnailFullUrl)
+          }
+        }
         
-        let path = imagePath.replace(/\\/g, '/')
+        // Try to get image_full_url, but check if it's valid
+        let imageFullUrl = p?.image_full_url || p?.product?.image_full_url
+        if (imageFullUrl && typeof imageFullUrl === 'object') {
+          if (!isValidUrlObject(imageFullUrl)) {
+            imageFullUrl = null
+          } else {
+            imageFullUrl = extractUrlValue(imageFullUrl)
+          }
+        }
+        
+        // Helper to get string value from field (handle arrays)
+        const getStringValue = (field: any): string | null => {
+          if (!field) return null
+          if (typeof field === 'string') return field
+          if (Array.isArray(field) && field.length > 0) {
+            const first = field.find((item: any) => typeof item === 'string')
+            return first || null
+          }
+          if (typeof field === 'object' && field.path) return field.path
+          if (typeof field === 'object' && field.key) return field.key
+          return null
+        }
+        
+        // Try each field and get string value
+        const raw =
+          getStringValue(thumbnailFullUrl) ||
+          getStringValue(imageFullUrl) ||
+          getStringValue(p?.photo_full_url) ||
+          getStringValue(p?.images_full_url) ||
+          getStringValue(p?.product?.photo_full_url) ||
+          getStringValue(p?.product?.images_full_url) ||
+          getStringValue(p?.thumbnail) ||
+          getStringValue(p?.image) ||
+          getStringValue(p?.photo) ||
+          getStringValue(p?.product?.thumbnail) ||
+          getStringValue(p?.product?.image) ||
+          getStringValue(p?.product?.photo) ||
+          ''
+        
+        if (!raw) return ''
+        
+        // If already a full URL, return as is
+        if (/^(https?:|data:|blob:)/i.test(raw)) {
+          return raw
+        }
+        
+        // Get base URL from runtime config
+        const cfg = useRuntimeConfig()
+        const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
+        
+        // Normalize path
+        let path = String(raw).trim().replace(/\\/g, '/')
         path = path.replace(/^public\//, '')
         path = path.replace(/^app\/public\//, '')
         path = path.replace(/^storage\/app\/public\//, '')
         path = path.replace(/\/+/g, '/').replace(/^\//, '')
         
-        if (!path.startsWith('storage/')) {
-          path = 'storage/app/public/product/thumbnail/' + path
+        // If it's just a filename, add to product/thumbnail path
+        if (!path.includes('/')) {
+          path = `storage/app/public/product/thumbnail/${path}`
+        } else if (!path.startsWith('storage/')) {
+          path = `storage/app/public/product/${path}`
         }
         
         return `${assetBase}/${path}`
@@ -205,7 +284,7 @@ export function useCompare() {
         id: product.id,
         name: product.name,
         price: product.price || product.unit_price || product.selling_price || 0,
-        image: getFullImageUrl(product.thumbnail || product.image || product.thumbnail_full_url || ''),
+        image: getProductImageUrl(product),
         slug: product.slug,
         brand: product.brand?.name || product.brand_name || '',
         category: product.category?.name || product.category_name || '',
