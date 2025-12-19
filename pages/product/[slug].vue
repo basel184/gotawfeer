@@ -4019,24 +4019,49 @@
   const getProductCategories = (product: any): Array<{ id: number | string; name: string }> => {
     if (!product) return []
     
-    const categories = product?.categories || product?.category || product?.product?.categories || product?.product?.category
+    // Try multiple possible category fields
+    const categories = product?.categories || 
+                      product?.category || 
+                      product?.product?.categories || 
+                      product?.product?.category ||
+                      product?.category_ids ||
+                      product?.product?.category_ids
+    
+    console.log('[getProductCategories] Categories found:', categories)
     
     if (Array.isArray(categories)) {
-      return categories
-        .filter((cat: any) => cat && (cat.name || cat.category_name || cat.title))
+      const result = categories
+        .filter((cat: any) => cat && (cat.name || cat.category_name || cat.title || cat.id))
         .map((cat: any) => ({
           id: cat.id || cat.category_id || '',
-          name: cat.name || cat.category_name || cat.title || ''
+          name: cat.name || cat.category_name || cat.title || cat.translation?.name || ''
         }))
+      console.log('[getProductCategories] Mapped array result:', result)
+      return result
     }
     
     if (categories && typeof categories === 'object') {
-      return [{
+      const result = [{
         id: categories.id || categories.category_id || '',
-        name: categories.name || categories.category_name || categories.title || ''
+        name: categories.name || categories.category_name || categories.title || categories.translation?.name || ''
       }]
+      console.log('[getProductCategories] Object result:', result)
+      return result
     }
     
+    // Try to get from category_id and category_name fields
+    if (product?.category_id || product?.product?.category_id) {
+      const catId = product?.category_id || product?.product?.category_id
+      const catName = product?.category_name || product?.product?.category_name || 'Category'
+      const result = [{
+        id: catId,
+        name: catName
+      }]
+      console.log('[getProductCategories] From category_id/name:', result)
+      return result
+    }
+    
+    console.warn('[getProductCategories] No categories found')
     return []
   }
 
@@ -4088,32 +4113,64 @@
   })
 
   // Get all categories from category_ids for breadcrumb
+  // Supports multiple main categories with their subcategories
   const productCategories = computed(() => {
     if (!product.value) return []
+    
+    // Debug: Log product data structure
+    console.log('[Product Categories] Product data:', {
+      category_ids: product.value?.category_ids,
+      categories: product.value?.categories,
+      category: product.value?.category,
+      product_category_ids: product.value?.product?.category_ids,
+      product_categories: product.value?.product?.categories,
+      product_category: product.value?.product?.category
+    })
     
     // Try category_ids first (array of categories)
     const categoryIds = product.value?.category_ids || product.value?.product?.category_ids
     if (Array.isArray(categoryIds) && categoryIds.length > 0) {
-      return categoryIds
+      console.log('[Product Categories] Found category_ids:', categoryIds)
+      
+      // Map all categories with their hierarchy information
+      const allCategories = categoryIds
         .filter((cat: any) => cat && (cat.name || cat.id))
         .map((cat: any) => ({
           id: cat.id || cat.category_id || '',
-          name: cat.name || cat.category_name || cat.title || '',
-          slug: cat.slug || ''
+          name: cat.name || cat.category_name || cat.title || cat.translation?.name || '',
+          slug: cat.slug || '',
+          parent_id: cat.parent_id || null,
+          level: cat.level !== undefined ? cat.level : (cat.parent_id ? 1 : 0)
         }))
+      
+      console.log('[Product Categories] All categories mapped:', allCategories)
+      
+      // Sort by level (0 = main, 1 = sub, etc.) to show proper hierarchy
+      const sortedCategories = allCategories.sort((a, b) => {
+        // Sort by level first
+        if (a.level !== b.level) return a.level - b.level
+        // If same level, keep original order
+        return 0
+      })
+      
+      console.log('[Product Categories] Sorted categories:', sortedCategories)
+      return sortedCategories
     }
     
     // Fallback: try to get categories from product data
     const categories = getProductCategories(product.value)
     if (categories.length > 0) {
+      console.log('[Product Categories] Found from getProductCategories:', categories)
       return categories
     }
     
     // Fallback: use productCategory if available
     if (productCategory.value) {
+      console.log('[Product Categories] Using productCategory:', productCategory.value)
       return [productCategory.value]
     }
     
+    console.warn('[Product Categories] No categories found!')
     return []
   })
 
@@ -4479,8 +4536,10 @@
       <span>/</span>
       <template v-if="productCategories && productCategories.length > 0">
         <template v-for="(category, index) in productCategories" :key="category.id || index">
-          <NuxtLink :to="getLocalizedPath(`/shop?category=${category.id}`)">{{ category.name }}</NuxtLink>
-          <span v-if="index < productCategories.length - 1">/</span>
+          <template v-if="category.id && category.name">
+            <NuxtLink :to="getLocalizedPath(`/shop?category=${category.id}`)">{{ category.name }}</NuxtLink>
+            <span v-if="index < productCategories.length - 1">/</span>
+          </template>
         </template>
         <span>/</span>
       </template>
