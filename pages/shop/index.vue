@@ -79,8 +79,8 @@ const shopTitle = computed(() => {
         for (const cat of categories || []) {
           // Check if this category matches
           if (Number(cat.id) === id || 
-              Number(cat.category_id) === id ||
-              String(cat.id) === String(categoryParam) ||
+        Number(cat.category_id) === id ||
+        String(cat.id) === String(categoryParam) ||
               String(cat.category_id) === String(categoryParam)) {
             return cat
           }

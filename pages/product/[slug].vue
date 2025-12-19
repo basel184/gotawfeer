@@ -4641,12 +4641,6 @@
             
             <h1 class="title search-box-mobile">{{ title }}</h1>
             
-            <!-- Product SKU -->
-            <div v-if="currentVariantSku" class="product-sku search-box-mobile">
-              <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
-              <span class="sku-value">{{ currentVariantSku }}</span>
-            </div>
-            
             <!-- Rating -->
             <div class="rating-section search-box-mobile">
               <div class="stars">
@@ -4780,6 +4774,11 @@
                 <span v-if="variation.qty === 0" class="out-of-stock-badge">{{ t('product.out_of_stock') || 'غير متوفر' }}</span>
               </button>
             </div>
+          </div>
+          <!-- Product SKU -->
+          <div v-if="currentVariantSku || productSku" class="product-sku search-box-mobile">
+            <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
+            <span class="sku-value">{{ currentVariantSku || productSku }}</span>
           </div>
           <div class="specifications">
             <div v-if="description" class="description-text" v-html="description"></div>
@@ -7204,6 +7203,7 @@
     .variant-section{ 
       padding:12px; 
       margin-bottom:16px;
+      flex-direction: column;
     }
     .color-option{ 
       width:45px; 
