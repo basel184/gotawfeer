@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { computed } from 'vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import { useI18n } from 'vue-i18n'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 
 const props = defineProps<{ categories: any[] }>()
 const { locale } = useI18n()
+
+// Swiper modules
+const swiperModules = [Navigation, Pagination, Autoplay]
+
+// Check if current locale is RTL
+const isRTL = computed(() => locale.value === 'ar')
 
 // Helper function to get localized path with proper i18n handling
 const getLocalizedPath = (path: string): string => {
@@ -70,227 +81,129 @@ const toSrc = (u: any): string => {
 const onErr = (e: any) => {
   e.target.style.display = 'none'
 }
-
-// Slider functionality
-const sliderRef = ref<HTMLElement>()
-const scrollPosition = ref(0)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(true)
-
-const checkScrollButtons = () => {
-  if (!sliderRef.value) return
-  
-  const { scrollLeft, scrollWidth, clientWidth } = sliderRef.value
-  canScrollLeft.value = scrollLeft > 0
-  canScrollRight.value = scrollLeft < scrollWidth - clientWidth - 1
-}
-
-const scrollLeft = () => {
-  if (!sliderRef.value) return
-  sliderRef.value.scrollBy({ left: -200, behavior: 'smooth' })
-}
-
-const scrollRight = () => {
-  if (!sliderRef.value) return
-  sliderRef.value.scrollBy({ left: 200, behavior: 'smooth' })
-}
-
-onMounted(() => {
-  checkScrollButtons()
-  if (sliderRef.value) {
-    sliderRef.value.addEventListener('scroll', checkScrollButtons)
-    
-    // Enable smooth mouse drag scrolling on desktop
-    let isDown = false
-    let startX: number
-    let scrollLeft: number
-    let velocity = 0
-    let lastX: number
-    let lastTime: number
-    let animationFrame: number | null = null
-
-    const container = sliderRef.value
-
-    const smoothScroll = () => {
-      if (Math.abs(velocity) > 0.5) {
-        container.scrollLeft -= velocity
-        velocity *= 0.95 // Friction
-        animationFrame = requestAnimationFrame(smoothScroll)
-      } else {
-        velocity = 0
-        if (animationFrame) {
-          cancelAnimationFrame(animationFrame)
-          animationFrame = null
-        }
-      }
-    }
-
-    container.addEventListener('mousedown', (e: MouseEvent) => {
-      isDown = true
-      container.style.cursor = 'grabbing'
-      container.style.scrollBehavior = 'auto' // Disable smooth scroll during drag
-      startX = e.pageX - container.offsetLeft
-      scrollLeft = container.scrollLeft
-      lastX = e.pageX
-      lastTime = Date.now()
-      velocity = 0
-      
-      // Cancel any ongoing momentum scroll
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-      }
-    })
-
-    container.addEventListener('mouseleave', () => {
-      if (isDown) {
-        isDown = false
-        container.style.cursor = 'grab'
-        container.style.scrollBehavior = 'smooth'
-        // Start momentum scrolling
-        if (Math.abs(velocity) > 1) {
-          smoothScroll()
-        }
-      }
-    })
-
-    container.addEventListener('mouseup', () => {
-      if (isDown) {
-        isDown = false
-        container.style.cursor = 'grab'
-        container.style.scrollBehavior = 'smooth'
-        // Start momentum scrolling
-        if (Math.abs(velocity) > 1) {
-          smoothScroll()
-        }
-      }
-    })
-
-    container.addEventListener('mousemove', (e: MouseEvent) => {
-      if (!isDown) return
-      e.preventDefault()
-      
-      const x = e.pageX - container.offsetLeft
-      const walk = (x - startX) * 1.5 // Smooth scroll speed
-      container.scrollLeft = scrollLeft - walk
-      
-      // Calculate velocity for momentum scrolling
-      const currentTime = Date.now()
-      const timeDelta = currentTime - lastTime
-      if (timeDelta > 0) {
-        const xDelta = e.pageX - lastX
-        velocity = (xDelta / timeDelta) * 16 // Normalize to 60fps
-      }
-      lastX = e.pageX
-      lastTime = currentTime
-    })
-  }
-})
-
-onUnmounted(() => {
-  if (sliderRef.value) {
-    sliderRef.value.removeEventListener('scroll', checkScrollButtons)
-  }
-})
 </script>
 
 <template>
-  <div class="category-slider">
-    <!-- Categories container -->
-    <div class="pills-container" ref="sliderRef">
-      <div class="pills">
-        <template v-for="c in categories" :key="c.id || c.slug">
-          <NuxtLink v-if="toLink(c)" class="pill" :to="toLink(c)">
+  <div class="category-slider" :class="{ 'rtl-mode': isRTL }">
+    <Swiper
+      :modules="swiperModules"
+      :slides-per-view="6"
+      :space-between="15"
+      :navigation="true"
+      :loop="categories.length > 6"
+      :rtl="isRTL"
+      :key="locale"
+      :breakpoints="{
+        320: { slidesPerView: 2, spaceBetween: 10 },
+        640: { slidesPerView: 3, spaceBetween: 10 },
+        768: { slidesPerView: 4, spaceBetween: 15 },
+        1024: { slidesPerView: 5, spaceBetween: 15 },
+        1200: { slidesPerView: 6, spaceBetween: 15 }
+      }"
+      class="categories-swiper"
+    >
+      <SwiperSlide v-for="c in categories" :key="c.id || c.slug">
+        <template v-if="toLink(c)">
+          <NuxtLink :to="toLink(c)" class="pill">
             <div class="pill-content">
               <img v-if="c.icon_full_url" :src="toSrc(c.icon_full_url)" :alt="c.name" @error="onErr" class="category-icon" />
               <span class="category-name">{{ c.name }}</span>
             </div>
           </NuxtLink>
-          <span v-else class="pill disabled">
-            <div class="pill-content">
-              <img v-if="c.icon_full_url" :src="toSrc(c.icon_full_url)" :alt="c.name" @error="onErr" class="category-icon" />
-              <span class="category-name">{{ c.name }}</span>
-            </div>
-          </span>
         </template>
-      </div>
-    </div>
+        <div v-else class="pill disabled">
+          <div class="pill-content">
+            <img v-if="c.icon_full_url" :src="toSrc(c.icon_full_url)" :alt="c.name" @error="onErr" class="category-icon" />
+            <span class="category-name">{{ c.name }}</span>
+          </div>
+        </div>
+      </SwiperSlide>
+    </Swiper>
   </div>
 </template>
 
 <style scoped>
 .category-slider {
+  padding: 1rem 0;
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   width: 100%;
 }
 
-.scroll-btn {
+.categories-swiper {
+  width: 100%;
+  height: 100%;
+  padding: 0 50px;
+}
+
+.categories-swiper :deep(.swiper-slide) {
+  height: auto;
+  display: flex;
+  align-items: stretch;
+}
+html[dir="rtl"] .categories-swiper :deep(.swiper-button-prev){ right: 10px !important; left: auto !important; }
+html[dir="rtl"] .categories-swiper :deep(.swiper-button-next){ left: 10px !important; right: auto !important; }
+html[dir="ltr"] .categories-swiper :deep(.swiper-button-prev){ left: 10px !important; right: auto !important; }
+html[dir="ltr"] .categories-swiper :deep(.swiper-button-next){ right: 10px !important; left: auto !important; }
+/* Navigation arrows styling */
+.categories-swiper :deep(.swiper-button-prev),
+.categories-swiper :deep(.swiper-button-next) {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 10;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  width: 40px;
+  height: 40px;
+  background: white;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
-  color: #6b7280;
+  transition: all 0.3s ease;
+  color: #333;
 }
 
-.scroll-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  color: #374151;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.categories-swiper :deep(.swiper-button-prev:hover),
+.categories-swiper :deep(.swiper-button-next:hover) {
+  background: #f8f9fa;
+  transform: translateY(-50%) scale(1.1);
 }
 
-.scroll-left {
-  left: -18px;
+
+
+
+.categories-swiper :deep(.swiper-button-prev::after),
+.categories-swiper :deep(.swiper-button-next::after) {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid #333;
+  border-top: none;
+  border-right: none;
 }
 
-.scroll-right {
-  right: -18px;
+/* LTR (English) - Default arrows */
+.category-slider:not(.rtl-mode) .categories-swiper :deep(.swiper-button-prev::after) {
+  transform: rotate(45deg);
 }
 
-.pills-container {
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 4px 0;
-  /* Enable smooth scrolling on desktop */
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  cursor: grab;
-  /* Smooth scrolling */
-  will-change: scroll-position;
-  transition: scroll-behavior 0.1s ease-out;
+.category-slider:not(.rtl-mode) .categories-swiper :deep(.swiper-button-next::after) {
+  transform: rotate(-135deg);
 }
 
-.pills-container:active {
-  cursor: grabbing;
-  scroll-behavior: auto;
+/* RTL (Arabic) - Reversed arrows */
+.category-slider.rtl-mode .categories-swiper :deep(.swiper-button-prev::after) {
+  transform: rotate(-135deg);
 }
 
-.pills-container::-webkit-scrollbar {
-  display: none;
+.category-slider.rtl-mode .categories-swiper :deep(.swiper-button-next::after) {
+  transform: rotate(45deg);
 }
 
-.pills {
-  display: flex;
-  gap: 12px;
-  min-width: max-content;
+.categories-swiper :deep(.swiper-button-disabled) {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .pill {
@@ -300,10 +213,16 @@ onUnmounted(() => {
   text-decoration: none;
   display: flex;
   align-items: center;
-  transition: all 0.2s;
-  min-width: 120px;
-  flex-shrink: 0;
+  transition: all 0.3s ease;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  cursor: pointer;
+}
+
+.pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .pill.disabled {
@@ -332,6 +251,11 @@ onUnmounted(() => {
   object-fit: cover;
   display: block;
   border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.pill:hover .category-icon {
+  transform: scale(1.05);
 }
 
 .category-name {
@@ -344,25 +268,20 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .scroll-btn {
+  .categories-swiper {
+    padding: 0 40px;
+  }
+  
+  .categories-swiper :deep(.swiper-button-prev),
+  .categories-swiper :deep(.swiper-button-next) {
     width: 32px;
     height: 32px;
   }
   
-  .scroll-left {
-    left: -16px;
-  }
-  
-  .scroll-right {
-    right: -16px;
-  }
-  
-  .pills {
-    gap: 8px;
-  }
-  
-  .pill {
-    min-width: 100px;
+  .categories-swiper :deep(.swiper-button-prev::after),
+  .categories-swiper :deep(.swiper-button-next::after) {
+    width: 10px;
+    height: 10px;
   }
   
   .pill-content {
@@ -371,8 +290,8 @@ onUnmounted(() => {
   }
   
   .category-icon {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
   }
   
   .category-name {
@@ -381,16 +300,23 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
-  .scroll-btn {
-    display: none;
+  .categories-swiper {
+    padding: 0 30px;
   }
   
-  .pills-container {
-    padding: 0;
+  .categories-swiper :deep(.swiper-button-prev),
+  .categories-swiper :deep(.swiper-button-next) {
+    width: 28px;
+    height: 28px;
   }
   
-  .pills {
-    padding: 0;
+  .category-icon {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .category-name {
+    font-size: 14px;
   }
 }
 </style>

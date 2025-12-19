@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import { useI18n } from 'vue-i18n'
@@ -11,6 +12,9 @@ const { locale } = useI18n()
 
 // Swiper modules
 const swiperModules = [Navigation, Pagination, Autoplay]
+
+// Check if current locale is RTL
+const isRTL = computed(() => locale.value === 'ar')
 
 const cfg = useRuntimeConfig() as any
 const assetBase = 'https://admin.gotawfeer.com/storage/app/public/brand/'
@@ -122,13 +126,15 @@ const toLink = (b: any) => {
 </script>
 
 <template>
-  <div class="brands-container">
+  <div class="brands-container" :class="{ 'rtl-mode': isRTL }">
     <Swiper
       :modules="swiperModules"
       :slides-per-view="6"
       :space-between="15"
-      :navigation="false"
+      :navigation="true"
       :loop="brands.length > 6"
+      :rtl="isRTL"
+      :key="locale"
       :breakpoints="{
         320: { slidesPerView: 2, spaceBetween: 10 },
         640: { slidesPerView: 3, spaceBetween: 10 },
@@ -217,14 +223,22 @@ const toLink = (b: any) => {
   transform: translateY(-50%) scale(1.1);
 }
 
-.brands-swiper :deep(.swiper-button-prev) {
-  left: 10px;
+
+
+  html[dir="ltr"] .brands-swiper :deep(.swiper-button-prev) {
+    right: auto; left: 10px;
 }
 
-.brands-swiper :deep(.swiper-button-next) {
+html[dir="ltr"] .brands-swiper :deep(.swiper-button-next) {
   right: 10px;
+  left: auto;
 }
-
+html[dir="rtl"] .brands-swiper :deep(.swiper-button-prev) {
+    right: 10px; left: auto;
+  }
+html[dir="rtl"] .brands-swiper :deep(.swiper-button-next) {
+    right: auto; left: 10px;
+}
 .brands-swiper :deep(.swiper-button-prev::after),
 .brands-swiper :deep(.swiper-button-next::after) {
   content: '';
@@ -233,11 +247,24 @@ const toLink = (b: any) => {
   border: 2px solid #333;
   border-top: none;
   border-right: none;
+}
+
+/* LTR (English) - Default arrows */
+.brands-container:not(.rtl-mode) .brands-swiper :deep(.swiper-button-prev::after) {
   transform: rotate(45deg);
 }
 
-.brands-swiper :deep(.swiper-button-next::after) {
+.brands-container:not(.rtl-mode) .brands-swiper :deep(.swiper-button-next::after) {
   transform: rotate(-135deg);
+}
+
+/* RTL (Arabic) - Reversed arrows */
+.brands-container.rtl-mode .brands-swiper :deep(.swiper-button-prev::after) {
+  transform: rotate(-135deg);
+}
+
+.brands-container.rtl-mode .brands-swiper :deep(.swiper-button-next::after) {
+  transform: rotate(45deg);
 }
 
 .brand-card {
