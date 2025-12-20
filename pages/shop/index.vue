@@ -1947,20 +1947,6 @@ const handleProductDetails = () => {
                     </div>
                   </div>
 
-                  <!-- Variations (Disabled) -->
-                  <div v-if="modalProductVariations.length > 0" class="variant-section-disabled mt-3">
-                    <h6 class="variant-title-disabled mb-2">{{ t('product.select_variation') || 'اختر المتغير' }}</h6>
-                    <div class="variation-options-disabled">
-                      <div
-                        v-for="variation in modalProductVariations"
-                        :key="variation"
-                        class="variation-option-disabled"
-                      >
-                        <span class="variation-value">{{ variation }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
                   <div class="pricing-section mt-3">
                     <div v-if="modalProductPrice.hasDiscount" class="old-price-row mb-2">
                       <span class="old">{{ formatPrice(modalProductPrice.old) }}</span>

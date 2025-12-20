@@ -115,6 +115,101 @@ const normalize = (s: any): string => {
   return result
 }
 
+const findImagePathInProduct = (imageKey: string, productObj: any): string => {
+  const keyTrimmed = String(imageKey || '').trim()
+  if (!keyTrimmed) return ''
+
+  const collections = [
+    productObj?.color_images_full_url,
+    productObj?.images_full_url,
+    productObj?.gallery_images_full_url,
+    productObj?.product?.color_images_full_url,
+    productObj?.product?.images_full_url,
+    productObj?.product?.gallery_images_full_url
+  ]
+
+  for (const collection of collections) {
+    if (!Array.isArray(collection)) continue
+
+    const matched = collection.find((img: any) => {
+      const imgKey = typeof img?.image_name === 'string'
+        ? img.image_name.trim()
+        : (img?.image_name?.key || img?.key || '').trim?.()
+
+      const path = typeof img?.image_name === 'object' && img?.image_name?.path
+        ? String(img.image_name.path).trim()
+        : (img?.path ? String(img.path).trim() : '')
+
+      if (imgKey && imgKey === keyTrimmed) return true
+      if (path && path.includes(keyTrimmed)) return true
+      return false
+    })
+
+    if (matched) {
+      if (matched.path) return String(matched.path).trim()
+      if (matched?.image_name?.path) return String(matched.image_name.path).trim()
+      if (matched?.image_name?.key) return String(matched.image_name.key).trim()
+      if (matched.key) return String(matched.key).trim()
+    }
+  }
+
+  return keyTrimmed
+}
+
+const resolveColorImagePath = (foundImage: any, productObj: any): string => {
+  if (!foundImage) return ''
+
+  if (typeof foundImage === 'string') {
+    return findImagePathInProduct(foundImage, productObj)
+  }
+
+  if (foundImage.image_name) {
+    if (typeof foundImage.image_name === 'string') {
+      return findImagePathInProduct(foundImage.image_name, productObj)
+    }
+
+    if (foundImage.image_name.path) {
+      return String(foundImage.image_name.path).trim()
+    }
+
+    if (foundImage.image_name.key) {
+      return findImagePathInProduct(foundImage.image_name.key, productObj)
+    }
+  }
+
+  if (foundImage.path) {
+    return String(foundImage.path).trim()
+  }
+
+  return ''
+}
+
+const getImageByIndex = (collection: any, index: number, productObj: any): string => {
+  if (!Array.isArray(collection) || index < 0 || index >= collection.length) {
+    return ''
+  }
+
+  const entry = collection[index]
+  if (!entry) return ''
+
+  const resolved = resolveColorImagePath(entry, productObj)
+  if (resolved) return resolved
+
+  if (typeof entry === 'string') {
+    return entry
+  }
+
+  if (entry?.path) {
+    return String(entry.path).trim()
+  }
+
+  if (entry?.key) {
+    return findImagePathInProduct(entry.key, productObj)
+  }
+
+  return ''
+}
+
 // Helper function to get localized path with proper i18n handling
 const getLocalizedPath = (path: string): string => {
   // Ensure path starts with /
@@ -794,6 +889,11 @@ const colorToHex = (color: string): string => {
   if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
     return color
   }
+
+  // If hex code without hash, add the hash prefix
+  if (/^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
+    return `#${color.toUpperCase()}`
+  }
   
   // Common color name to hex mapping
   const colorMap: Record<string, string> = {
@@ -839,105 +939,540 @@ const colorToHex = (color: string): string => {
   }
   
   const normalizedColor = color.toLowerCase().trim()
-  return colorMap[normalizedColor] || color
+  if (colorMap[normalizedColor]) {
+    return colorMap[normalizedColor]
+  }
+  
+  return '#ccc'
 }
 
-// Product colors
+// Helper to normalize color code (remove # and uppercase)
+const normalizeColorCode = (code: string | null | undefined): string => {
+  if (!code) return ''
+  return String(code).toUpperCase().replace(/^#/, '').trim()
+}
+
+// Helper to parse color_image if it's a JSON string
+const parseColorImage = (colorImage: any): any[] | null => {
+  if (!colorImage) return null
+  if (Array.isArray(colorImage)) return colorImage
+  if (typeof colorImage === 'string') {
+    try {
+      const parsed = JSON.parse(colorImage)
+      return Array.isArray(parsed) ? parsed : null
+    } catch (e) {
+      return null
+    }
+  }
+  return null
+}
+
+// Helper function to normalize image path
+const normalizeImage = (imagePath: string | null | undefined): string => {
+  if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) return ''
+  const trimmed = String(imagePath).trim()
+  // If it's already a full URL, return as is
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+    return trimmed
+  }
+  // Otherwise normalize it
+  const normalized = normalize(trimmed)
+  return normalized
+}
+
+// Helper function to get color value (hex or fallback) for CSS purposes
+const getColorValue = (colorCode: string): string => {
+  if (!colorCode) return '#cccccc'
+
+  const trimmed = String(colorCode).trim()
+  if (/^#([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
+    return trimmed.toUpperCase()
+  }
+
+  if (/^([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
+    return `#${trimmed.toUpperCase()}`
+  }
+
+  if (/^[a-z]+$/i.test(trimmed) && trimmed.length < 20) {
+    return trimmed
+  }
+
+  return colorToHex(trimmed)
+}
+
+const toTitleCase = (value: string): string => {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const isNonEmptyString = (value: unknown): value is string => {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
+const normalizeOriginalName = (value: string): string => {
+  return value.replace(/[_-]+/g, ' ').trim()
+}
+
+const isGenericColorName = (value: string): boolean => {
+  return /^color\s*\d+$/i.test(value)
+}
+
+const hasMeaningfulOriginalName = (color: any): boolean => {
+  const rawName = typeof color?.originalName === 'string' ? color.originalName.trim() : ''
+  if (!rawName) return false
+
+  const normalizedRaw = normalizeOriginalName(rawName)
+  if (!normalizedRaw) return false
+
+  return !isGenericColorName(normalizedRaw)
+}
+
+const getColorDisplayName = (color: any, index: number): string => {
+  if (!color) return `Color ${index + 1}`
+  
+  if (hasMeaningfulOriginalName(color)) {
+    return toTitleCase(normalizeOriginalName(String(color.originalName)))
+  }
+
+  const fallbackCode = color?.code || color?.hex || color?.hexCode
+  if (fallbackCode) {
+    const displayValue = getColorValue(String(fallbackCode))
+    if (displayValue) {
+      return displayValue.startsWith('#') ? displayValue.toUpperCase() : displayValue
+    }
+  }
+
+  return `Color ${index + 1}`
+}
+
+const hasColorImage = (color: any): boolean => {
+  return !!(color?.image && typeof color.image === 'string' && color.image.trim() !== '')
+}
+
+const isLikelyColorCode = (code: string | null | undefined): boolean => {
+  if (!code) return false
+  const value = String(code).trim()
+  if (!value) return false
+
+  if (/^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value)) return true
+  if (/^[a-z]{2,20}$/i.test(value)) return true
+
+  return false
+}
+
+// Product colors with advanced image mapping - only show colors with images
 const productColors = computed(() => {
-  const p: any = props.product || {}
-  
-  // Helper function to normalize image path
-  const normalizeImage = (imagePath: string | null | undefined): string => {
-    if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) return ''
-    const trimmed = String(imagePath).trim()
-    // If it's already a full URL, return as is
-    if (/^(https?:|data:|blob:)/i.test(trimmed)) {
-      return trimmed
-    }
-    // Otherwise normalize it
-    const normalized = normalize(trimmed)
-    if (process.client && normalized) {
-      console.log('[ProductCard] normalizeImage:', { original: imagePath, normalized })
-    }
-    return normalized
+  const product: any = props.product || {}
+
+  const colorsMap = new Map<string, any>()
+
+  const rootParsedColorImage = parseColorImage(product?.color_image)
+  const nestedProduct = product?.product || {}
+  const nestedParsedColorImage = parseColorImage(nestedProduct?.color_image)
+
+  const ensureHexCode = (code: string | null | undefined): string => {
+    if (!code) return ''
+    const normalized = normalizeColorCode(code)
+    return normalized ? `#${normalized}` : ''
   }
-  
-  // Try to get colors_formatted first
-  if (p?.colors_formatted && Array.isArray(p.colors_formatted) && p.colors_formatted.length > 0) {
-    return p.colors_formatted.map((color: any) => {
-      const hex = color.hex || color.code || color.name || ''
-      return {
-        name: color.name || color.code || 'Color',
-        originalName: color.name, // Keep original name to check if it's null
-        code: color.code || color.name || '',
-        hex: colorToHex(hex),
-        image: normalizeImage(color.image)
-      }
+
+  const normalizeImagePath = (path: string): string => {
+    if (!path) return ''
+    if (/^(https?:|data:|blob:)/i.test(path)) {
+      return path
+    }
+    return normalize(path)
+  }
+
+  const mergeColor = (colorData: any) => {
+    const rawCode =  colorData?.code 
+    const codeNormalized = normalizeColorCode(rawCode)
+    if (!codeNormalized) return
+
+    const existing = colorsMap.get(codeNormalized) || {}
+
+    const hexCode = colorData?.hexCode || colorData?.hex || ensureHexCode(colorData?.code || existing?.code)
+    const finalHex = hexCode || existing?.hex || ensureHexCode(codeNormalized)
+
+    const resolvedImage = colorData?.image || existing?.image || ''
+
+    const nameCandidate = colorData?.name || colorData?.displayName || colorData?.colorName || existing?.displayName || existing?.colorName || existing?.name || finalHex || codeNormalized
+
+    const likelyColorCode = colorData?.isLikelyColorCode ?? existing?.isLikelyColorCode ?? isLikelyColorCode(rawCode)
+
+    colorsMap.set(codeNormalized, {
+      name: nameCandidate,
+      originalName: colorData?.originalName ?? existing?.originalName ?? null,
+      code: codeNormalized,
+      hex: finalHex,
+      hexCode: finalHex,
+      image: resolvedImage,
+      colorName: colorData?.colorName ?? existing?.colorName ?? colorData?.name ?? existing?.name ?? null,
+      displayName: nameCandidate,
+      qty: colorData?.qty ?? existing?.qty ?? 0,
+      available: colorData?.available ?? existing?.available ?? true,
+      rawCode,
+      isLikelyColorCode: likelyColorCode
     })
   }
-  
-  // Try nested product.colors_formatted
-  if (p?.product?.colors_formatted && Array.isArray(p.product.colors_formatted) && p.product.colors_formatted.length > 0) {
-    return p.product.colors_formatted.map((color: any) => {
-      const hex = color.hex || color.code || color.name || ''
-      return {
-        name: color.name || color.code || 'Color',
-        originalName: color.name, // Keep original name to check if it's null
-        code: color.code || color.name || '',
-        hex: colorToHex(hex),
-        image: normalizeImage(color.image)
+
+  const findColorImageForCode = (codeNormalized: string, productObj: any, parsedColorImage?: any[] | null): string => {
+    if (!codeNormalized || !productObj) return ''
+
+    const colorImages = productObj?.color_images_full_url
+    if (Array.isArray(colorImages)) {
+      const found = colorImages.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
+      if (found) {
+        const path = resolveColorImagePath(found, productObj)
+        if (path) return normalizeImagePath(path)
       }
-    })
-  }
-  
-  // Try simple colors array
-  if (p?.colors && Array.isArray(p.colors) && p.colors.length > 0) {
-    return p.colors.map((color: string | any, index: number) => {
-      if (typeof color === 'string') {
-        return {
-          name: `Color ${index + 1}`,
-          originalName: null,
-          code: color,
-          hex: colorToHex(color),
-          image: ''
+    }
+
+    if (parsedColorImage && Array.isArray(parsedColorImage)) {
+      const foundFromParsed = parsedColorImage.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
+      if (foundFromParsed) {
+        const path = resolveColorImagePath(foundFromParsed, productObj)
+        if (path) return normalizeImagePath(path)
+        if (foundFromParsed?.image_name) {
+          const candidate = resolveColorImagePath(foundFromParsed.image_name, productObj)
+          if (candidate) return normalizeImagePath(candidate)
         }
       }
-      const hex = color.hex || color.code || color.name || ''
-      return {
-        name: color.name || color.code || `Color ${index + 1}`,
-        originalName: color.name, // Keep original name to check if it's null
-        code: color.code || color.name || color,
-        hex: colorToHex(hex),
-        image: normalizeImage(color.image)
+    }
+
+    return ''
+  }
+
+  const processColorsFormatted = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
+    if (!Array.isArray(colorsSource)) return
+    const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
+
+    colorsSource.forEach((color: any) => {
+      const codeNormalized = normalizeColorCode(color?.code || color?.hexCode || color?.hex)
+      if (!codeNormalized) return
+
+      const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+        || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
+        || (color?.image ? normalizeImagePath(String(color.image)) : '')
+
+      mergeColor({
+        code: codeNormalized,
+        hexCode: ensureHexCode(color?.code || color?.hexCode || color?.hex || codeNormalized),
+        name: color?.name || color?.display_name || color?.title || ensureHexCode(color?.code || color?.hexCode || codeNormalized),
+        originalName: color?.name ?? null,
+        colorName: color?.name ?? null,
+        displayName: color?.name || color?.display_name || color?.title || null,
+        image: imageFromSource,
+        rawCode: color?.code || color?.hexCode || color?.hex,
+        isLikelyColorCode: isLikelyColorCode(color?.code || color?.hexCode || color?.hex)
+      })
+    })
+  }
+
+  const processSimpleColorsArray = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
+    if (!Array.isArray(colorsSource)) return
+    const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
+
+    colorsSource.forEach((color: any, index: number) => {
+      if (typeof color === 'string') {
+        const codeNormalized = normalizeColorCode(color)
+        if (!codeNormalized) return
+
+        const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+          || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
+
+        mergeColor({
+          code: codeNormalized,
+          hexCode: ensureHexCode(codeNormalized),
+          name: color,
+          displayName: color,
+          originalName: color,
+          image: imageFromSource,
+          qty: 0,
+          available: true,
+          rawCode: color,
+          isLikelyColorCode: isLikelyColorCode(color)
+        })
+        return
+      }
+
+      if (color && typeof color === 'object') {
+        const codeNormalized = normalizeColorCode(color?.code || color?.hex)
+        if (!codeNormalized) return
+
+        const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+          || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
+          || (color?.image ? normalizeImagePath(String(color.image)) : '')
+
+        mergeColor({
+          code: codeNormalized,
+          hexCode: ensureHexCode(color?.code || color?.hex || codeNormalized),
+          name: color?.name || color?.title || `Color ${index + 1}`,
+          originalName: color?.name ?? null,
+          colorName: color?.name ?? null,
+          displayName: color?.name || color?.title || null,
+          image: imageFromSource,
+          rawCode: color?.code || color?.hex || color?.name,
+          isLikelyColorCode: isLikelyColorCode(color?.code || color?.hex || color?.name)
+        })
       }
     })
   }
-  
-  // Try nested product.colors
-  if (p?.product?.colors && Array.isArray(p.product.colors) && p.product.colors.length > 0) {
-    return p.product.colors.map((color: string | any, index: number) => {
-      if (typeof color === 'string') {
-        return {
-          name: `Color ${index + 1}`,
-          originalName: '',
-          code: color,
-          hex: colorToHex(color),
-          image: ''
+
+  const processColorImagesOnly = (productObj: any, parsedColorImage?: any[] | null) => {
+    const colorImages = productObj?.color_images_full_url
+    if (!Array.isArray(colorImages)) return
+
+    colorImages.forEach((img: any) => {
+      const codeNormalized = normalizeColorCode(img?.color)
+      if (!codeNormalized) return
+
+      const imagePath = resolveColorImagePath(img, productObj)
+      mergeColor({
+        code: codeNormalized,
+        hexCode: ensureHexCode(img?.color || codeNormalized),
+        name: img?.color_name || img?.label || img?.color || ensureHexCode(codeNormalized),
+        originalName: img?.color_name || null,
+        colorName: img?.color_name || null,
+        displayName: img?.color_name || img?.label || null,
+        image: imagePath ? normalizeImagePath(imagePath) : '',
+        rawCode: img?.color,
+        isLikelyColorCode: isLikelyColorCode(img?.color)
+      })
+    })
+
+    if (parsedColorImage && Array.isArray(parsedColorImage)) {
+      parsedColorImage.forEach((img: any) => {
+        const codeNormalized = normalizeColorCode(img?.color)
+        if (!codeNormalized) return
+
+        const imagePath = resolveColorImagePath(img, productObj)
+        mergeColor({
+          code: codeNormalized,
+          hexCode: ensureHexCode(img?.color || codeNormalized),
+          name: img?.color_name || img?.label || img?.color || ensureHexCode(codeNormalized),
+          originalName: img?.color_name || null,
+          colorName: img?.color_name || null,
+          displayName: img?.color_name || img?.label || null,
+          image: imagePath ? normalizeImagePath(imagePath) : '',
+          rawCode: img?.color,
+          isLikelyColorCode: isLikelyColorCode(img?.color)
+        })
+      })
+    }
+  }
+
+  processColorsFormatted(product?.colors_formatted, product, rootParsedColorImage)
+  processColorsFormatted(nestedProduct?.colors_formatted, nestedProduct, nestedParsedColorImage)
+
+  processSimpleColorsArray(product?.colors, product, rootParsedColorImage)
+  processSimpleColorsArray(nestedProduct?.colors, nestedProduct, nestedParsedColorImage)
+
+  processColorImagesOnly(product, rootParsedColorImage)
+  processColorImagesOnly(nestedProduct, nestedParsedColorImage)
+
+  const colorsArray = Array.from(colorsMap.values())
+
+  if (colorsArray.length === 0) {
+    return []
+  }
+
+  const filterRenderableColors = (colors: any[]) => {
+    return colors.filter((color: any) => {
+      if (color.image && typeof color.image === 'string' && color.image.trim() !== '') {
+        return true
+      }
+
+      if (color.originalName && String(color.originalName).trim() !== '') {
+        return true
+      }
+
+      if (color.isLikelyColorCode) {
+        return true
+      }
+
+      if (color.rawCode && String(color.rawCode).trim() !== '') {
+        return true
+      }
+
+      return false
+    })
+  }
+
+  const variationsRaw = Array.isArray(product?.variation) && product.variation.length > 0
+    ? product.variation
+    : (Array.isArray(nestedProduct?.variation) ? nestedProduct.variation : [])
+
+  const choiceOptionsRaw = [
+    ...(Array.isArray(product?.choice_options) ? product.choice_options : []),
+    ...(Array.isArray(nestedProduct?.choice_options) ? nestedProduct.choice_options : [])
+  ]
+
+  let hasActualVariations = false
+  if (choiceOptionsRaw.length > 0) {
+    const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
+    if (sizeOption && Array.isArray(sizeOption.options) && sizeOption.options.length > 0) {
+      hasActualVariations = true
+    }
+  }
+
+  if (!hasActualVariations && variationsRaw.length > 0) {
+    hasActualVariations = variationsRaw.some((v: any) => {
+      const typeStr = typeof v?.type === 'string' ? v.type.trim() : ''
+      return typeStr.length > 0
+    })
+  }
+
+  let variationsLinkedToColors = false
+  const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
+  const sizeOptionsSet = new Set<string>(Array.isArray(sizeOption?.options) ? sizeOption.options : [])
+
+  if (hasActualVariations && variationsRaw.length > 0 && sizeOptionsSet.size > 0) {
+    variationsLinkedToColors = variationsRaw.some((v: any) => {
+      if (!v?.type || typeof v.type !== 'string') return false
+      const parts = v.type.split('-')
+      if (parts.length < 2) return false
+      const lastPart = parts[parts.length - 1].trim()
+      return sizeOptionsSet.has(lastPart)
+    })
+  }
+
+  const hexToColorNameMap = new Map<string, string>()
+
+  if (variationsRaw.length > 0) {
+    if (!variationsLinkedToColors) {
+      const colorNamesArray = variationsRaw
+        .map((v: any) => typeof v?.type === 'string' ? v.type.trim() : '')
+        .filter(Boolean)
+      const uniqueColorNames = Array.from(new Set(colorNamesArray))
+      const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
+
+      if (uniqueColorNames.length === hexCodesArray.length && uniqueColorNames.length > 0) {
+        uniqueColorNames.forEach((name, index: number) => {
+          const hexCode = hexCodesArray[index]
+          if (hexCode) {
+            hexToColorNameMap.set(hexCode, name)
+          }
+        })
+      }
+    } else {
+      const colorNamesSet = new Set<string>()
+      variationsRaw.forEach((v: any) => {
+        if (typeof v?.type !== 'string') return
+        const parts = v.type.split('-')
+        if (parts.length < 2) return
+        const colorName = parts.slice(0, -1).join('-').trim()
+        if (colorName) {
+          colorNamesSet.add(colorName)
+        }
+      })
+
+      const colorNamesArray = Array.from(colorNamesSet)
+      const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
+
+      if (colorNamesArray.length === hexCodesArray.length && colorNamesArray.length > 0) {
+        colorNamesArray.forEach((name: string, index: number) => {
+          const hexCode = hexCodesArray[index]
+          if (hexCode) {
+            hexToColorNameMap.set(hexCode, name)
+          }
+        })
+      }
+    }
+  }
+
+  const colorsWithNames = colorsArray.map((color: any) => {
+    const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
+    const mappedName = normalizedCode ? hexToColorNameMap.get(normalizedCode) : null
+    const finalDisplayName = mappedName || color?.displayName || color?.colorName || color?.originalName || color?.name
+
+    return {
+      ...color,
+      name: finalDisplayName || color?.name,
+      displayName: finalDisplayName || color?.displayName || color?.name,
+      colorName: mappedName || color?.colorName || color?.originalName || color?.name
+    }
+  })
+
+  if (variationsRaw.length === 0) {
+    const colorsWithQtyFallback = colorsWithNames.map((color: any) => {
+      const fallbackQty = Number(color?.qty ?? product?.current_stock ?? product?.stock ?? product?.quantity ?? 0) || 0
+      return {
+        ...color,
+        qty: fallbackQty,
+        available: fallbackQty > 0
+      }
+    })
+
+    return filterRenderableColors(colorsWithQtyFallback)
+  }
+
+  const colorsWithQty = colorsWithNames.map((color: any) => {
+    const colorNameToMatch = color?.colorName || color?.displayName || color?.name || ''
+    const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+    const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
+
+    const matchingVariations = variationsRaw.filter((variation: any) => {
+      if (!variation?.type) return false
+      const variationTypeNormalized = String(variation.type).trim().toUpperCase()
+      if (!variationTypeNormalized) return false
+
+      if (colorNameNormalized) {
+        if (variationTypeNormalized === colorNameNormalized) return true
+        if (variationTypeNormalized.includes(colorNameNormalized)) return true
+        if (colorNameNormalized.includes(variationTypeNormalized)) return true
+      }
+
+      const variationParts = variationTypeNormalized.split(/\s+/)
+      if (variationParts.length > 0) {
+        const lastPart = variationParts[variationParts.length - 1]
+        const secondLastPart = variationParts.length > 1 ? variationParts[variationParts.length - 2] : ''
+        const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+
+        if (colorNameNormalized) {
+          if (colorNameNormalized.includes(lastPart) || colorNameNormalized.includes(lastTwoParts)) return true
+          if (lastPart.includes(colorNameNormalized) || lastTwoParts.includes(colorNameNormalized)) return true
         }
       }
-      const hex = color.hex || color.code || color.name || ''
-      return {
-        name: color.name || color.code || `Color ${index + 1}`,
-        originalName: color.name, // Keep original name to check if it's null
-        code: color.code || color.name || color,
-        hex: colorToHex(hex),
-        image: normalizeImage(color.image)
+
+      if (variationsLinkedToColors && colorNameNormalized) {
+        const hyphenParts = variationTypeNormalized.split('-')
+        if (hyphenParts.length >= 2) {
+          const colorSegment = hyphenParts.slice(0, -1).join('-').trim()
+          if (colorSegment === colorNameNormalized || colorSegment.includes(colorNameNormalized) || colorNameNormalized.includes(colorSegment)) {
+            return true
+          }
+        }
       }
+
+      if (normalizedCode) {
+        if (variationTypeNormalized.includes(normalizedCode)) return true
+      }
+
+      return false
     })
-  }
-  
-  return []
+
+    const totalQty = matchingVariations.reduce((sum: number, variation: any) => {
+      const qty = Number(variation?.qty ?? variation?.quantity ?? 0)
+      return sum + (isFinite(qty) ? qty : 0)
+    }, 0)
+
+    return {
+      ...color,
+      qty: totalQty,
+      available: totalQty > 0
+    }
+  })
+
+  return filterRenderableColors(colorsWithQty)
 })
+
+// Selected color and variation state
+const selectedColorIndex = ref<number | null>(null)
+const selectedVariationIndex = ref<number | null>(null)
 
 const visibleColors = computed(() => {
   return productColors.value.slice(0, 3)
@@ -952,6 +1487,47 @@ const remainingColorsCount = computed(() => {
 const hasColors = computed(() => {
   return productColors.value.length > 0
 })
+
+// Product variations
+const productVariations = computed(() => {
+  const p: any = props.product || {}
+  
+  // Try to get variation array
+  const variations = p?.variation || p?.product?.variation
+  if (!Array.isArray(variations) || variations.length === 0) {
+    return []
+  }
+  
+  return variations.map((v: any, index: number) => ({
+    type: v.type || `Variation ${index + 1}`,
+    price: v.price || 0,
+    qty: v.qty !== undefined ? Number(v.qty) : 0,
+    sku: v.sku || '',
+    discount: v.discount || 0,
+    discount_type: v.discount_type || 'flat'
+  }))
+})
+
+const visibleVariations = computed(() => {
+  return productVariations.value.slice(0, 3)
+})
+
+const remainingVariationsCount = computed(() => {
+  const total = productVariations.value.length
+  return total > 3 ? total - 3 : 0
+})
+
+// Select color function
+const selectColor = (index: number) => {
+  if (productColors.value[index]?.qty === 0) return
+  selectedColorIndex.value = selectedColorIndex.value === index ? null : index
+}
+
+// Select variation function
+const selectVariation = (index: number) => {
+  if (productVariations.value[index]?.qty === 0) return
+  selectedVariationIndex.value = selectedVariationIndex.value === index ? null : index
+}
 
 // Check if product has variations
 const hasVariations = computed(() => {
@@ -1331,33 +1907,44 @@ const openProductModal = async (e: Event) => {
         </div>
 
       </div>
-      <div v-if="productColors.length > 0" class="color-pallete-container d-flex align-items-center">
-        
-        <div 
+      <!-- Colors Section -->
+      <div v-if="productColors.length > 0" class="color-options-container">
+        <button
           v-for="(color, index) in visibleColors" 
-          :key="`color-${index}-${color.hex || color.code || index}`"
-          class="color-pallete"
-          :class="{ 'has-image': color.image && !color.originalName }"
-          :style="(color.image) 
+          :key="`color-${index}-${color.hexCode || color.hex || color.code || index}`"
+          class="color-option"
+          :class="{ 
+            'active': selectedColorIndex === index,
+            'has-image': color.image && !color.originalName,
+            'out-of-stock': color.qty === 0
+          }"
+          :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))  
             ? { 
                 backgroundImage: `url(${color.image})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
-                backgroundColor: '#' + (color.hex || color.code),
-                borderColor: '#e5e7eb'
+                backgroundColor: getColorValue(color.hexCode || color.hex || color.code)
               }
             : { 
-                backgroundColor: '#' + (color.hex || color.code),
-                borderColor: '#' + color.hex && '#' + color.hex !== '#FFFFFF' && '#' + color.hex !== '#ffffff' ? 'rgba(0,0,0,0.1)' : '#e5e7eb'
+                backgroundColor: getColorValue(color.hexCode || color.hex || color.code)
               }"
-          :title="color.name || color.code || `Color ${index + 1}`"
-        >
-      </div>
-        <div v-if="remainingColorsCount > 0" class="color-pallete-num">
-          <span>{{ remainingColorsCount }}+</span>
+              :title="(color.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') + ' - ' : '') + getColorDisplayName(color, index)"
+              @click.stop.prevent="selectColor(index)"
+              :disabled="color.qty === 0"
+            >
+          <!-- Out of stock overlay -->
+          <div v-if="color.qty === 0" class="out-of-stock-overlay">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </div>
+        </button>
+        <div v-if="remainingColorsCount > 0" class="color-more">
+          <span>+{{ remainingColorsCount }}</span>
         </div>
       </div>
+
       <div class="brand" v-if="brandName">{{ brandName }}</div>
       <div class="meta">
 
@@ -1404,7 +1991,7 @@ const openProductModal = async (e: Event) => {
 html[dir="ltr"] .rating {
   flex-direction: row-reverse;
 }
-html[dir="ltr"] .color-pallete-container {
+html[dir="ltr"] .color-options-container {
   flex-direction: row-reverse;
 }
 html[dir="ltr"] .brand {
@@ -1423,7 +2010,7 @@ html[dir="ltr"] .price-row {
   border-radius: 12px; 
   overflow: hidden; 
   background: #fff; 
-  transition: transform 0.2s ease, box-shadow 0.2s ease; 
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   direction: rtl;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -1861,47 +2448,78 @@ img {
     text-align: right;
   }
 
-  /* Color Palette Styles */
-  .color-pallete-container {
+  /* Color Options Styles - Circular Design */
+  .color-options-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     margin-top: 8px;
     margin-bottom: 8px;
-    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  .color-pallete {
-    width: 24px;
-    height: 24px;
+  .color-option {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     border: 2px solid #e5e7eb;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.2s ease;
     flex-shrink: 0;
     display: inline-block;
     position: relative;
     overflow: hidden;
+    padding: 0;
   }
 
-  .color-pallete.has-image {
+  .color-option.has-image {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
   }
 
-  .color-pallete:hover {
-    transform: scale(1.1);
+  .color-option.active {
+    border-width: 3px;
+    border-color: #000 !important;
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .color-option.out-of-stock {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .color-option:not(.out-of-stock):hover {
+    transform: scale(1.2);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
-  .color-pallete-num {
-    font-size: 12px;
+  .out-of-stock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .color-more {
+    font-size: 11px;
     color: #6b7280;
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
+    min-width: 30px;
+    height: 30px;
+    border: 1px dashed #d1d5db;
+    border-radius: 50%;
   }
-
 
   .status-card.most-popular {
     background-color: #15803d; /* أخضر غامق */
