@@ -1975,6 +1975,57 @@
         })
         return colorData
       })
+      
+      // Sort colors by sort_order from variations array
+      if (product.value.variation && Array.isArray(product.value.variation)) {
+        availableColors.value.sort((a: any, b: any) => {
+          // Find matching variations for each color
+          const getSortOrderForColor = (color: any): number => {
+            const colorNameToMatch = color.colorName || color.displayName || color.name || ''
+            const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+            
+            // Find variation that matches this color
+            const matchingVariation = product.value.variation.find((v: any) => {
+              if (!v.type) return false
+              const vTypeNormalized = String(v.type).trim().toUpperCase()
+              
+              // Try multiple matching strategies
+              if (vTypeNormalized === colorNameNormalized) return true
+              if (vTypeNormalized.includes(colorNameNormalized)) return true
+              if (colorNameNormalized.includes(vTypeNormalized)) return true
+              
+              // Extract last meaningful part from variation.type
+              const vTypeParts = vTypeNormalized.split(/\s+/)
+              if (vTypeParts.length > 0) {
+                const lastPart = vTypeParts[vTypeParts.length - 1]
+                const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+                const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+                
+                if (lastTwoParts === colorNameNormalized || lastPart === colorNameNormalized) return true
+              }
+              
+              return false
+            })
+            
+            return matchingVariation?.sort_order ?? 999
+          }
+          
+          const sortOrderA = getSortOrderForColor(a)
+          const sortOrderB = getSortOrderForColor(b)
+          
+          return sortOrderA - sortOrderB
+        })
+        
+        console.log('[Product] Colors sorted by sort_order (from colors_formatted):', availableColors.value.map((c: any) => ({
+          name: c.name,
+          sortOrder: product.value.variation.find((v: any) => {
+            const colorNameToMatch = c.colorName || c.displayName || c.name || ''
+            const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+            const vTypeNormalized = String(v.type).trim().toUpperCase()
+            return vTypeNormalized === colorNameNormalized || vTypeNormalized.includes(colorNameNormalized) || colorNameNormalized.includes(vTypeNormalized)
+          })?.sort_order
+        })))
+      }
     } else if (product.value.colors && Array.isArray(product.value.colors)) {
       // Handle both string arrays and object arrays
       // First, normalize all colors to extract code/name
@@ -2095,6 +2146,57 @@
       })
       
       console.log('[Product] Total unique colors found:', availableColors.value.length)
+      
+      // Sort colors by sort_order from variations array
+      if (product.value.variation && Array.isArray(product.value.variation)) {
+        availableColors.value.sort((a: any, b: any) => {
+          // Find matching variations for each color
+          const getSortOrderForColor = (color: any): number => {
+            const colorNameToMatch = color.colorName || color.displayName || color.name || ''
+            const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+            
+            // Find variation that matches this color
+            const matchingVariation = product.value.variation.find((v: any) => {
+              if (!v.type) return false
+              const vTypeNormalized = String(v.type).trim().toUpperCase()
+              
+              // Try multiple matching strategies
+              if (vTypeNormalized === colorNameNormalized) return true
+              if (vTypeNormalized.includes(colorNameNormalized)) return true
+              if (colorNameNormalized.includes(vTypeNormalized)) return true
+              
+              // Extract last meaningful part from variation.type
+              const vTypeParts = vTypeNormalized.split(/\s+/)
+              if (vTypeParts.length > 0) {
+                const lastPart = vTypeParts[vTypeParts.length - 1]
+                const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+                const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+                
+                if (lastTwoParts === colorNameNormalized || lastPart === colorNameNormalized) return true
+              }
+              
+              return false
+            })
+            
+            return matchingVariation?.sort_order ?? 999
+          }
+          
+          const sortOrderA = getSortOrderForColor(a)
+          const sortOrderB = getSortOrderForColor(b)
+          
+          return sortOrderA - sortOrderB
+        })
+        
+        console.log('[Product] Colors sorted by sort_order:', availableColors.value.map((c: any) => ({
+          name: c.name,
+          sortOrder: product.value.variation.find((v: any) => {
+            const colorNameToMatch = c.colorName || c.displayName || c.name || ''
+            const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+            const vTypeNormalized = String(v.type).trim().toUpperCase()
+            return vTypeNormalized === colorNameNormalized || vTypeNormalized.includes(colorNameNormalized) || colorNameNormalized.includes(vTypeNormalized)
+          })?.sort_order
+        })))
+      }
     } else {
       // If no colors found, log for debugging
       console.warn('[Product] No colors found in product:', {
