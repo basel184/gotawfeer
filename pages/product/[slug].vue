@@ -767,7 +767,8 @@
         }
         
         console.log('[Product] Found variation-specific images:', finalImages.length, 'from', variationImages.length, 'total', finalImages)
-        return finalImages
+        // Show all images when color or variation is selected, otherwise show only 2
+        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No variation-specific images found, checking color filter')
       }
@@ -887,7 +888,8 @@
         }
         
         console.log('[Product] Found color-specific images:', finalImages.length, 'from', colorImages.length, 'total', finalImages)
-        return finalImages
+        // Show all images when color or variation is selected, otherwise show only 2
+        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No color-specific images found, showing all images')
       }
@@ -952,7 +954,8 @@
     const thumb = normalize(thumbnailData)
     const finalImages = [...new Set([thumb, ...norm].filter(Boolean))]
     console.log('[Product] Final images array (no color selected):', finalImages.length, finalImages)
-    return finalImages
+    // Show all images when color or variation is selected, otherwise show only 2
+    return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
   })
   const mainIndex = ref(0)
   const mainImage = computed(() => images.value[mainIndex.value] || '')
@@ -4705,7 +4708,7 @@
             <SwiperComponent
               :key="`thumb-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}-${thumbnailDirection}`"
               :space-between="10"
-              :slides-per-view="isMobile ? 4 : 4"
+              :slides-per-view="isMobile ? 2 : 2"
               :direction="thumbnailDirection"
               :modules="modules"
               :loop="false"
