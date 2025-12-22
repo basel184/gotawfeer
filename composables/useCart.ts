@@ -128,6 +128,10 @@ export function useCart() {
       if (payload.discount) apiData.discount = payload.discount
       if (payload.discount_type) apiData.discount_type = payload.discount_type
       
+      // Add choices fields for variations
+      if (payload.choices) apiData.choices = payload.choices
+      if (payload.choice_2) apiData.choice_2 = payload.choice_2
+      
       // Try alternative field names that the API might recognize
       if (payload.price) apiData.final_price = payload.price
       if (payload.price) apiData.unit_price = payload.price

@@ -250,6 +250,7 @@
   "cart.unavailable": "Unavailable",
   "cart.color": "Color",
   "cart.size": "Size",
+  "cart.variation": "Variation",
   "cart.saved": "You saved",
   "cart.unit_price": "Unit Price",
   "cart.tax_included": "Tax Included",

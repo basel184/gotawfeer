@@ -5,21 +5,8 @@ import { useI18n } from 'vue-i18n'
 const { t, locale } = useI18n()
 const cart = useCart()
 
-// SEO Configuration
-const seo = useSeo()
-
-// Set SEO for cart page
-seo.setSeo({
-  title: locale.value === 'ar' ? 'السلة' : 'Shopping Cart',
-  description: locale.value === 'ar' 
-    ? 'راجع منتجاتك في السلة وأكمل عملية الشراء من جو توفير.'
-    : 'Review your products in the cart and complete your purchase from Go Tawfeer.',
-  keywords: locale.value === 'ar' 
-    ? 'سلة التسوق، منتجات، شراء، جو توفير'
-    : 'shopping cart, products, purchase, Go Tawfeer',
-  image: '/images/go-tawfeer-1-1.webp',
-  noindex: true // Cart pages typically shouldn't be indexed
-})
+// SEO Configuration - Temporarily commented out
+// TODO: Fix useSeo import when available
 
 // Success message state
 const showSuccessMessage = ref(false)
@@ -595,6 +582,46 @@ function hasDiscount(it: any): boolean {
   })
   return hasDisc
 }
+
+// Get display name for variation
+function getVariationDisplayName(variation: string): string {
+  console.log('[Cart] Processing variation:', variation)
+  if (!variation) return ''
+  
+  // Try to find the product to get choice_options
+  const item = items.value.find((it: any) => it?.variation === variation)
+  if (!item?.product) {
+    console.log('[Cart] No product found for variation:', variation)
+    return variation
+  }
+  
+  const product = item.product
+  if (!product?.choice_options || !Array.isArray(product.choice_options)) {
+    console.log('[Cart] No choice_options found for product:', product)
+    return variation
+  }
+  
+  console.log('[Cart] Found choice_options:', product.choice_options)
+  
+  // Find matching option in choice_options
+  for (const choiceOption of product.choice_options) {
+    if (!choiceOption.options || !Array.isArray(choiceOption.options)) continue
+    
+    const matchingOption = choiceOption.options.find((option: string) => {
+      const optionNormalized = option.replace(/\s/g, '').toLowerCase()
+      const variationNormalized = variation.replace(/\s/g, '').toLowerCase()
+      return optionNormalized === variationNormalized
+    })
+    
+    if (matchingOption) {
+      console.log('[Cart] Found matching option:', matchingOption, 'for variation:', variation)
+      return matchingOption
+    }
+  }
+  
+  console.log('[Cart] No matching option found, returning original variation:', variation)
+  return variation
+}
 </script>
 
 <template>
@@ -748,6 +775,13 @@ function hasDiscount(it: any): boolean {
                         <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
                       {{ t('cart.size') || 'الحجم' }}: {{ it?.size }}
+                    </span>
+                    <span v-if="it?.choices?.choice_2" class="variation-info">
+                      <svg width="12" height="12" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                      <span class="variation-label">{{ t('cart.variation') || 'المتغير' }}</span>
+                      <span class="variation-value">{{ getVariationDisplayName(it.choices.choice_2) }}</span>
                     </span>
                   </div>
                   
@@ -1390,7 +1424,7 @@ function hasDiscount(it: any): boolean {
   gap: 6px;
 }
 
-.shop-name, .variant, .variant-type, .sku, .color-info, .size-info {
+.shop-name, .variant, .variant-type, .sku, .color-info, .size-info, .variation-info {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1430,6 +1464,28 @@ function hasDiscount(it: any): boolean {
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 12px;
+}
+
+.variation-info {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.12);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.variation-info .variation-label {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.variation-info .variation-value {
+  background: rgba(255, 255, 255, 0.65);
+  color: #4c1d95;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .shop-name i, .variant i {

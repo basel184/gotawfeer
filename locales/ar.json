@@ -161,6 +161,7 @@
   "cart.unavailable": "غير متوفر",
   "cart.color": "اللون",
   "cart.size": "الحجم",
+  "cart.variation": "المتغير",
   "cart.saved": "وفّرت",
   "cart.unit_price": "سعر الوحدة",
   "cart.tax_included": "شامل الضريبة",
