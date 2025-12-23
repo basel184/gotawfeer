@@ -2,6 +2,25 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 // Nuxt 3 configuration
 export default defineNuxtConfig({
+    head: {
+    script: [
+      {
+        hid: 'clarity',
+        innerHTML: `
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "updq0wpk1w");
+        `,
+        type: 'text/javascript',
+        charset: 'utf-8'
+      }
+    ],
+    __dangerouslyDisableSanitizersByTagID: {
+      clarity: ['innerHTML']
+    }
+  },
   ssr: true,
   srcDir: '.',
   
