@@ -2667,7 +2667,7 @@
               const parts = v.type.split('-')
               if (parts.length >= 2) {
                 const lastPart = parts[parts.length - 1].trim()
-                return lastPart === selectedVariation && v.qty > 0
+                return lastPart === selectedVariation.value && v.qty > 0
               }
             }
             return false
@@ -2687,7 +2687,7 @@
               const parts = v.type.split('-')
               if (parts.length >= 2) {
                 const lastPart = parts[parts.length - 1].trim()
-                return lastPart === selectedVariation && v.qty > 0
+                return lastPart === selectedVariation.value && v.qty > 0
               }
             }
             return false
@@ -2866,18 +2866,18 @@
               v.type.includes(selectedColor.value) && v.type.includes(selectedSize.value) && v.qty > 0
             )
           }
-        } else if (selectedVariation) {
+        } else if (selectedVariation.value) {
           // If product has colors and variations, search by color-variation combination
           variant = product.value.variation.find((v: any) => 
-            v.type === `${selectedColor.value}-${selectedVariation}` && v.qty > 0
+            v.type === `${selectedColor.value}-${selectedVariation.value}` && v.qty > 0
           )
           
           // If not found, try with different separators
           if (!variant) {
             variant = product.value.variation.find((v: any) => 
-              (v.type === `${selectedColor.value}_${selectedVariation}` ||
-              v.type === `${selectedColor.value} ${selectedVariation}` ||
-              v.type === `${selectedColor.value}/${selectedVariation}`) && v.qty > 0
+              (v.type === `${selectedColor.value}_${selectedVariation.value}` ||
+              v.type === `${selectedColor.value} ${selectedVariation.value}` ||
+              v.type === `${selectedColor.value}/${selectedVariation.value}`) && v.qty > 0
             )
           }
         }
@@ -2896,16 +2896,16 @@
       // For products with colors only, variant matches if it's available (qty > 0)
       // For products with variations, variant must match selectedVariation
       let variantMatches = true
-      if (!colorsOnly && selectedVariation) {
+      if (!colorsOnly && selectedVariation.value) {
         // Only check variantMatches if we have variations and a selectedVariation
-        variantMatches = variant.type === selectedVariation || variant.type === String(selectedVariation)
+        variantMatches = variant.type === selectedVariation.value || variant.type === String(selectedVariation.value)
       }
       
       const variantIsAvailable = variant.qty !== undefined && variant.qty !== null && variant.qty > 0
       
       console.log('[Product] Checking variant before final assignment:', {
         variantType: variant.type,
-        selectedVariation: selectedVariation,
+        selectedVariation: selectedVariation.value,
         selectedColor: selectedColor.value,
         colorsOnly: colorsOnly,
         variantMatches: variantMatches,
@@ -2942,14 +2942,14 @@
             // Variant is available and matches color, keep it
             console.log('[Product] Keeping variant (matches color and is available):', variant.type)
           }
-        } else if (variationsLinkedToColors && selectedColor.value && selectedVariation) {
+        } else if (variationsLinkedToColors && selectedColor.value && selectedVariation.value) {
           // Try to find any available variant with same variation
           const availableVariant = product.value.variation.find((v: any) => {
             if (v.type && typeof v.type === 'string') {
               const parts = v.type.split('-')
               if (parts.length >= 2) {
                 const lastPart = parts[parts.length - 1].trim()
-                return lastPart === selectedVariation && v.qty > 0
+                return lastPart === selectedVariation.value && v.qty > 0
               }
             }
             return false
@@ -2959,16 +2959,16 @@
           } else {
             variant = null
           }
-        } else if (selectedVariation && (!selectedColor.value || availableColors.value.length === 0)) {
+        } else if (selectedVariation.value && (!selectedColor.value || availableColors.value.length === 0)) {
           // If only variation is selected (no colors), try to find exact match
           const availableVariant = product.value.variation.find((v: any) => {
-            return (v.type === selectedVariation || v.type === String(selectedVariation)) && v.qty > 0
+            return (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
           })
           if (availableVariant) {
             console.log('[Product] Overriding variant (didn\'t match or qty was 0):', {
               originalVariant: variant?.type,
               newVariant: availableVariant.type,
-              selectedVariation: selectedVariation
+              selectedVariation: selectedVariation.value
             })
             variant = availableVariant
           } else {
@@ -3202,7 +3202,7 @@
     swiperReady.value = false
     
     // Clear variation and color selection
-    selectedVariation = ''
+    selectedVariation.value = ''
     selectedColor.value = ''
     mainIndex.value = 0
     updateSelectedVariant()
@@ -3358,7 +3358,7 @@
     }
     
     // Check if variation is required but not selected
-    if (product.value?.choice_options && product.value.choice_options.length > 0 && !selectedVariation) {
+    if (product.value?.choice_options && product.value.choice_options.length > 0 && !selectedVariation.value) {
       showSuccess('يرجى اختيار المتغير أولاً')
       return
     }
@@ -3387,22 +3387,22 @@
       }
       
       // Add selected variation info
-      if (selectedVariation) {
-        console.log('[Product] Adding variation to cart:', selectedVariation)
-        console.log('[Product] selectedVariation type:', typeof selectedVariation)
-        console.log('[Product] selectedVariation length:', selectedVariation?.length)
+      if (selectedVariation.value) {
+        console.log('[Product] Adding variation to cart:', selectedVariation.value)
+        console.log('[Product] selectedVariation type:', typeof selectedVariation.value)
+        console.log('[Product] selectedVariation length:', selectedVariation.value?.length)
         // Send variation as JSON string (API expects this format)
         const choices = {
-          choice_2: selectedVariation
+          choice_2: selectedVariation.value
         }
         cartData.choices = JSON.stringify(choices)
         // Also send as individual field (backend reads from $request[$choice->name])
-        cartData.choice_2 = selectedVariation
+        cartData.choice_2 = selectedVariation.value
         // Also keep variation for frontend display
-        cartData.variation = selectedVariation
+        cartData.variation = selectedVariation.value
       } else {
         console.log('[Product] WARNING: selectedVariation is empty!')
-        console.log('[Product] selectedVariation object:', selectedVariation)
+        console.log('[Product] selectedVariation object:', selectedVariation.value)
       }
       
       // Add color and size info even if no variant
@@ -3410,7 +3410,7 @@
         cartData.color = selectedColor.value
       }
       // Only add size if it's a real size, not a variation
-      if (selectedSize.value && !selectedVariation) {
+      if (selectedSize.value && !selectedVariation.value) {
         cartData.size = selectedSize.value
       }
       
@@ -3445,14 +3445,14 @@
       if (selectedVariant.value) {
         message += ` (${selectedVariant.value.type})`
       }
-      if (selectedVariation) {
+      if (selectedVariation.value) {
         // Find the display name for the selected variation
         const choiceOption = product.value?.choice_options?.[0]?.options?.find((option: string) => {
           const optionNormalized = option.replace(/\s/g, '').toLowerCase()
-          const variationNormalized = selectedVariation.replace(/\s/g, '').toLowerCase()
+          const variationNormalized = selectedVariation.value.replace(/\s/g, '').toLowerCase()
           return optionNormalized === variationNormalized
         })
-        message += ` (${choiceOption || selectedVariation})`
+        message += ` (${choiceOption || selectedVariation.value})`
       }
       if (qty.value > 1) {
         message += ` - الكمية: ${qty.value}`

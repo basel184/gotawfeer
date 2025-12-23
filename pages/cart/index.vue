@@ -770,11 +770,11 @@ function getVariationDisplayName(variation: string): string {
                       </svg>
                       {{ t('cart.color') || 'اللون' }}: {{ it?.color }}
                     </span>
-                    <span v-if="it?.size" class="size-info">
+                    <span v-if="it?.variant_type" class="size-info">
                       <svg width="12" height="12" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
-                      {{ t('cart.size') || 'الحجم' }}: {{ it?.size }}
+                      {{ t('cart.variation') || 'المتغير' }}: {{ it?.variant_type }}
                     </span>
                     <span v-if="it?.choices?.choice_2" class="variation-info">
                       <svg width="12" height="12" viewBox="0 0 24 24">
