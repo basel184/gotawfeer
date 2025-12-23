@@ -552,9 +552,9 @@
     }
     
     // If a variation is selected (with or without color), filter images by variation
-    if (selectedVariation) {
+    if (selectedVariation.value) {
       console.log('[Product] Filtering images by selected variation:', {
-        selectedVariation: selectedVariation,
+        selectedVariation: selectedVariation.value,
         selectedColor: selectedColor.value
       })
       
@@ -582,7 +582,7 @@
       let variationPatternsToMatch: string[] = []
       
       // If color is selected and variations are linked to colors, create color-variation pattern
-      if (selectedColor.value && selectedVariation && variationsLinkedToColors) {
+      if (selectedColor.value && selectedVariation.value && variationsLinkedToColors) {
         const selectedColorName = selectedColor.value
         
         // Check if the selected color is a hex code (from colors array) or a color name (from variation.type)
@@ -602,31 +602,31 @@
                   const parts = v.type.split('-')
                   if (parts.length >= 2) {
                     const lastPart = parts[parts.length - 1].trim()
-                    return lastPart === selectedVariation && v.qty > 0
+                    return lastPart === selectedVariation.value && v.qty > 0
                   }
                 }
                 return false
               })
-              
+
               if (matchingVariant && matchingVariant.type) {
                 // Use the exact variant type (e.g., "WARM PEACH 004-100ml")
                 variationPatternsToMatch = [matchingVariant.type]
               } else {
-                variationPatternsToMatch = [selectedVariation]
+                variationPatternsToMatch = [selectedVariation.value]
               }
             } else {
-              variationPatternsToMatch = [selectedVariation]
+              variationPatternsToMatch = [selectedVariation.value]
             }
           }
         } else {
           // If it's a color name (from variation.type), use it directly to create exact pattern
           // e.g., "WARM PEACH 004-100ml" or "VERY BERRY 005-100ml"
-          const colorVariationPattern = `${selectedColorName}-${selectedVariation}`
+          const colorVariationPattern = `${selectedColorName}-${selectedVariation.value}`
           variationPatternsToMatch = [colorVariationPattern]
         }
-      } else if (selectedVariation) {
+      } else if (selectedVariation.value) {
         // If only variation is selected (no color), use just the variation
-        variationPatternsToMatch = [selectedVariation]
+        variationPatternsToMatch = [selectedVariation.value]
       }
       
       console.log('[Product] Variation patterns to match:', variationPatternsToMatch)
@@ -768,7 +768,7 @@
         
         console.log('[Product] Found variation-specific images:', finalImages.length, 'from', variationImages.length, 'total', finalImages)
         // Show all images when color or variation is selected, otherwise show only 2
-        return (selectedColor.value || selectedVariation) ? finalImages : finalImages.slice(0, 2)
+        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No variation-specific images found, checking color filter')
       }
@@ -889,7 +889,7 @@
         
         console.log('[Product] Found color-specific images:', finalImages.length, 'from', colorImages.length, 'total', finalImages)
         // Show all images when color or variation is selected, otherwise show only 2
-        return (selectedColor.value || selectedVariation) ? finalImages : finalImages.slice(0, 2)
+        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No color-specific images found, showing all images')
       }
@@ -935,7 +935,7 @@
             return false
           }
           // If variation is selected, exclude images with variation_types (they should be filtered by variation)
-          if (selectedVariation && img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
+          if (selectedVariation.value && img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
             return false
           }
           // If no variation selected but image has variation_types, include it (show all)
@@ -955,7 +955,7 @@
     const finalImages = [...new Set([thumb, ...norm].filter(Boolean))]
     console.log('[Product] Final images array (no color selected):', finalImages.length, finalImages)
     // Show all images when color or variation is selected, otherwise show only 2
-    return (selectedColor.value || selectedVariation) ? finalImages : finalImages.slice(0, 2)
+    return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
   })
   const mainIndex = ref(0)
   const mainImage = computed(() => images.value[mainIndex.value] || '')
@@ -1611,7 +1611,7 @@
   // Variant selection
   const selectedColor = ref('')
   const selectedSize = ref('')
-  let selectedVariation = '' // Changed from ref to regular variable
+  const selectedVariation = ref('')
   const selectedVariant = ref<any>(null)
   const availableVariants = ref<any[]>([])
   const availableColors = ref<any[]>([])
@@ -2319,11 +2319,9 @@
           if (img.variation_types && Array.isArray(img.variation_types)) {
             img.variation_types.forEach((v: string) => {
               if (v && typeof v === 'string' && v.trim()) {
-                // Only add simple variations (like "100ml", "200ml"), not color-linked ones
                 const trimmed = v.trim()
-                // Check if it's a simple variation (doesn't contain color name pattern)
-                // Simple variations are usually short (<= 10 chars) and don't contain spaces
-                if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
+                // Relax the matching here to accommodate longer variation names (e.g., DryingCapBlue)
+                if (!trimmed.includes(' ') && !trimmed.includes('-')) {
                   variationsSet.add(trimmed)
                 }
               }
@@ -2339,8 +2337,7 @@
             img.variation_types.forEach((v: string) => {
               if (v && typeof v === 'string' && v.trim()) {
                 const trimmed = v.trim()
-                // Only add simple variations
-                if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
+                if (!trimmed.includes(' ') && !trimmed.includes('-')) {
                   variationsSet.add(trimmed)
                 }
               }
@@ -2359,8 +2356,7 @@
                 img.variation_types.forEach((v: string) => {
                   if (v && typeof v === 'string' && v.trim()) {
                     const trimmed = v.trim()
-                    // Only add simple variations
-                    if (trimmed.length <= 10 && !trimmed.includes(' ') && !/^[A-Z]/.test(trimmed)) {
+                    if (!trimmed.includes(' ') && !trimmed.includes('-')) {
                       variationsSet.add(trimmed)
                     }
                   }
@@ -2371,6 +2367,43 @@
         } catch (e) {
           // Already parsed or invalid JSON, ignore
         }
+      }
+    }
+    
+    // Fallback: if we still couldn't derive variations, map choice_options to variation types
+    if (variationsSet.size === 0 && hasActualVariations) {
+      const sizeOptionFallback = product.value.choice_options?.find((option: any) => 
+        option.title === 'Size' || option.name === 'choice_2'
+      )
+
+      const normalizeVariationKey = (value: string) => String(value || '').replace(/[\s-]+/g, '').toLowerCase()
+
+      if (sizeOptionFallback?.options && Array.isArray(sizeOptionFallback.options)) {
+        sizeOptionFallback.options.forEach((option: string) => {
+          if (!option) return
+          const normalizedOption = normalizeVariationKey(option)
+          let variationTypeToAdd = option.trim()
+          if (product.value.variation && Array.isArray(product.value.variation)) {
+            const matchingVariant = product.value.variation.find((v: any) => 
+              normalizeVariationKey(v?.type || '') === normalizedOption
+            )
+            if (matchingVariant?.type) {
+              variationTypeToAdd = matchingVariant.type
+            }
+          }
+          if (variationTypeToAdd) {
+            variationsSet.add(variationTypeToAdd)
+          }
+        })
+      }
+
+      // Absolute fallback: include any variation.type values we have
+      if (variationsSet.size === 0 && product.value.variation && Array.isArray(product.value.variation)) {
+        product.value.variation.forEach((v: any) => {
+          if (v?.type) {
+            variationsSet.add(v.type)
+          }
+        })
       }
     }
     
@@ -2493,8 +2526,8 @@
     }
     
     // Auto-select first variation if available
-    if (availableVariations.value.length > 0 && !selectedVariation) {
-      selectedVariation = availableVariations.value[0]
+    if (availableVariations.value.length > 0 && !selectedVariation.value) {
+      selectedVariation.value = availableVariations.value[0]
     }
     
     // Auto-select first size if available
@@ -2516,7 +2549,7 @@
     
     console.log('[Product] Updating selected variant:', {
       selectedColor: selectedColor.value,
-      selectedVariation: selectedVariation,
+      selectedVariation: selectedVariation.value,
       availableVariations: availableVariations.value,
       availableColors: availableColors.value.map((c: any) => c.name),
       allVariants: product.value.variation?.map((v: any) => ({ type: v.type, price: v.price, qty: v.qty }))
@@ -2548,7 +2581,7 @@
     
     // If variations are linked to colors, use color-variation combination
     if (variationsLinkedToColors) {
-      if (selectedColor.value && selectedVariation) {
+      if (selectedColor.value && selectedVariation.value) {
         // Check if selected color is hex or color name
         const isHexColor = /^#?[0-9A-Fa-f]{6}$/i.test(selectedColor.value.replace('#', ''))
         
@@ -2565,7 +2598,7 @@
               const parts = v.type.split('-')
               if (parts.length >= 2) {
                 const lastPart = parts[parts.length - 1].trim()
-                return lastPart === selectedVariation && v.qty > 0
+                return lastPart === selectedVariation.value && v.qty > 0
               }
             }
             return false
@@ -2583,7 +2616,7 @@
           
           if (colorName) {
             // Use the color name to search for variant
-            const colorVariationPattern = `${colorName}-${selectedVariation}`
+            const colorVariationPattern = `${colorName}-${selectedVariation.value}`
             console.log('[Product] Found color name from mapping, searching for:', colorVariationPattern)
             variant = product.value.variation.find((v: any) => 
               v.type === colorVariationPattern && v.qty > 0
@@ -2605,7 +2638,7 @@
             
             // If we found a color name, use it to search for variant
             if (colorNameFromHex) {
-              const colorVariationPattern = `${colorNameFromHex}-${selectedVariation}`
+              const colorVariationPattern = `${colorNameFromHex}-${selectedVariation.value}`
               console.log('[Product] Found color name from colors_formatted, searching for:', colorVariationPattern)
               variant = product.value.variation.find((v: any) => 
                 v.type === colorVariationPattern && v.qty > 0
@@ -2620,7 +2653,7 @@
           }
         } else {
           // If it's a color name (from variation.type), use it directly
-          const colorVariationPattern = `${selectedColor.value}-${selectedVariation}`
+          const colorVariationPattern = `${selectedColor.value}-${selectedVariation.value}`
           console.log('[Product] Searching for variant with pattern:', colorVariationPattern)
           variant = product.value.variation.find((v: any) => 
             v.type === colorVariationPattern && v.qty > 0
@@ -2640,11 +2673,11 @@
             return false
           })
         }
-      } else if (selectedVariation) {
+      } else if (selectedVariation.value) {
         // If only variation is selected, find first available variant with that variation
         // First, try exact match (for products with variations only, e.g., "100ml", "200ml")
         variant = product.value.variation.find((v: any) => 
-          (v.type === selectedVariation || v.type === String(selectedVariation)) && v.qty > 0
+          (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
         )
         
         // If not found, try matching the last part (for products with color-variation pattern)
@@ -2662,7 +2695,7 @@
         }
         
         console.log('[Product] Searching for variant by variation only:', {
-          selectedVariation: selectedVariation,
+          selectedVariation: selectedVariation.value,
           foundVariant: variant?.type || null,
           foundPrice: variant?.price || null
         })
@@ -2675,17 +2708,17 @@
         variant = product.value.variation.find((v: any) => 
             (v.type === selectedSize.value || v.type === String(selectedSize.value)) && v.qty > 0
           )
-        } else if (selectedVariation) {
+        } else if (selectedVariation.value) {
           // Search for variant by variation only (exact match first)
           console.log('[Product] Before searching - all variants:', product.value.variation?.map((v: any) => ({ 
             type: v.type, 
             qty: v.qty, 
             price: v.price,
-            matches: v.type === selectedVariation || v.type === String(selectedVariation)
+            matches: v.type === selectedVariation.value || v.type === String(selectedVariation.value)
           })))
           
           variant = product.value.variation.find((v: any) => {
-            const matches = (v.type === selectedVariation || v.type === String(selectedVariation)) && v.qty > 0
+            const matches = (v.type === selectedVariation.value || v.type === String(selectedVariation.value)) && v.qty > 0
             if (matches) {
               console.log('[Product] Found matching variant:', { type: v.type, price: v.price, qty: v.qty })
             }
@@ -2693,18 +2726,18 @@
           })
           
           console.log('[Product] Searching for variant by variation only (no colors):', {
-            selectedVariation: selectedVariation,
-            selectedVariationType: typeof selectedVariation,
+            selectedVariation: selectedVariation.value,
+            selectedVariationType: typeof selectedVariation.value,
             allVariants: product.value.variation?.map((v: any) => ({ 
               type: v.type, 
               typeType: typeof v.type,
               qty: v.qty, 
               price: v.price,
-              matches: v.type === selectedVariation || v.type === String(selectedVariation)
+              matches: v.type === selectedVariation.value || v.type === String(selectedVariation.value)
             })),
             foundVariant: variant?.type || null,
             foundPrice: variant?.price || null,
-            variantMatches: variant ? (variant.type === selectedVariation) : false
+            variantMatches: variant ? (variant.type === selectedVariation.value) : false
           })
       }
     } else {
@@ -3015,8 +3048,8 @@
     selectedColor.value = color.name
     
     // Auto-select first variation if no variation is selected
-    if (!selectedVariation && availableVariations.value.length > 0) {
-      selectedVariation = availableVariations.value[0]
+    if (!selectedVariation.value && availableVariations.value.length > 0) {
+      selectedVariation.value = availableVariations.value[0]
     }
     
     updateSelectedVariant()
@@ -3060,7 +3093,7 @@
     
     // Clear color and variation selection
     selectedColor.value = ''
-    selectedVariation = ''
+    selectedVariation.value = ''
     mainIndex.value = 0
     updateSelectedVariant()
     
@@ -3122,7 +3155,7 @@
     swiperReady.value = false
     
     // Update variation selection
-    selectedVariation = variation
+    selectedVariation.value = variation
     
     // Auto-select first color if no color is selected
     if (!selectedColor.value && availableColors.value.length > 0) {
