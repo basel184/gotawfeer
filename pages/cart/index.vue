@@ -873,11 +873,6 @@ function getVariationDisplayName(variation: string): string {
                 <span class="value">-{{ money(discountTotal) }}</span>
               </div>
               
-              <div class="summary-row">
-                <span class="label">{{ t('cart.subtotal') || 'المجموع الفرعي' }}</span>
-                <span class="value">{{ money(subtotalAfterDiscount) }}</span>
-              </div>
-              
               <div v-if="hasTaxExcluded" class="summary-row">
                 <span class="label">{{ t('cart.tax') || 'الضريبة' }}</span>
                 <span class="value">{{ money(taxExcluded) }}</span>
