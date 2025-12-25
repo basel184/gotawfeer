@@ -445,6 +445,10 @@
 
   const images = computed<string[]>(() => {
     const p: any = product.value || {}
+    const hasColorOptions = Array.isArray(availableColors.value) && availableColors.value.length > 0
+    const hasVariationOptions = Array.isArray(availableVariations.value) && availableVariations.value.length > 0
+    const showAllImagesByDefault = !hasColorOptions && !hasVariationOptions
+    const shouldShowAllImages = showAllImagesByDefault || Boolean(selectedColor.value || selectedVariation.value)
     
     // Helper function to extract image path from image object
     const extractImagePath = (img: any): string | null => {
@@ -767,8 +771,8 @@
         }
         
         console.log('[Product] Found variation-specific images:', finalImages.length, 'from', variationImages.length, 'total', finalImages)
-        // Show all images when color or variation is selected, otherwise show only 2
-        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
+        // Show all images when color or variation is selected, or when product has no color/variation options
+        return shouldShowAllImages ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No variation-specific images found, checking color filter')
       }
@@ -888,8 +892,8 @@
         }
         
         console.log('[Product] Found color-specific images:', finalImages.length, 'from', colorImages.length, 'total', finalImages)
-        // Show all images when color or variation is selected, otherwise show only 2
-        return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
+        // Show all images when color or variation is selected, or when product has no color/variation options
+        return shouldShowAllImages ? finalImages : finalImages.slice(0, 2)
       } else {
         console.log('[Product] No color-specific images found, showing all images')
       }
@@ -954,8 +958,8 @@
     const thumb = normalize(thumbnailData)
     const finalImages = [...new Set([thumb, ...norm].filter(Boolean))]
     console.log('[Product] Final images array (no color selected):', finalImages.length, finalImages)
-    // Show all images when color or variation is selected, otherwise show only 2
-    return (selectedColor.value || selectedVariation.value) ? finalImages : finalImages.slice(0, 2)
+    // Show all images when color or variation is selected, or when product has no color/variation options
+    return shouldShowAllImages ? finalImages : finalImages.slice(0, 2)
   })
   const mainIndex = ref(0)
   const mainImage = computed(() => images.value[mainIndex.value] || '')
