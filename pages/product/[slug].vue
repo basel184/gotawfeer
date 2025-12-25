@@ -2233,6 +2233,7 @@
     // Initialize variations from variation.type and variation_types
     const variationsSet = new Set<string>()
     const variationColorsMap = new Map<string, Set<string>>() // Map variation -> Set of color names
+    const hasVariationArray = Array.isArray(product.value.variation) && product.value.variation.length > 0
     
     // Check if product has actual variations using choice_options
     // If choice_options is empty or doesn't contain Size option, there are no variations
@@ -2243,6 +2244,10 @@
         option.title === 'Size' || option.name === 'choice_2'
       )
       hasActualVariations = !!(sizeOption && sizeOption.options && sizeOption.options.length > 0)
+    }
+    // If product lacks choice_options but has distinct variants and no color options, treat them as variations
+    if (!hasActualVariations && hasVariationArray && availableColors.value.length === 0) {
+      hasActualVariations = true
     }
     
     // Only check variation.type as fallback if choice_options exists but doesn't have Size option
