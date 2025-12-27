@@ -372,6 +372,8 @@
     "delivery_all_kingdom": "مدة التوصيل لكل انحاء المملكة: 5 أيام عمل",
     "add_to_cart": "أضف للسلة",
     "adding": "جاري الإضافة...",
+    "buy_now": "اشترِ الآن",
+    "buy_now_processing": "جاري توجيهك للدفع...",
     "clear_color": "إزالة اختيار اللون",
     "clear": "إزالة",
     "select_variation": "اختر المتغير",
@@ -442,6 +444,8 @@
   },
   "product": {
     "title":"منتج",
+    "buy_now": "اشترِ الآن",
+    "buy_now_processing": "جاري توجيهك للدفع...",
     "recommended_products": "منتجات موصى بها",
     "write_review": "اكتب تقييمك",
     "your_rating": "تقييمك",

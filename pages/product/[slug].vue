@@ -19,6 +19,7 @@
   const SwiperSlideComponent = SwiperSlide
 
   const route = useRoute()
+  const router = useRouter()
   const { t, locale } = useI18n()
   const { details: getDetails, related: getRelated, filter: filterProducts } = useProducts() as any
   const cart = useCart()
@@ -1611,6 +1612,7 @@
     // Cart handlers
   const qty = ref(1)
   const busy = ref(false)
+  const buyNowLoading = ref(false)
 
   // Variant selection
   const selectedColor = ref('')
@@ -3471,11 +3473,34 @@
       // Reset quantity to 1 after successful add
       qty.value = 1
       
+      return true
     } catch (error: any) {
       console.error('خطأ في إضافة المنتج للسلة:', error)
       showSuccess('حدث خطأ في إضافة المنتج للسلة')
+      return false
     } finally {
       busy.value = false
+    }
+  }
+
+  const buyNow = async () => {
+    if (buyNowLoading.value || busy.value) return
+    buyNowLoading.value = true
+    try {
+      const success = await addToCart()
+      if (!success) return
+
+      const checkoutPath = getLocalizedPath('/checkout')
+      if (process.client) {
+        await router.push(checkoutPath)
+      } else {
+        await navigateTo(checkoutPath)
+      }
+    } catch (error) {
+      console.error('خطأ أثناء تنفيذ عملية اشتر الآن:', error)
+      showSuccess('تعذر إكمال عملية الشراء الآن، حاول لاحقاً')
+    } finally {
+      buyNowLoading.value = false
     }
   }
   // OTP Login Functions
@@ -4669,7 +4694,7 @@
 
 <template>
   <div class="wrap">
-    <div class="crumbs">
+    <div class="crumbs d-none">
       <NuxtLink :to="getLocalizedPath('/')">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
       <NuxtLink :to="getLocalizedPath('/shop')">{{ t('product.shop') }}</NuxtLink>
@@ -5145,6 +5170,13 @@
             <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
           </button>
           <button 
+            class="buy-now-btn" 
+            :disabled="!currentVariantStock || buyNowLoading || busy" 
+            @click="buyNow"
+          >
+            <span>{{ buyNowLoading ? t('product.buy_now_processing') : t('product.buy_now') }}</span>
+          </button>
+          <button 
             class="wishlist-btn" 
             :class="{ active: isInWishlist }"
             @click="toggleWishlist"
@@ -5289,7 +5321,7 @@
                   <h6 class="text-black">{{ getProductTitle(offerProduct) }}</h6>
                   <div class="offer-product-card-price d-flex align-items-center gap-3">
                     <span class="price final text-black fw-bold ">{{ formatPrice(getProductPrice(offerProduct).final) }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></span>
-                    <span v-if="getProductPrice(offerProduct).hasDiscount" class="price old">{{ formatPrice(getProductPrice(offerProduct).old) }} <img src="/images/Group 1171274840.png" alt="ر.س" class="currency-icon" /></span>
+                    
                   </div>
                 </div>
               </NuxtLink>
@@ -6694,6 +6726,34 @@
   }
   .add-to-cart-btn span{ 
     font-weight:600;
+  }
+  .buy-now-btn{
+    flex:1;
+    background:linear-gradient(135deg, #f97316, #ea580c);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:12px 20px;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:all 0.3s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    box-shadow:0 4px 12px rgba(249, 115, 22, 0.35);
+  }
+  .buy-now-btn:hover:not(:disabled){
+    background:linear-gradient(135deg, #ea580c, #c2410c);
+    transform:translateY(-1px);
+  }
+  .buy-now-btn:disabled{
+    background:#fcdcc7;
+    cursor:not-allowed;
+    opacity:0.7;
+    box-shadow:none;
+    transform:none;
   }
 
   .stock-status{ font-weight:600; font-size:14px }

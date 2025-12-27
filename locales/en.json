@@ -446,6 +446,8 @@
          "delivery_all_kingdom": "Delivery time for all of the Kingdom: 5 business days",
          "add_to_cart": "Add to Cart",
          "adding": "Adding...",
+         "buy_now": "Buy Now",
+         "buy_now_processing": "Taking you to checkout...",
          "payment_methods": "Payment Methods",
          "in_stock": "In Stock",
          "out_of_stock": "Currently Out of Stock",
