@@ -307,6 +307,26 @@
     }
   }
 
+  const normalizeOriginalName = (value: string): string => {
+    return String(value || '').replace(/[_-]+/g, ' ').trim()
+  }
+
+  const isGenericColorName = (value: string): boolean => {
+    return /^color\s*\d+$/i.test(String(value || ''))
+  }
+
+  const hasMeaningfulOriginalName = (color: any): boolean => {
+    const rawName = typeof color?.originalName === 'string' ? color.originalName.trim() : ''
+    if (!rawName) return false
+    const normalizedRaw = normalizeOriginalName(rawName)
+    if (!normalizedRaw) return false
+    return !isGenericColorName(normalizedRaw)
+  }
+
+  const hasColorImage = (color: any): boolean => {
+    return !!(color?.image && typeof color.image === 'string' && color.image.trim() !== '')
+  }
+
   // Load offer products
   const loadOfferProducts = async () => {
     offerProductsLoading.value = true
@@ -4786,60 +4806,60 @@
           
         <!-- Main Swiper Gallery -->
           <div class="main-swiper-container">
-        <div v-if="!shouldShowSwiper" class="no-images">
-          <div class="no-images-content">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-            </svg>
-                <p>{{ t('product.no_images') }}</p>
-          </div>
-        </div>
-        <SwiperComponent
-          v-if="swiperReady"
-                :key="`main-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
-          :style="{
-            '--swiper-navigation-color': '#000',
-            '--swiper-pagination-color': '#fff',
-          }"
-          :space-between="10"
-          :navigation="images.length > 1 && !isZooming"
-          :modules="modules"
-                :loop="false"
-                :thumbs="{ swiper: thumbnailSwiper }"
-          @swiper="setMainSwiper"
-          :allow-touch-move="!isZooming"
-          class="mySwiper2"
-          :class="{ 'zoom-mode': isZooming }"
-        >
-          <SwiperSlideComponent v-for="(img, i) in images" :key="`main-${i}-${img}`">
-            <div 
-              class="image-container" 
-              :class="{ 'zoom-active': isZooming }"
-              @mousemove.stop="handleZoom"
-              @click.stop="() => {}"
-            >
-              <img 
-                :src="img" 
-                :alt="title" 
-                @error="onImgErr"
-                class="zoom-image"
-                :class="{ 'zoom-active': isZooming }"
-                @click.stop="() => {}"
-              />
-              <div v-if="imageChanging && i === mainIndex" class="image-loading">
-                <div class="loading-spinner"></div>
-                    <span>{{ t('product.changing_image') }}</span>
+            <div v-if="!shouldShowSwiper" class="no-images">
+              <div class="no-images-content">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+                    <p>{{ t('product.no_images') }}</p>
               </div>
-              <button 
-                class="zoom-toggle-btn"
-                @click.stop="toggleZoom"
-                :aria-label="isZooming ? (t('product.zoom_out') || 'تصغير الصورة') : (t('product.zoom_image') || 'تكبير الصورة')"
-              >
-                <i :class="isZooming ? 'fa-solid fa-magnifying-glass-minus' : 'fa-solid fa-magnifying-glass-plus'"></i>
-              </button>
             </div>
-          </SwiperSlideComponent>
-        </SwiperComponent>
+            <SwiperComponent
+              v-if="swiperReady"
+                    :key="`main-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}`"
+              :style="{
+                '--swiper-navigation-color': '#000',
+                '--swiper-pagination-color': '#fff',
+              }"
+              :space-between="10"
+              :navigation="images.length > 1 && !isZooming"
+              :modules="modules"
+                    :loop="false"
+                    :thumbs="{ swiper: thumbnailSwiper }"
+              @swiper="setMainSwiper"
+              :allow-touch-move="!isZooming"
+              class="mySwiper2"
+              :class="{ 'zoom-mode': isZooming }"
+            >
+              <SwiperSlideComponent v-for="(img, i) in images" :key="`main-${i}-${img}`">
+                <div 
+                  class="image-container" 
+                  :class="{ 'zoom-active': isZooming }"
+                  @mousemove.stop="handleZoom"
+                  @click.stop="() => {}"
+                >
+                  <img 
+                    :src="img" 
+                    :alt="title" 
+                    @error="onImgErr"
+                    class="zoom-image"
+                    :class="{ 'zoom-active': isZooming }"
+                    @click.stop="() => {}"
+                  />
+                  <div v-if="imageChanging && i === mainIndex" class="image-loading">
+                    <div class="loading-spinner"></div>
+                        <span>{{ t('product.changing_image') }}</span>
+                  </div>
+                  <button 
+                    class="zoom-toggle-btn"
+                    @click.stop="toggleZoom"
+                    :aria-label="isZooming ? (t('product.zoom_out') || 'تصغير الصورة') : (t('product.zoom_image') || 'تكبير الصورة')"
+                  >
+                    <i :class="isZooming ? 'fa-solid fa-magnifying-glass-minus' : 'fa-solid fa-magnifying-glass-plus'"></i>
+                  </button>
+                </div>
+              </SwiperSlideComponent>
+            </SwiperComponent>
           </div>
         </div>
         
@@ -4938,10 +4958,10 @@
                   class="color-option"
                   :class="{ 
                     active: selectedColor === color.name, 
-                    'has-image': color.image && !color.originalName,
+                    'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
                     'out-of-stock': color.qty === 0
                   }"
-                  :style="( !color.originalName  ) 
+                  :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
                     ? { 
                         backgroundImage: `url(${color.image})`,
                         backgroundSize: 'cover',
@@ -5094,10 +5114,10 @@
                 class="color-option"
                 :class="{ 
                   active: selectedColor === color.name, 
-                  'has-image': color.image && !color.originalName,
+                  'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
                   'out-of-stock': color.qty === 0
                 }"
-                :style="( !color.originalName  ) 
+                :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
                   ? { 
                       backgroundImage: `url(${color.image})`,
                       backgroundSize: 'cover',
