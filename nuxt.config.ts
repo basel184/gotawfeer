@@ -40,7 +40,7 @@ export default defineNuxtConfig({
       duration: 50
     },
     // htmlAttrs will be set dynamically in app.vue based on i18n locale
-    head: {
+    head: ({
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
       title: 'جو توفير - Go Tawfeer',
@@ -54,6 +54,17 @@ export default defineNuxtConfig({
       ],
       script: [
         {
+          hid: 'gtm',
+          innerHTML: `
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','GTM-5796K66F');
+          `,
+          type: 'text/javascript'
+        },
+        {
           hid: 'clarity',
           innerHTML: `
             (function(c,l,a,r,i,t,y){
@@ -62,14 +73,14 @@ export default defineNuxtConfig({
               y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
             })(window, document, "clarity", "script", "updq0wpk1w");
           `,
-          type: 'text/javascript',
-          charset: 'utf-8'
+          type: 'text/javascript'
         }
       ],
       __dangerouslyDisableSanitizersByTagID: {
+        gtm: ['innerHTML'],
         clarity: ['innerHTML']
       }
-    }
+    }) as any
   },
   
   experimental: {
