@@ -126,14 +126,14 @@ onBeforeUnmount(() => {
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .arrow-up {
-    bottom: 90px;
+    bottom: 185px;
     left: 15px;
     width: 45px;
     height: 45px;
   }
 
   .whatsapp {
-    bottom: 15px;
+    bottom: 125px;
     left: 15px;
     width: 45px;
     height: 45px;

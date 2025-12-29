@@ -155,18 +155,36 @@ const groupedCategories = computed(() => {
   const mainCategories = allCategories.filter((cat: any) => 
     cat.position === 0 || cat.position === '0' || !cat.position || cat.position === null
   )
-  
-  // Available banner files
-  const bannerFiles = [
-    'Mask-Group-45.webp',
-    'Mask-Group-60.webp',
-    'Mask-Group-56.webp',
-    'Mask-Group-54.webp',
-    'Mask-Group-62.webp',
-    'Mask-Group-65.webp',
-    'Mask-Group-63.webp',
-    'Mask-Group-64.webp',
-  ]
+
+  const isEnglish = locale.value === 'en'
+  const bannerBasePath = isEnglish
+    ? '/images/banners-categories/en'
+    : 'https://admin.gotawfeer.com/banners-categories'
+  const bannerFiles = isEnglish
+    ? [
+        'zzz.png',
+        '7.png',
+        'z.png',
+        '5.png',
+        '4.png',
+        '3.png',
+        'zz.png',
+        '1.png',
+        '34.webp',
+        '34.webp'
+      ]
+    : [
+        'Mask-Group-45.webp',
+        'Mask-Group-60.webp',
+        'Mask-Group-56.webp',
+        'Mask-Group-54.webp',
+        'Mask-Group-62.webp',
+        'Mask-Group-65.webp',
+        'Mask-Group-63.webp',
+        'Mask-Group-64.webp',
+        '53.webp',
+        '53.webp'
+      ]
   
   // Process main categories and extract childes/children
   return mainCategories.map((mainCat: any, index: number) => {
@@ -185,7 +203,7 @@ const groupedCategories = computed(() => {
     return {
       ...mainCat,
       subcategories: subcategories || [],
-      banner: bannerFile ? `https://admin.gotawfeer.com/banners-categories/${bannerFile}` : null
+      banner: bannerFile ? `${bannerBasePath}/${bannerFile}` : null
     }
   })
 })
@@ -269,18 +287,7 @@ const handleImageLoad = (event: Event) => {
 </script>
 
 <template>
-  <div class="categories-page">
-    <!-- Header Section -->
-    <div class="categories-header">
-      <div class="container">
-        <div class="header-content">
-          <h1 class="page-title">
-            {{ t('categories') || 'التصنيفات' }}
-          </h1>
-        </div>
-      </div>
-    </div>
-
+  <div class="categories-page mb-5">
     <!-- Loading State -->
     <div v-if="loading" class="loading-container">
       <div class="loading-spinner">
@@ -295,7 +302,7 @@ const handleImageLoad = (event: Event) => {
       
       <!-- Skeleton Loading -->
       <div class="skeleton-categories">
-        <div v-for="n in 6" :key="n" class="skeleton-card">
+        <div v-for="n in 12" :key="n" class="skeleton-card">
           <div class="skeleton-image"></div>
           <div class="skeleton-content">
             <div class="skeleton-title"></div>
@@ -317,8 +324,6 @@ const handleImageLoad = (event: Event) => {
             class="category-group"
           >
             <!-- Main Category Card -->
-
-
             <!-- Banner and Subcategories -->
             <div v-if="mainCategory.subcategories && mainCategory.subcategories.length > 0" class="subcategories-section">
               <!-- Banner -->

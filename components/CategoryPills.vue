@@ -90,7 +90,7 @@ const onErr = (e: any) => {
       :slides-per-view="6"
       :space-between="15"
       :navigation="true"
-      :loop="categories.length > 6"
+      :loop="false"
       :rtl="isRTL"
       :key="locale"
       :breakpoints="{

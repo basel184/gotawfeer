@@ -4714,7 +4714,7 @@
 
 <template>
   <div class="wrap">
-    <div class="crumbs d-none">
+    <div class="crumbs search-box-desktop">
       <NuxtLink :to="getLocalizedPath('/')">{{ t('product.home') }}</NuxtLink>
       <span>/</span>
       <NuxtLink :to="getLocalizedPath('/shop')">{{ t('product.shop') }}</NuxtLink>
@@ -4824,8 +4824,8 @@
               :space-between="10"
               :navigation="images.length > 1 && !isZooming"
               :modules="modules"
-                    :loop="false"
-                    :thumbs="{ swiper: thumbnailSwiper }"
+              :loop="false"
+              :thumbs="{ swiper: thumbnailSwiper }"
               @swiper="setMainSwiper"
               :allow-touch-move="!isZooming"
               class="mySwiper2"
@@ -4881,10 +4881,50 @@
                 </div>
                 <span class="original-badge">{{ t('product.original') }}</span>
               </div>
+              <div class="add-to-cart-section search-box-mobile">
+                <button 
+                  class="wishlist-btn" 
+                  :class="{ active: isInWishlist }"
+                  @click="toggleWishlist"
+                  :disabled="wishlistLoading"
+                  title="المفضلة"
+                >
+                  <svg v-if="wishlistLoading" width="20" height="20" viewBox="0 0 24 24" class="spinner">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                      <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+                      <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+                    </circle>
+                  </svg>
+                  <svg v-else width="20" height="20" viewBox="0 0 24 24" :fill="isInWishlist ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
+                </button>
+                <button 
+                  class="compare-btn" 
+                  :class="{ active: isInCompare }"
+                  @click="toggleCompare"
+                  :disabled="compareLoading"
+                  title="المقارنة"
+                >
+                <svg v-if="compareLoading" data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
+                  <svg v-else data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" :fill="isInCompare ? 'currentColor' : 'none'" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
+                </button>
+              </div>
             </div>
             
             <h1 class="title search-box-mobile">{{ title }}</h1>
-            
+            <div class="add-to-cart-section search-box-mobile" style="position: fixed;bottom: 41px;width: 100%;padding: 10px;left: 0px;background: white;z-index: 999999;">
+              <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
+                <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
+              </button>
+              <button 
+                class="buy-now-btn" 
+                :disabled="!currentVariantStock || buyNowLoading || busy" 
+                @click="buyNow"
+              >
+                <span>{{ buyNowLoading ? t('product.buy_now_processing') : t('product.buy_now') }}</span>
+              </button>
+            </div>
             <!-- Rating -->
             <div class="rating-section search-box-mobile">
               <div class="stars">
@@ -4892,7 +4932,107 @@
               </div>
               <span class="rating-text">({{ reviewsCount }}) {{ t('product.reviews') }}</span>
             </div>
-
+            <!-- Product SKU -->
+            <div v-if="currentVariantSku || productSku" class="product-sku search-box-mobile">
+              <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
+              <span class="sku-value">{{ currentVariantSku || productSku }}</span>
+            </div>
+            <!-- Color Selection -->
+            <div v-if="availableColors.length > 0" class="variant-section search-box-mobile">
+              <div class="variant-title-wrapper">
+              <h4 class="variant-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                  {{ t('product.select_color') }} : {{ currentVariantName }}
+              </h4>
+                <button 
+                  v-if="selectedColor" 
+                  class="clear-color-btn"
+                  @click="clearColorSelection"
+                  :title="t('product.clear_color') || 'إزالة اختيار اللون'"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                  <span>{{ t('product.clear') || 'إزالة' }}</span>
+                </button>
+              </div>
+              <div class="color-options">
+                <div
+                  v-for="color in availableColorsWithQty"
+                  :key="color.code"
+                  class="color-option-wrapper"
+                  :class="{ 
+                    active: selectedColor === color.name,
+                    disabled: color.qty === 0
+                  }"
+                >
+                  <button
+                    class="color-option"
+                    :class="{ 
+                      active: selectedColor === color.name, 
+                      'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
+                      'out-of-stock': color.qty === 0
+                    }"
+                    :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
+                      ? { 
+                          backgroundImage: `url(${color.image})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundColor: color.hexCode || getColorValue(color.code)
+                        }
+                      : { 
+                          backgroundColor: color.hexCode || getColorValue(color.code) 
+                        }"
+                    @click="color.qty > 0 ? selectColor(color) : null"
+                    :disabled="color.qty === 0"
+                    :title="color.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : (color.name || color.code || '')"
+                  >
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Variation Selection -->
+            <div v-if="availableVariations.length > 0" class="variant-section search-box-mobile">
+              <div class="variant-title-wrapper">
+              <h4 class="variant-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                  {{ t('product.select_variation') }}
+              </h4>
+                <button 
+                  v-if="selectedVariation" 
+                  class="clear-color-btn"
+                  @click="clearVariationSelection"
+                  :title="t('product.clear_variation') || 'إزالة اختيار المتغير'"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                  <span>{{ t('product.clear') || 'إزالة' }}</span>
+                </button>
+              </div>
+              <div class="size-options">
+                <button
+                  v-for="variation in availableVariationsWithQty"
+                  :key="variation.type"
+                  class="size-option"
+                  :class="{ 
+                    active: selectedVariation === variation.type,
+                    'out-of-stock': variation.qty === 0
+                  }"
+                  @click="variation.qty > 0 ? selectVariation(variation.type) : null"
+                  :disabled="variation.qty === 0"
+                  :title="variation.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : ''"
+                >
+                  <span class="size-value">{{ variation.type }}</span>
+                  <span v-if="variation.qty === 0" class="out-of-stock-badge">{{ t('product.out_of_stock') || 'غير متوفر' }}</span>
+                </button>
+              </div>
+            </div>
             <!-- Social Share Buttons -->
             <div class="social-share-section search-box-mobile">
               <span class="share-label">{{ t('product.share') || 'مشاركة المنتج' }}:</span>
@@ -4923,107 +5063,6 @@
               </div>
             </div>
           </div>
-          <!-- Color Selection -->
-          <div v-if="availableColors.length > 0" class="variant-section search-box-mobile">
-            <div class="variant-title-wrapper">
-            <h4 class="variant-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-                {{ t('product.select_color') }} : {{ currentVariantName }}
-            </h4>
-              <button 
-                v-if="selectedColor" 
-                class="clear-color-btn"
-                @click="clearColorSelection"
-                :title="t('product.clear_color') || 'إزالة اختيار اللون'"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-                <span>{{ t('product.clear') || 'إزالة' }}</span>
-              </button>
-            </div>
-            <div class="color-options">
-              <div
-                v-for="color in availableColorsWithQty"
-                :key="color.code"
-                class="color-option-wrapper"
-                :class="{ 
-                  active: selectedColor === color.name,
-                  disabled: color.qty === 0
-                }"
-              >
-                <button
-                  class="color-option"
-                  :class="{ 
-                    active: selectedColor === color.name, 
-                    'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
-                    'out-of-stock': color.qty === 0
-                  }"
-                  :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
-                    ? { 
-                        backgroundImage: `url(${color.image})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundColor: color.hexCode || getColorValue(color.code)
-                      }
-                    : { 
-                        backgroundColor: color.hexCode || getColorValue(color.code) 
-                      }"
-                  @click="color.qty > 0 ? selectColor(color) : null"
-                  :disabled="color.qty === 0"
-                  :title="color.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : (color.name || color.code || '')"
-                >
-                </button>
-              </div>
-            </div>
-          </div>
-          <!-- Variation Selection -->
-          <div v-if="availableVariations.length > 0" class="variant-section search-box-mobile">
-            <div class="variant-title-wrapper">
-            <h4 class="variant-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-                {{ t('product.select_variation') }}
-            </h4>
-              <button 
-                v-if="selectedVariation" 
-                class="clear-color-btn"
-                @click="clearVariationSelection"
-                :title="t('product.clear_variation') || 'إزالة اختيار المتغير'"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-                <span>{{ t('product.clear') || 'إزالة' }}</span>
-              </button>
-            </div>
-            <div class="size-options">
-              <button
-                v-for="variation in availableVariationsWithQty"
-                :key="variation.type"
-                class="size-option"
-                :class="{ 
-                  active: selectedVariation === variation.type,
-                  'out-of-stock': variation.qty === 0
-                }"
-                @click="variation.qty > 0 ? selectVariation(variation.type) : null"
-                :disabled="variation.qty === 0"
-                :title="variation.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : ''"
-              >
-                <span class="size-value">{{ variation.type }}</span>
-                <span v-if="variation.qty === 0" class="out-of-stock-badge">{{ t('product.out_of_stock') || 'غير متوفر' }}</span>
-              </button>
-            </div>
-          </div>
-          <!-- Product SKU -->
-          <div v-if="currentVariantSku || productSku" class="product-sku search-box-mobile">
-            <span class="sku-label">{{ t('product.sku') || 'رمز المنتج' }}:</span>
-            <span class="sku-value">{{ currentVariantSku || productSku }}</span>
-          </div>
           <div class="specifications">
             <div v-if="description" class="description-text" v-html="description"></div>
             <div v-if="Object.keys(metaDescription).length === 0" class="no-content">
@@ -5053,7 +5092,7 @@
             <span class="original-badge">{{ t('product.original') }}</span>
           </div>
         </div>
-        
+
         <h1 class="title search-box-desktop">{{ title }}</h1>
         
         <!-- Product SKU -->
@@ -5176,7 +5215,7 @@
           </div>
         </div>
         <!-- Add to Cart -->
-        <div class="add-to-cart-section">
+        <div class="add-to-cart-section search-box-desktop">
           <div class="qty-selector">
             <button @click="qty = Math.max(1, qty - 1)" :disabled="qty <= 1" class="qty-btn">−</button>
             <input type="number" v-model.number="qty" min="1" class="qty-input" />
@@ -5224,7 +5263,6 @@
             <svg v-else data-v-fe52aa40="" width="12" height="12" viewBox="0 0 12 12" :fill="isInCompare ? 'currentColor' : 'none'" xmlns="http://www.w3.org/2000/svg"><path data-v-fe52aa40="" d="M0.00059994 9.42142C0.00059994 9.65916 0.0725927 9.8649 0.216578 10.0386C0.360564 10.2124 0.540546 10.2947 0.756524 10.2855H1.50045C2.0124 10.2855 2.50035 10.1712 2.9643 9.94262C3.42826 9.71402 3.82422 9.4077 4.15218 9.02366C4.48015 8.63962 4.74813 8.18242 4.9561 7.65207C5.16408 7.12173 5.26407 6.56852 5.25607 5.99246C5.25607 5.28838 5.47205 4.68488 5.90401 4.18196C6.33597 3.67905 6.86791 3.42759 7.49985 3.42759H8.9997V4.27797C8.9997 4.47 9.0477 4.63459 9.14369 4.77175C9.23968 4.9089 9.34766 5.00949 9.46765 5.07349C9.58764 5.1375 9.72763 5.15579 9.88761 5.12836C10.0476 5.10093 10.1796 5.0232 10.2836 4.89519L11.7834 3.18071C11.9354 2.99783 12.0074 2.79209 11.9994 2.56349C11.9914 2.3349 11.9194 2.13373 11.7834 1.96L10.2836 0.245514C10.1636 0.117499 10.0276 0.039776 9.87561 0.0123443C9.72363 -0.0150874 9.58364 0.00320038 9.45565 0.0672077C9.32767 0.131215 9.21968 0.231798 9.13169 0.368956C9.0437 0.506115 8.9997 0.666133 8.9997 0.849011V1.71311H7.49985C6.9959 1.71311 6.51195 1.82741 6.048 2.05601C5.58404 2.2846 5.18408 2.58635 4.84812 2.96125C4.51215 3.33615 4.24418 3.79335 4.0442 4.33284C3.84422 4.87233 3.74823 5.42553 3.75622 5.99246C3.75622 6.70568 3.53625 7.31375 3.09629 7.81667C2.65633 8.31958 2.12439 8.57104 1.50045 8.57104H0.756524C0.548545 8.57104 0.368563 8.65333 0.216578 8.81792C0.0645935 8.98251 -0.00739926 9.18368 0.00059994 9.42142ZM0.00059994 2.57721C0.00059994 2.81495 0.0725927 3.01612 0.216578 3.18071C0.360564 3.3453 0.540546 3.42759 0.756524 3.42759H1.50045C1.85241 3.42759 2.17638 3.51446 2.47235 3.68819C2.76832 3.86193 3.0283 4.09967 3.25227 4.40142C3.42026 3.81621 3.66823 3.29043 3.9962 2.82409C3.26827 2.08344 2.43636 1.71311 1.50045 1.71311H0.756524C0.548545 1.71311 0.368563 1.79998 0.216578 1.97371C0.0645935 2.14745 -0.00739926 2.34861 0.00059994 2.57721ZM5.0161 9.18825C5.72803 9.91976 6.55594 10.2855 7.49985 10.2855H8.9997V11.1496C8.9997 11.3325 9.0477 11.4971 9.14369 11.6434C9.23968 11.7897 9.34766 11.8903 9.46765 11.9451C9.58764 12 9.72763 12.0137 9.88761 11.9863C10.0476 11.9589 10.1796 11.8811 10.2836 11.7531L11.7834 10.0386C11.9354 9.8649 12.0074 9.65916 11.9994 9.42142C11.9914 9.18368 11.9194 8.98709 11.7834 8.83164L10.2836 7.11716C10.1636 6.98 10.0276 6.8977 9.87561 6.87027C9.72363 6.84284 9.58364 6.86113 9.45565 6.92514C9.32767 6.98914 9.21968 7.0943 9.13169 7.2406C9.0437 7.3869 8.9997 7.54692 8.9997 7.72065V8.57104H7.49985C7.15588 8.57104 6.83192 8.48874 6.52795 8.32415C6.22398 8.15956 5.968 7.92182 5.76002 7.61093C5.58404 8.19614 5.33607 8.72191 5.0161 9.18825Z" fill="currentColor"></path></svg>
           </button>
         </div>
-
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
@@ -6699,7 +6737,7 @@
     display: inline-block;
   }
 
-  .add-to-cart-section{ display:flex; gap:12px; align-items:center; margin-bottom:16px }
+  .add-to-cart-section{ display:flex; gap:4px; align-items:center; margin-bottom:16px }
   .qty-selector{ display:flex; align-items:center; gap:12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; padding:4px }
   .qty-btn{ width:36px; height:36px; border:none; background:#f9fafb; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:#6b7280; border-radius:6px }
   .qty-btn:hover{ background:#f3f4f6 }
@@ -7301,14 +7339,17 @@
    .action-btn:hover{ 
      color:#111827;
    }
-
+   .add-to-cart-btn {
+      flex: auto;
+    }
    /* Responsive Reviews */
    @media (max-width: 768px) {
+    
     .share-buttons {
       flex-wrap: wrap;
     }
     .payment-image-container , .add-to-cart-section {
-      display: flex !important;
+      display: flex;
       flex-wrap: wrap !important;
     }
      .reviews-header{ 
@@ -7440,6 +7481,10 @@
 
   /* Responsive Variants */
   @media (max-width: 768px) {
+    
+    .brands-popup .cover-image-class{
+      height:65px !important;
+    }
     .variant-section{ 
       padding:16px; 
       margin-bottom:20px;

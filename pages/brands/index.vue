@@ -68,7 +68,11 @@ const { data } = await useAsyncData('brands-list', async () => {
   loadingProgress.value = 0
   
   try {
-    const result = await $get('v1/brands')
+    const result = await $get('v1/brands', {
+      params: {
+        limit: 1000
+      }
+    })
     loadingProgress.value = 100
     
     // Preload images in background (non-blocking) - only first 12 for faster initial load
@@ -105,6 +109,9 @@ const items = computed(() => {
   }
   if (Array.isArray(raw?.data)) {
     return raw.data
+  }
+  if (Array.isArray(raw?.data?.data)) {
+    return raw.data.data
   }
   if (Array.isArray(raw)) {
     return raw
@@ -185,10 +192,10 @@ const handleImageLoad = (event: Event) => {
 </script>
 
 <template>
-  <div class="brands-page" dir="rtl">
+  <div class="brands-page">
     <!-- Header Section -->
-    <div>
-      <img src="/images/براندات-جوتوفير (2).png" width="100%" height="auto" alt="العروض" class="banner-image" />
+    <div style="text-align: center;">
+      <img style="width: 78%;" src="/images/براندات-جوتوفير (2).png" height="auto" alt="العروض" class="banner-image" />
     </div>
 
     <!-- Loading State -->

@@ -249,6 +249,7 @@ const hoveredCategory = ref<any>(null)
 const hoveredMegaCategory = ref<any>(null)
 const keepMegaMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
+const expandedMobileCategoryId = ref<string | number | null>(null)
 // Keep a lightweight dictionary for suggestions/typo-fix
 const recentNames = ref<string[]>([])
 
@@ -802,6 +803,30 @@ function goCategory(cat: Cat) {
     }, 1000)
   }
   showCats.value = false
+}
+
+const isMobileCategoryExpanded = (category: Cat) => {
+  return expandedMobileCategoryId.value === category?.id
+}
+
+const handleMobileCategoryTap = (category: Cat) => {
+  if (category?.children && category.children.length > 0) {
+    expandedMobileCategoryId.value = isMobileCategoryExpanded(category)
+      ? null
+      : (category.id ?? null)
+    return
+  }
+  expandedMobileCategoryId.value = null
+  mobileMenuOpen.value = false
+  const targetPath = getCategoryLink(category)
+  navigateTo(targetPath)
+}
+
+const handleMobileSubcategoryTap = (subcategory: Cat) => {
+  expandedMobileCategoryId.value = null
+  mobileMenuOpen.value = false
+  const targetPath = getCategoryLink(subcategory)
+  navigateTo(targetPath)
 }
 
 function handleMegaMenuLeave() {
@@ -1620,15 +1645,41 @@ async function handleRegisterSubmit() {
 
               <h4>{{ t('all_categories') || 'جميع الأقسام' }}</h4>
               <div class="mobile-menu-links">
-                <NuxtLink 
-                  v-for="category in mainCategories" 
+                <div
+                  v-for="category in mainCategories"
                   :key="category.id"
-                  :to="getCategoryLink(category)" 
-                  class="mobile-menu-link"
-                  @click="mobileMenuOpen = false"
+                  :class="['mobile-category-group', { expanded: isMobileCategoryExpanded(category) }]"
                 >
-                  {{ category.name }}
-                </NuxtLink>
+                  <button
+                    type="button"
+                    class="mobile-menu-link mobile-category-toggle"
+                    @click="handleMobileCategoryTap(category)"
+                  >
+                    <span>{{ category.name }}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path
+                        fill="currentColor"
+                        d="M7 10l5 5l5-5H7z"
+                      />
+                    </svg>
+                  </button>
+                  <Transition name="mobile-subcategories">
+                    <div
+                      v-if="category.children && category.children.length && isMobileCategoryExpanded(category)"
+                      class="mobile-subcategories"
+                    >
+                      <NuxtLink
+                        v-for="sub in category.children"
+                        :key="sub.id"
+                        :to="getCategoryLink(sub)"
+                        class="mobile-subcategory-link"
+                        @click="handleMobileSubcategoryTap(sub)"
+                      >
+                        {{ sub.name }}
+                      </NuxtLink>
+                    </div>
+                  </Transition>
+                </div>
               </div>
             </div>
             
@@ -3030,6 +3081,83 @@ body {
   background: #F58040;
   border-radius: 3px;
 }
+
+.mobile-menu-links {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-category-group {
+  border: 1px solid #f1f1f1;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.mobile-category-group.expanded {
+  border-color: #f58040;
+}
+
+.mobile-category-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-category-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.mobile-category-group.expanded .mobile-category-toggle svg {
+  transform: rotate(180deg);
+}
+
+.mobile-subcategories {
+  padding: 8px 12px 12px;
+  background: #fdf9f5;
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-subcategory-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  text-decoration: none;
+  text-align: start;
+  transition: all 0.2s ease;
+}
+
+.mobile-subcategory-link:hover {
+  background: #f58040;
+  color: #fff;
+}
+
+.mobile-subcategories-enter-active,
+.mobile-subcategories-leave-active {
+  transition: all 0.2s ease;
+}
+
+.mobile-subcategories-enter-from,
+.mobile-subcategories-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (max-width: 1200px) {
+  .desktop-suggestions {
+    display: none;
+  }
+  .mobile-suggestions {
+    display: block;
+  }
+}
+
 .mobile-suggestions {
   display: none;
 }
@@ -3412,7 +3540,7 @@ body {
 
 @media (max-width: 1200px) {
   .logo-img {
-    width: 80px;
+    width: 55px;
   }
   .mobile-none {
     display: none;
@@ -3969,7 +4097,6 @@ body {
 .mobile-menu-link:hover {
   background: rgba(255, 255, 255, 0.2);
   color: white;
-  transform: translateX(-8px) scale(1.02);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.4);
 } 
