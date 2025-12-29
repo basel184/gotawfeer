@@ -1161,7 +1161,7 @@ async function handleRegisterSubmit() {
                   </svg>
                 </button>
             </div>
-            <div class="col-6 col-md-7">
+            <div class="col-5 col-md-7">
               <!-- Search Section -->
               <div class="search-section">
                 <div class="search-container">
@@ -1250,7 +1250,7 @@ async function handleRegisterSubmit() {
                 
               </div>
             </div>
-            <div class="col-3 col-md-4 d-flex align-items-center justify-content-center gap-2 d-xl-none mobile-lang-switch">
+            <div class="col-4 col-md-4 d-flex align-items-center justify-content-center gap-2 d-xl-none mobile-lang-switch">
               <div class="sign-up-mobile" @click="handleUserIconClick" style="cursor: pointer;">
                 <svg width="23" height="23" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M11.2332 14.6204C7.30234 14.6204 3.98508 15.2591 3.98508 17.7235C3.98508 20.1888 7.32409 20.8049 11.2332 20.8049C15.1632 20.8049 18.4813 20.1661 18.4813 17.7017C18.4813 15.2365 15.1423 14.6204 11.2332 14.6204ZM11.2332 2.68457C8.57033 2.68457 6.43677 4.81735 6.43677 7.47835C6.43677 10.1393 8.57033 12.273 11.2332 12.273C13.8952 12.273 16.0296 10.1393 16.0296 7.47835C16.0296 4.81735 13.8952 2.68457 11.2332 2.68457Z" fill="white"/>
