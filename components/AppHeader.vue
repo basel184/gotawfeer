@@ -3784,7 +3784,6 @@ body {
   
   .lang-menu {
     width: 240px;
-    right: -10px;
   }
   
   .nav-bar {
