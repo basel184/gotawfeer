@@ -1159,6 +1159,13 @@
 
   // Add a small delay to ensure DOM is fully rendered
   const swiperReady = ref(false)
+  const scrollPageToTop = (behavior: ScrollBehavior = 'smooth') => {
+    if (!process.client) return
+    window.scrollTo({ top: 0, left: 0, behavior })
+  }
+  watch(() => route.fullPath, () => {
+    nextTick(() => scrollPageToTop('auto'))
+  }, { immediate: true })
   watch(shouldShowSwiper, async (newVal) => {
     if (newVal) {
       // Ensure Swiper instances are cleared
@@ -4781,7 +4788,7 @@
     </div>
     <div v-else class="product">
       <!-- Gallery -->
-      <div class="gallery">
+      <div class="gallery" id="product-gallery">
         <div class="gallery-container">
           <!-- Thumbnail Swiper (Side) -->
           <div v-if="swiperReady && images.length > 1" class="thumbnail-swiper-container">
