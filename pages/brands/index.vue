@@ -246,11 +246,11 @@ const handleImageLoad = (event: Event) => {
               <h3 class="brand-name">
                 {{ brand?.name || brand?.title || t('brand') || 'علامة تجارية' }}
               </h3>
-                     <div class="brand-meta" v-if="brand?.brand_products_count || brand?.products_count || brand?.product_count">
-                       <span class="products-count">
-                         {{ brand.brand_products_count || brand.products_count || brand.product_count }} {{ t('products') || 'منتج' }}
-                       </span>
-                     </div>
+              <div class="brand-meta" v-if="brand?.brand_products_count || brand?.products_count || brand?.product_count">
+                <span class="products-count">
+                  {{ brand.brand_products_count || brand.products_count || brand.product_count }} {{ t('products') || 'منتج' }}
+                </span>
+              </div>
             </div>
 
             <!-- Hover Effect -->

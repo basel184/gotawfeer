@@ -4913,6 +4913,7 @@
             </div>
             
             <h1 class="title search-box-mobile">{{ title }}</h1>
+            <!-- Price -->
             <div class="add-to-cart-section search-box-mobile" style="position: fixed;bottom: 41px;width: 100%;padding: 10px;left: 0px;background: white;z-index: 999999;">
               <button class="add-to-cart-btn" :disabled="!currentVariantStock || busy" @click="addToCart">
                 <span>{{ busy ? t('product.adding') : t('product.add_to_cart') }}</span>
@@ -5033,6 +5034,11 @@
                 </button>
               </div>
             </div>
+            <div class="price-section search-box-mobile">
+              <div class="price-main">{{ currentVariantPrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+              <div v-if="hasDiscount" class="price-old">{{ basePrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
+              <div v-if="hasDiscount" class="discount-badge">-{{ discountPercent }}%</div>
+            </div>
             <!-- Social Share Buttons -->
             <div class="social-share-section search-box-mobile">
               <span class="share-label">{{ t('product.share') || 'مشاركة المنتج' }}:</span>
@@ -5112,7 +5118,7 @@
 
 
         <!-- Price -->
-        <div class="price-section">
+        <div class="price-section search-box-desktop">
           <div class="price-main">{{ currentVariantPrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           <div v-if="hasDiscount" class="price-old">{{ basePrice.toLocaleString() }} <img src="/images/Saudi_Riyal_Symbol.svg" alt="ر.س" class="currency-icon" /></div>
           <div v-if="hasDiscount" class="discount-badge">-{{ discountPercent }}%</div>
