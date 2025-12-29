@@ -111,7 +111,7 @@ const paymentMethods = computed(() => {
   const methods = [
     { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: true },
     { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
-    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: true, integration_id: 9668	 },
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: true, integration_id: 9985 },
     { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: true, integration_id: 9984 }
   ]
   
@@ -558,9 +558,7 @@ async function placeOrder() {
         console.log('Redirecting to Paymob payment page...', paymentUrl)
         
         // Show loading message
-        const paymentType = selectedPaymentMethod.value === 'paymob_apple_pay' ? 'Apple Pay' : 'فيزا / ماستركارد'
-        alert(`جاري فتح صفحة دفع Paymob (${paymentType})...`)
-        
+        const paymentType = selectedPaymentMethod.value === 'paymob_apple_pay' ? 'Apple Pay' : 'فيزا / ماستركارد'        
         // Force redirect immediately
         setTimeout(() => {
           window.location.href = paymentUrl
@@ -641,9 +639,6 @@ async function placeOrder() {
       
       if (paymentUrl) {
         console.log('Redirecting to Tabby payment page...', paymentUrl)
-        
-        // Show loading message
-        alert('جاري فتح صفحة دفع تابي...')
         
         // Force redirect immediately
         setTimeout(() => {
