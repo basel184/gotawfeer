@@ -521,6 +521,24 @@ async function placeOrder() {
       total_amount: Number(grandTotal.value.toFixed(2))
     }
 
+    const customerName = auth?.user?.value?.name || selectedAddress.value?.contact_person_name || ''
+    const customerEmail = auth?.user?.value?.email || ''
+    const customerPhone = selectedAddress.value?.phone
+      || selectedAddress.value?.contact_person_number
+      || auth?.user?.value?.phone
+      || ''
+    const shippingAddress = {
+      address: selectedAddress.value?.address || '',
+      city: selectedAddress.value?.city || '',
+      zip_code: selectedAddress.value?.zip_code || selectedAddress.value?.zip || '',
+      country: selectedAddress.value?.country || 'Saudi Arabia',
+      latitude: selectedAddress.value?.latitude || '',
+      longitude: selectedAddress.value?.longitude || '',
+      address_type: selectedAddress.value?.address_type || 'home',
+      contact_person_name: selectedAddress.value?.contact_person_name || customerName,
+      contact_person_number: customerPhone
+    }
+
     const orderData: any = {
       address_id: selectedAddress.value.id,
       payment_method: selectedPaymentMethod.value,
@@ -529,7 +547,12 @@ async function placeOrder() {
       tax_amount: totals.tax_amount,
       shipping_amount: totals.shipping_amount,
       discount_amount: totals.discount_amount,
-      total_amount: totals.total_amount
+      total_amount: totals.total_amount,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      customer_phone: customerPhone,
+      customer_id: auth?.user?.value?.id || null,
+      shipping_address: shippingAddress
     }
     
     // Add integration_id if it's a Paymob payment method
