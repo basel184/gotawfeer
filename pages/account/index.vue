@@ -40,43 +40,67 @@ const showToastMessage = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
 
+// Helper function to extract usable image path from varied API shapes
+function resolveImagePath(source: any): string | null {
+  if (!source) return null
+  if (typeof source === 'string') return source
+
+  if (Array.isArray(source)) {
+    for (const entry of source) {
+      const resolved = resolveImagePath(entry)
+      if (resolved) return resolved
+    }
+    return null
+  }
+
+  if (typeof source === 'object') {
+    const candidateKeys = [
+      'path',
+      'url',
+      'full_url',
+      'thumbnail',
+      'image',
+      'original',
+      'src'
+    ]
+    for (const key of candidateKeys) {
+      if (typeof source[key] === 'string' && source[key]) {
+        return source[key]
+      }
+    }
+  }
+
+  return null
+}
+
 // Helper function to get correct image URL
-function getImageUrl(imagePath: string | undefined, fallback: string = '/images/placeholder.png'): string {
-  console.log('getImageUrl called with:', imagePath)
-  
+function getImageUrl(imageInput: any, fallback: string = '/images/placeholder.png'): string {
+  const imagePath = resolveImagePath(imageInput)
+
   if (!imagePath) {
-    console.log('No image path, using fallback:', fallback)
     return fallback
   }
   
-  // If it's already a full URL, return as is
   if (imagePath.startsWith('http')) {
-    console.log('Full URL detected, returning as is:', imagePath)
     return imagePath
   }
   
-  // If it's a relative path, build the full URL
   const baseURL = config?.public?.baseURL || 'https://admin.gotawfeer.com'
-  console.log('Base URL:', baseURL)
   
-  // Handle different image path formats
-  let finalUrl = ''
   if (imagePath.includes('storage/product/thumbnail/')) {
-    finalUrl = `${baseURL}/storage/product/thumbnail/${imagePath.split('/').pop()}`
-  } else if (imagePath.includes('storage/product/')) {
-    finalUrl = `${baseURL}/storage/product/${imagePath.split('/').pop()}`
-  } else if (imagePath.startsWith('storage/')) {
-    finalUrl = `${baseURL}/${imagePath}`
-  } else if (imagePath.includes('customer/')) {
-    // Handle customer profile images
-    finalUrl = `${baseURL}/storage/customer/${imagePath.split('/').pop()}`
-  } else {
-    // Default to customer profile images
-    finalUrl = `${baseURL}/storage/customer/${imagePath}`
+    return `${baseURL}/storage/product/thumbnail/${imagePath.split('/').pop()}`
   }
-  
-  console.log('Final image URL:', finalUrl)
-  return finalUrl
+  if (imagePath.includes('storage/product/')) {
+    return `${baseURL}/storage/product/${imagePath.split('/').pop()}`
+  }
+  if (imagePath.startsWith('storage/')) {
+    return `${baseURL}/${imagePath}`
+  }
+  if (imagePath.includes('customer/')) {
+    return `${baseURL}/storage/customer/${imagePath.split('/').pop()}`
+  }
+
+  return `${baseURL}/storage/customer/${imagePath}`
 }
 
 // Handle image load errors
@@ -1263,8 +1287,8 @@ const tabs = computed(() => [
                   <div v-for="item in order.details" :key="item.id" class="order-item">
                     <div class="item-image">
                       <img 
-                        :src="getImageUrl(item.product?.thumbnail)" 
-                        :alt="item.product?.name"
+                        :src="getImageUrl(item.product?.thumbnail_full_url || item.product?.thumbnail)" 
+                        :alt="item.product?.name || t('account.orders.product_image')"
                         @error="handleImageError"
                       />
                     </div>
@@ -4684,7 +4708,6 @@ const tabs = computed(() => [
   }
 
   .order-status {
-    padding: 10px 20px;
     border-radius: 20px;
     font-size: 14px;
     font-weight: 700;

@@ -50,7 +50,13 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp' },
-        { rel: 'apple-touch-icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp'}
+        { rel: 'apple-touch-icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp'},
+        {
+          rel: 'stylesheet',
+          href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+          crossorigin: 'anonymous',
+          referrerpolicy: 'no-referrer'
+        }
       ],
       script: [
         {
