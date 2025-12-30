@@ -362,6 +362,10 @@ async function applyCoupon() {
     const requestData: any = {
       coupon_code: couponCode.value.trim()
     }
+    if (auth?.user?.value?.id) {
+      requestData.is_authenticated = true
+      requestData.user_id = Number(auth.user.value.id)
+    }
     
     // Always send guest_id if available (backend uses it as fallback)
     // Backend code: $customer_id = $request->user() ? $request->user()->id : ($request->guest_id ?? '0');
@@ -808,6 +812,10 @@ onMounted(async () => {
         const { guestId } = useGuest()
         const requestData: any = {
           coupon_code: savedCoupon.coupon_code
+        }
+        if (auth?.user?.value?.id) {
+          requestData.is_authenticated = true
+          requestData.user_id = Number(auth.user.value.id)
         }
         if (guestId?.value) {
           requestData.guest_id = Number(guestId.value)
