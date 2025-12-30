@@ -380,7 +380,7 @@ async function applyCoupon() {
       user_id: auth?.user?.value?.id || 'N/A'
     })
     
-    const response = await $get('v1/coupon/apply', requestData)
+    const response = await $post('v1/coupon/apply', requestData)
     
     console.log('Coupon response:', response)
     
@@ -815,7 +815,7 @@ onMounted(async () => {
           requestData.guest_id = 0
         }
         
-        const response = await $get('v1/coupon/apply', requestData)
+        const response = await $post('v1/coupon/apply', requestData)
         
         if (response?.success === true && response.data) {
           // Coupon is still valid, apply it
