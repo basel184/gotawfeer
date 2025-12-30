@@ -509,10 +509,23 @@ async function placeOrder() {
       integrationId = selectedMethod?.integration_id || (selectedPaymentMethod.value === 'paymob_apple_pay' ? 9984 : 9985)
     }
 
+    const totals = {
+      subtotal: Number(subtotalAfterDiscount.value.toFixed(2)),
+      tax_amount: Number(taxExcluded.value.toFixed(2)),
+      shipping_amount: Number(shipping.value.toFixed(2)),
+      discount_amount: Number(couponDiscount.value.toFixed(2)),
+      total_amount: Number(grandTotal.value.toFixed(2))
+    }
+
     const orderData: any = {
       address_id: selectedAddress.value.id,
       payment_method: selectedPaymentMethod.value,
-      coupon_code: appliedCoupon.value?.coupon_code || ''
+      coupon_code: appliedCoupon.value?.coupon_code || '',
+      subtotal: totals.subtotal,
+      tax_amount: totals.tax_amount,
+      shipping_amount: totals.shipping_amount,
+      discount_amount: totals.discount_amount,
+      total_amount: totals.total_amount
     }
     
     // Add integration_id if it's a Paymob payment method
