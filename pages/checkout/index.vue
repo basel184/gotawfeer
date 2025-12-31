@@ -92,13 +92,13 @@ const loginSuccess = ref(false)
 const paymentMethods = computed(() => {
   const translations = {
     ar: {
-      //tabby: 'تابي ',
+      tabby: 'تابي ',
       tamara: 'تمارا ',
       paymob_visa: ' فيزا / ماستركارد / مدي',
       paymob_apple_pay: ' Apple Pay'
     },
     en: {
-      //tabby: 'Tabby',
+      tabby: 'Tabby',
       tamara: 'Tamara ',
       paymob_visa: ' Visa / Mastercard / Mada',
       paymob_apple_pay: ' Apple Pay'
@@ -109,7 +109,7 @@ const paymentMethods = computed(() => {
   const localeTranslations = translations[currentLocale as keyof typeof translations] || translations.ar
   
   const methods = [
-    //{ id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: true },
+    { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: true },
     { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
     { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: true, integration_id: 9985 },
     { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: true, integration_id: 9984 }
@@ -128,8 +128,10 @@ const discountTotal = computed(() => items.value.reduce((s: number, it: any) => 
 const subtotalAfterDiscount = computed(() => Math.max(0, subtotal.value - discountTotal.value))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
 // Fixed shipping cost: 25 SAR per order (not per item)
+const FREE_SHIPPING_THRESHOLD = 299
 const shipping = computed(() => {
   if (items.value.length === 0) return 0
+  if (subtotalAfterDiscount.value >= FREE_SHIPPING_THRESHOLD) return 0
   return 25 // Fixed shipping cost
 })
 
@@ -643,7 +645,6 @@ async function placeOrder() {
             window.location.href = paymentUrl
             setTimeout(() => {
               if (window.location.href === window.location.origin + window.location.pathname) {
-                alert('يرجى النقر على الرابط لفتح صفحة دفع Paymob:\n' + paymentUrl)
               }
             }, 500)
           }
@@ -724,7 +725,6 @@ async function placeOrder() {
             window.location.href = paymentUrl
             setTimeout(() => {
               if (window.location.href === window.location.origin + window.location.pathname) {
-                alert('يرجى النقر على الرابط لفتح صفحة دفع تابي:\n' + paymentUrl)
               }
             }, 500)
           }
@@ -789,7 +789,6 @@ async function placeOrder() {
         // Fallback: Show alert with URL after a short delay
         setTimeout(() => {
           if (window.location.href === window.location.origin + window.location.pathname) {
-            alert('يرجى النقر على الرابط لفتح صفحة دفع تمارا:\n' + paymentUrl)
           }
         }, 1000)
         return

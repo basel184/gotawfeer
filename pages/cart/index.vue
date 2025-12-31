@@ -439,8 +439,10 @@ const subtotalAfterDiscount = computed(() => {
 const taxIncluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'include' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
 // Fixed shipping cost: 25 SAR per order (not per item)
+const FREE_SHIPPING_THRESHOLD = 299
 const shipping = computed(() => {
   if (items.value.length === 0) return 0
+  if (subtotalAfterDiscount.value >= FREE_SHIPPING_THRESHOLD) return 0
   return 25 // Fixed shipping cost
 })
 // Grand total: add excluded tax & shipping only; included tax is informational
