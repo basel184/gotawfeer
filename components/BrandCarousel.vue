@@ -201,7 +201,7 @@ const toLink = (b: any) => {
 .brands-swiper :deep(.swiper-button-prev),
 .brands-swiper :deep(.swiper-button-next) {
   position: absolute;
-  top: 50%;
+  top: 70%;
   transform: translateY(-50%);
   width: 40px;
   height: 40px;

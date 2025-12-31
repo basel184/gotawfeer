@@ -2967,7 +2967,6 @@ const handleProductDetails = () => {
 
 .brands-popup .cover-image-class {
   width: 100%;
-  height: 90px;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
