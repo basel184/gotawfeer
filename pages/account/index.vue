@@ -2195,7 +2195,7 @@ const tabs = computed(() => [
               <div v-for="item in selectedOrder.details" :key="item.id" class="order-item-detail">
                 <div class="item-image">
                   <img 
-                    :src="getImageUrl(item.product?.thumbnail)" 
+                    :src="getImageUrl(item.product?.thumbnail_full_url || item.product?.thumbnail)" 
                     :alt="item.product?.name"
                     @error="handleImageError"
                   />

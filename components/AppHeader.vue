@@ -1761,10 +1761,10 @@ async function handleRegisterSubmit() {
                   <NuxtLink :to="getLocalizedPath('/account')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                     {{ t('my_account') || 'حسابي' }}
                   </NuxtLink>
-                  <NuxtLink :to="getLocalizedPath('/account/orders')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  <NuxtLink :to="getLocalizedPath('/account?tab=orders')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                     {{ t('my_orders') || 'طلباتي' }}
                   </NuxtLink>
-                  <NuxtLink :to="getLocalizedPath('/account/wishlist')" class="mobile-menu-link" @click="mobileMenuOpen = false">
+                  <NuxtLink :to="getLocalizedPath('/account?tab=wishlist')" class="mobile-menu-link" @click="mobileMenuOpen = false">
                     {{ t('wishlist') || 'قائمة الأمنيات' }}
                   </NuxtLink>
                   <button class="mobile-menu-link logout-btn" @click="handleLogout">
