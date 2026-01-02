@@ -682,6 +682,9 @@
       "attachments_help": "يمكنك إرفاق الصور أو المستندات (PDF, DOC, DOCX)",
       "sending": "جاري الإرسال...",
       "send_ticket": "إرسال التذكرة",
+      "status_label": "الحالة",
+      "date": "تاريخ الإنشاء",
+      "ticket_details": "تفاصيل التذكرة",
       "type_options": {
         "general": "استفسار عام",
         "technical": "مشكلة تقنية",

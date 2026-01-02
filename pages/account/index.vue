@@ -116,12 +116,13 @@ const route = useRoute()
 const activeTab = ref(route.query.tab as string || 'profile')
 
 // Selected order for details
-const selectedOrderId = ref<string | null>(null)
+const selectedOrderId = ref<string | number | null>(null)
 
 // Get selected order details
 const selectedOrder = computed(() => {
-  if (!selectedOrderId.value) return null
-  return orders.value.find(order => order.id === selectedOrderId.value)
+  if (selectedOrderId.value == null) return null
+  const targetId = String(selectedOrderId.value)
+  return orders.value.find(order => String(order.id) === targetId) || null
 })
 
 // Watch user image changes - moved after user definition
@@ -749,9 +750,16 @@ const createSupportTicket = async () => {
 }
 
 // View ticket details
-const viewTicket = (ticketId: string) => {
-  // Navigate to ticket details or show modal
+const selectedSupportTicketId = ref<string | number | null>(null)
+const selectedSupportTicket = computed(() => {
+  if (selectedSupportTicketId.value == null) return null
+  const targetId = String(selectedSupportTicketId.value)
+  return supportTickets.value.find(ticket => String(ticket.id) === targetId) || null
+})
+
+const viewTicket = (ticketId: string | number) => {
   console.log('View ticket:', ticketId)
+  selectedSupportTicketId.value = ticketId
 }
 
 // Close ticket
@@ -2033,7 +2041,7 @@ const tabs = computed(() => [
             </button>
           </div>
 
-          <form @submit.prevent="createSupportTicket" class="support-form">
+          <form @submit.prevent="createSupportTicket" class="support-form p-4">
             <div class="form-group">
               <label for="subject">{{ t('account.support.subject') }}</label>
               <input
@@ -2107,6 +2115,65 @@ const tabs = computed(() => [
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </teleport>
+
+    <!-- Support Ticket Details Modal -->
+    <teleport to="body">
+      <div v-if="selectedSupportTicket" class="modal-overlay" @click.self="selectedSupportTicketId = null">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>{{ t('account.support.ticket_details') || 'تفاصيل التذكرة' }} #{{ selectedSupportTicket.id }}</h2>
+            <button class="close-btn" @click="selectedSupportTicketId = null">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="support-ticket-details p-4">
+            <div class="info-row">
+              <span class="label">{{ t('account.support.subject') || 'الموضوع' }}:</span>
+              <span class="value">{{ selectedSupportTicket.subject }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">{{ t('account.support.type') || 'النوع' }}:</span>
+              <span class="value">{{ getTicketTypeName(selectedSupportTicket.type) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">{{ t('account.support.priority') || 'الأولوية' }}:</span>
+              <span class="value">{{ getPriorityName(selectedSupportTicket.priority).name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">{{ t('account.support.status_label') || 'الحالة' }}:</span>
+              <span class="value status" :class="selectedSupportTicket.status">
+                {{ getTicketStatusName(selectedSupportTicket.status) }}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="label">{{ t('account.support.date') || 'التاريخ' }}:</span>
+              <span class="value">{{ formatDate(selectedSupportTicket.created_at) }}</span>
+            </div>
+
+            <div class="description-block">
+              <h3>{{ t('account.support.description') || 'الوصف' }}</h3>
+              <p>{{ selectedSupportTicket.description }}</p>
+            </div>
+          </div>
+
+          <div class="form-actions p-4">
+            <button class="action-btn secondary" @click="selectedSupportTicketId = null">
+              {{ t('account.addresses.cancel') }}
+            </button>
+            <button 
+              v-if="selectedSupportTicket.status === 'open'" 
+              class="action-btn danger" 
+              @click="() => { closeTicket(String(selectedSupportTicket.id)); selectedSupportTicketId = null }"
+            >
+              {{ t('account.support.close_ticket') }}
+            </button>
+          </div>
         </div>
       </div>
     </teleport>

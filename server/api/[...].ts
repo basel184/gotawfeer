@@ -40,6 +40,7 @@ export default defineEventHandler(async (event) => {
     
     // Forward important headers
     const reqHeaders = event.node.req.headers
+    const contentTypeHeader = reqHeaders['content-type'] as string | undefined
     if (reqHeaders.authorization) {
       headers.Authorization = reqHeaders.authorization
     }
@@ -66,18 +67,28 @@ export default defineEventHandler(async (event) => {
     })
     
     // Get request body for non-GET requests
+    const method = String(event.node.req.method || 'GET').toUpperCase()
+    const methodHasBody = !['GET', 'HEAD', 'OPTIONS'].includes(method)
+    const isMultipart = contentTypeHeader?.includes('multipart/form-data')
+    const isFormUrlEncoded = contentTypeHeader?.includes('application/x-www-form-urlencoded')
+    const needsRawBody = Boolean(isMultipart || isFormUrlEncoded)
+    
     let body: any = undefined
-    if (event.node.req.method !== 'GET' && event.node.req.method !== 'HEAD' && event.node.req.method !== 'OPTIONS') {
+    if (methodHasBody) {
       try {
-        body = await readBody(event).catch(() => null)
+        if (needsRawBody) {
+          // For multipart/form-data & urlencoded bodies keep the raw stream (Buffer for multipart)
+          body = await readRawBody(event, isMultipart ? false : undefined)
+        } else {
+          body = await readBody(event).catch(() => null)
+        }
       } catch (e) {
-        // Body might be a stream, try to read it differently
         body = null
       }
     }
     
-    // Ensure Content-Type is set for POST/PUT requests with body
-    if (body && !headers['Content-Type'] && !headers['content-type']) {
+    // Ensure Content-Type is set for JSON requests that didn't include it
+    if (methodHasBody && body && !needsRawBody && !headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json'
     }
     
@@ -90,12 +101,19 @@ export default defineEventHandler(async (event) => {
       headers: Object.keys(headers)
     })
     
-    const response = await $fetch(fullUrlString, {
-      method: event.node.req.method as any,
+    const fetchOptions: any = {
+      method: method as any,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
       timeout: 30000, // 30 seconds timeout
-    }).catch((fetchError: any) => {
+    }
+    
+    if (methodHasBody && body != null) {
+      fetchOptions.body = needsRawBody
+        ? body
+        : (typeof body === 'string' ? body : JSON.stringify(body))
+    }
+    
+    const response = await $fetch(fullUrlString, fetchOptions).catch((fetchError: any) => {
       console.error('[API Proxy] Fetch Error:', {
         url: fullUrlString,
         method: event.node.req.method,
