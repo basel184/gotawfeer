@@ -46,15 +46,18 @@ watch(() => locale.value || $i18n.locale.value, () => {
 }, { immediate: true })
 
 // Also use useHead for SSR support
-useHead({
-  htmlAttrs: computed(() => {
-    const currentLocale = locale.value || $i18n.locale.value || 'ar'
-    const isArabic = currentLocale === 'ar'
-    return {
+useHead(() => {
+  const currentLocale = locale.value || $i18n.locale.value || 'ar'
+  const isArabic = currentLocale === 'ar'
+  return {
+    htmlAttrs: {
       lang: isArabic ? 'ar' : 'en',
       dir: isArabic ? 'rtl' : 'ltr'
-    }
-  })
+    },
+    meta: [
+      { name: 'facebook-domain-verification', content: '1m0v9vhvrgpr5kj8cdegfh5wttfm1x' }
+    ]
+  }
 })
 
 // Initialize on mount
