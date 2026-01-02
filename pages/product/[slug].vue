@@ -984,6 +984,8 @@
   })
   const mainIndex = ref(0)
   const mainImage = computed(() => images.value[mainIndex.value] || '')
+  const thumbnailListRef = ref<HTMLElement | null>(null)
+  const activeThumbnailRef = ref<HTMLElement | null>(null)
   const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
 
   const onImgErr = (e: Event) => {
@@ -4170,12 +4172,41 @@
     // Meta tags temporarily disabled
   }, { immediate: true })
 
-  // Watch for mainIndex changes and update Swiper
+  // Go to specific slide
+  const goToSlide = (index: number) => {
+    mainIndex.value = index
+    if (mainSwiper.value && (mainSwiper.value as any).slideTo) {
+      (mainSwiper.value as any).slideTo(index, 300)
+    }
+  }
+
+  // Update mainIndex when swiper slide changes
+  const onSlideChange = (swiper: any) => {
+    if (swiper && typeof swiper.activeIndex === 'number') {
+      mainIndex.value = swiper.activeIndex
+    }
+  }
+
+  // Scroll thumbnail into view when mainIndex changes
+  const scrollThumbnailIntoView = () => {
+    nextTick(() => {
+      if (activeThumbnailRef.value && thumbnailListRef.value) {
+        activeThumbnailRef.value.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        })
+      }
+    })
+  }
+
+  // Watch for mainIndex changes and update Swiper + scroll thumbnail
   watch(mainIndex, (newIndex) => {
     nextTick(() => {
       if (mainSwiper.value && (mainSwiper.value as any).slideTo) {
         (mainSwiper.value as any).slideTo(newIndex, 300)
       }
+      scrollThumbnailIntoView()
     })
   })
 
@@ -4790,25 +4821,18 @@
       <!-- Gallery -->
       <div class="gallery" id="product-gallery">
         <div class="gallery-container">
-          <!-- Thumbnail Swiper (Side) -->
-          <div v-if="swiperReady && images.length > 1" class="thumbnail-swiper-container">
-            <SwiperComponent
-              :key="`thumb-swiper-${images.length}-${selectedColor || 'all'}-${selectedVariation || 'all'}-${thumbnailDirection}`"
-              :space-between="10"
-              :slides-per-view="isMobile ? 2 : 2"
-              :direction="thumbnailDirection"
-              :modules="modules"
-              :loop="false"
-              :watch-slides-progress="true"
-              @swiper="setThumbnailSwiper"
-              class="mySwiper">
-              
-              <SwiperSlideComponent v-for="(img, i) in images" :key="`thumb-${i}-${img}`">
-                <div class="thumbnail-image-wrapper">
-                  <img :src="img" :alt="`${title} - ${i + 1}`" @error="onImgErr" />
-                </div>
-              </SwiperSlideComponent>
-            </SwiperComponent>
+          <!-- Thumbnail Images (Side) - Simple list without Swiper -->
+          <div v-if="images.length > 1" class="thumbnail-list-container" ref="thumbnailListRef">
+            <div 
+              v-for="(img, i) in images" 
+              :key="`thumb-${i}-${img}`"
+              class="thumbnail-item"
+              :class="{ active: mainIndex === i }"
+              :ref="el => { if (mainIndex === i) activeThumbnailRef = el }"
+              @click="goToSlide(i)"
+            >
+              <img :src="img" :alt="`${title} - ${i + 1}`" @error="onImgErr" />
+            </div>
           </div>
           
         <!-- Main Swiper Gallery -->
@@ -4832,8 +4856,8 @@
               :navigation="images.length > 1 && !isZooming"
               :modules="modules"
               :loop="false"
-              :thumbs="{ swiper: thumbnailSwiper }"
               @swiper="setMainSwiper"
+              @slideChange="onSlideChange"
               :allow-touch-move="!isZooming"
               class="mySwiper2"
               :class="{ 'zoom-mode': isZooming }"
@@ -6296,7 +6320,7 @@
     background:#fafafa; 
     border:1px solid #eee; 
     border-radius:16px; 
-    min-height:400px;
+    --thumb-swiper-height: 110px;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -6304,6 +6328,9 @@
   .no-images-content{ 
     text-align:center; 
     color:#9ca3af;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
   }
   .no-images-content svg{ 
     margin-bottom:12px; 
@@ -6320,9 +6347,44 @@
     align-items: flex-start;
   }
 
-  .thumbnail-swiper-container {
+  .thumbnail-list-container {
     flex-shrink: 0;
+    width: 100px;
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px;
+  }
+
+  .thumbnail-item {
     width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fff;
+  }
+
+  .thumbnail-item:hover {
+    border-color: #F58040;
+  }
+
+  .thumbnail-item.active {
+    border-color: #F58040;
+    box-shadow: 0 0 0 2px rgba(245, 128, 64, 0.2);
+  }
+
+  .thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .main-swiper-container {
@@ -6466,6 +6528,11 @@
     box-sizing:border-box; 
     padding:0;
     width: 100%;
+    overflow: visible !important;
+  }
+  .mySwiper .swiper-wrapper {
+    transform: none !important;
+    flex-direction: column;
   }
   .thumbnail-image-wrapper {
     width: 100%;
@@ -6512,9 +6579,19 @@
     .gallery-container {
       flex-direction: column;
     }
-    .thumbnail-swiper-container {
+    .thumbnail-list-container {
       width: 100%;
       order: 2;
+      margin-top: 16px;
+      max-height: 100px;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .thumbnail-item {
+      width: 70px;
+      height: 70px;
     }
     .main-swiper-container {
       order: 1;

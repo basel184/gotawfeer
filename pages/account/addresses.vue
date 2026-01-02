@@ -386,11 +386,7 @@ const deleteAddress = async (addressId: string) => {
   if (!confirm('هل أنت متأكد من حذف هذا العنوان؟')) return
 
   try {
-    await $del('v1/customer/address', {
-      params: {
-        id: addressId
-      }
-    })
+    await $del(`v1/customer/address?id=${addressId}`)
     await loadAddresses()
   } catch (err: any) {
     console.error('Error deleting address:', err)
