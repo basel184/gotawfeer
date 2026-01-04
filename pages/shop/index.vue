@@ -220,6 +220,26 @@ let sliderDebounceTimer: any
 // Computed values for actual min/max (handles RTL correctly)
 const actualMin = computed(() => Math.min(priceSliderMin.value, priceSliderMax.value))
 const actualMax = computed(() => Math.max(priceSliderMin.value, priceSliderMax.value))
+const isRTL = computed(() => locale.value === 'ar')
+const sliderActiveStyle = computed(() => {
+  const range = priceRangeMax.value - priceRangeMin.value
+  if (range <= 0) return {}
+
+  const startPercent = ((actualMin.value - priceRangeMin.value) / range) * 100
+  const widthPercent = ((actualMax.value - actualMin.value) / range) * 100
+
+  if (isRTL.value) {
+    return {
+      right: `${startPercent}%`,
+      width: `${widthPercent}%`
+    }
+  }
+
+  return {
+    left: `${startPercent}%`,
+    width: `${widthPercent}%`
+  }
+})
 
 // Handle min slider input
 const handleMinSliderInput = (e: Event) => {
@@ -233,6 +253,102 @@ const handleMaxSliderInput = (e: Event) => {
   const value = Number((e.target as HTMLInputElement).value)
   priceSliderMax.value = value
   updatePriceFromSlider()
+}
+
+const sanitizePriceValue = (value: any): number | null => {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return null
+  return num
+}
+
+const priceFields = [
+  'price',
+  'unit_price',
+  'current_price',
+  'base_price',
+  'selling_price',
+  'discounted_price',
+  'discount_price',
+  'offer_price',
+  'original_price',
+  'max_price',
+  'min_price'
+]
+
+const extractMaxPriceFromSource = (source: any): number | null => {
+  if (!source || typeof source !== 'object') return null
+  let maxPrice: number | null = null
+  for (const field of priceFields) {
+    const candidate = sanitizePriceValue((source as any)[field])
+    if (candidate != null) {
+      maxPrice = maxPrice == null ? candidate : Math.max(maxPrice, candidate)
+    }
+  }
+  return maxPrice
+}
+
+const extractProductPrice = (product: any): number | null => {
+  if (!product) return null
+  const direct = extractMaxPriceFromSource(product)
+  const nested = extractMaxPriceFromSource(product?.product)
+  if (direct == null) return nested
+  if (nested == null) return direct
+  return Math.max(direct, nested)
+}
+
+const deriveResponseMaxPrice = (res: any, products: any[]): number | null => {
+  const responseCandidates = [
+    res?.max_price,
+    res?.maxPrice,
+    res?.price_range?.max,
+    res?.priceRange?.max,
+    res?.price?.max,
+    res?.filters?.price?.max,
+    res?.price_filters?.max,
+    res?.priceFilters?.max
+  ]
+
+  let maxPrice = 0
+  for (const candidate of responseCandidates) {
+    const value = sanitizePriceValue(candidate)
+    if (value != null) {
+      maxPrice = Math.max(maxPrice, value)
+    }
+  }
+
+  for (const product of products) {
+    const productPrice = extractProductPrice(product)
+    if (productPrice != null) {
+      maxPrice = Math.max(maxPrice, productPrice)
+    }
+  }
+
+  return maxPrice > 0 ? maxPrice : null
+}
+
+const updatePriceRangeFromData = (res: any, products: any[]) => {
+  const derivedMax = deriveResponseMaxPrice(res, products)
+  if (derivedMax == null) return
+
+  const paddedMax = Math.max(
+    priceRangeStep.value,
+    Math.ceil(derivedMax / priceRangeStep.value) * priceRangeStep.value
+  )
+
+  if (paddedMax === priceRangeMax.value) return
+
+  priceRangeMax.value = paddedMax
+
+  if (price_max.value != null && price_max.value > paddedMax) {
+    price_max.value = paddedMax
+  }
+
+  if (price_min.value != null && price_min.value >= paddedMax) {
+    const fallbackMin = Math.max(priceRangeMin.value, paddedMax - priceRangeStep.value)
+    price_min.value = fallbackMin > priceRangeMin.value ? fallbackMin : null
+  }
+
+  initializeSlider()
 }
 
 // Update price_min and price_max from slider
@@ -655,6 +771,7 @@ const loadPage = async () => {
     }
     
     const list = Array.isArray(res?.products) ? res.products : []
+    updatePriceRangeFromData(res, list)
     
     if (offset.value === 1) {
       items.value = []
@@ -1703,20 +1820,17 @@ const handleProductDetails = () => {
             </svg>
             {{ t('shop.price') }}
           </div>
-          <div class="price-range-slider-container">
-            <div class="price-range-display">
+          <div class="price-range-slider-container" :class="{ 'is-rtl': isRTL }">
+            <div class="price-range-display" :class="{ 'is-rtl': isRTL }">
               <span class="price-value">{{ formatPrice(actualMin) }}</span>
               <span class="price-separator">-</span>
               <span class="price-value">{{ formatPrice(actualMax) }}</span>
             </div>
-            <div class="price-range-slider-wrapper">
+            <div class="price-range-slider-wrapper" :class="{ 'is-rtl': isRTL }">
               <div class="price-range-track">
                 <div 
                   class="price-range-active" 
-                  :style="{
-                    left: ((actualMin - priceRangeMin) / (priceRangeMax - priceRangeMin) * 100) + '%',
-                    width: ((actualMax - actualMin) / (priceRangeMax - priceRangeMin) * 100) + '%'
-                  }"
+                  :style="sliderActiveStyle"
                 ></div>
               </div>
               <input 
@@ -1727,6 +1841,7 @@ const handleProductDetails = () => {
                 :step="priceRangeStep"
                 :value="actualMin"
                 @input="handleMinSliderInput"
+                :dir="isRTL ? 'rtl' : 'ltr'"
               />
               <input 
                 type="range" 
@@ -1736,9 +1851,10 @@ const handleProductDetails = () => {
                 :step="priceRangeStep"
                 :value="actualMax"
                 @input="handleMaxSliderInput"
+                :dir="isRTL ? 'rtl' : 'ltr'"
               />
             </div>
-            <div class="price-range-labels">
+            <div class="price-range-labels" :class="{ 'is-rtl': isRTL }">
               <span class="price-label-min">{{ formatPrice(priceRangeMin) }}</span>
               <span class="price-label-max">{{ formatPrice(priceRangeMax) }}</span>
             </div>
@@ -2472,6 +2588,10 @@ const handleProductDetails = () => {
   padding: 12px 0;
 }
 
+.price-range-slider-container.is-rtl {
+  direction: rtl;
+}
+
 .price-range-display {
   display: flex;
   align-items: center;
@@ -2488,6 +2608,11 @@ const handleProductDetails = () => {
   font-size: 16px;
 }
 
+.price-range-display.is-rtl {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
 .price-separator {
   color: #9ca3af;
   margin: 0 8px;
@@ -2499,6 +2624,10 @@ const handleProductDetails = () => {
   height: 10px;
   margin-bottom: 8px;
   padding: 0 10px;
+}
+
+.price-range-slider-wrapper.is-rtl {
+  direction: rtl;
 }
 
 .price-range-track {
@@ -2559,6 +2688,11 @@ const handleProductDetails = () => {
   margin: 0;
 }
 
+.price-range-slider-wrapper.is-rtl .price-range-slider {
+  left: auto;
+  right: 10px;
+}
+
 .price-range-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -2603,6 +2737,11 @@ const handleProductDetails = () => {
   color: #6b7280;
   margin-top: 4px;
   padding: 0 10px;
+}
+
+.price-range-labels.is-rtl {
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
 .price-label-min,
