@@ -63,6 +63,7 @@ useHead(() => {
 // Initialize on mount
 onMounted(() => {
   updateHtmlAttributes()
+
 })
 </script>
 
@@ -70,9 +71,7 @@ onMounted(() => {
 @import url('https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 @import '/assets/css/custom.css';
-body {
-  margin: 0;
-}
+
 
 /* Page Transitions - Instant for SPA navigation */
 .page-enter-active {

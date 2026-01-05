@@ -5005,7 +5005,7 @@
                     :class="{ 
                       active: selectedColor === color.name, 
                       'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
-                      'out-of-stock': color.qty === 0
+           
                     }"
                     :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
                       ? { 
@@ -5054,7 +5054,7 @@
                   class="size-option"
                   :class="{ 
                     active: selectedVariation === variation.type,
-                    'out-of-stock': variation.qty === 0
+                
                   }"
                   @click="variation.qty > 0 ? selectVariation(variation.type) : null"
                   :disabled="variation.qty === 0"
@@ -5189,7 +5189,7 @@
                 :class="{ 
                   active: selectedColor === color.name, 
                   'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
-                  'out-of-stock': color.qty === 0
+              
                 }"
                 :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
                   ? { 
@@ -5202,8 +5202,8 @@
                   : { 
                       backgroundColor: color.hexCode || getColorValue(color.code) 
                     }"
-                @click="color.qty > 0 ? selectColor(color) : null"
-                :disabled="color.qty === 0"
+                @click="selectColor(color)"
+                :disabled="false"
                 :title="color.qty === 0 ? (t('product.out_of_stock') || 'غير متوفر') : (color.name || color.code || '')"
               >
               </button>
@@ -5238,10 +5238,10 @@
               class="size-option"
               :class="{ 
                 active: selectedVariation === getVariationType(option),
-                'out-of-stock': getVariationQty(option) === 0
+               
               }"
               @click="selectVariation(getVariationType(option))"
-              :disabled="getVariationQty(option) === 0"
+              :disabled="false"
               :title="getVariationQty(option) === 0 ? (t('product.out_of_stock') || 'غير متوفر') : ''"
             >
               <span class="size-value">{{ option }}</span>

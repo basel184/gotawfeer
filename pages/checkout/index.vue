@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
 const { t, locale, te } = useI18n()
@@ -119,6 +119,244 @@ const paymentMethods = computed(() => {
 })
 // Addresses
 const addresses = ref<any[]>([])
+
+// Address Form Modal State
+const showAddressModal = ref(false)
+const addressFormLoading = ref(false)
+const addressFormError = ref('')
+const addressForm = ref({
+  address_type: 'home',
+  contact_person_name: '',
+  contact_person_number: '',
+  phone: '',
+  address: '',
+  city: '',
+  zip: '55555',
+  country: 'Saudi Arabia',
+  latitude: '24.7136',
+  longitude: '46.6753',
+  is_billing: 1
+})
+
+// Map state for address modal
+const mapContainer = ref<HTMLElement | null>(null)
+const map = ref<any>(null)
+const marker = ref<any>(null)
+const mapInitialized = ref(false)
+const searchQuery = ref('')
+const searching = ref(false)
+const searchResults = ref<any[]>([])
+const showSearchResults = ref(false)
+
+// Open address modal
+const openAddressModal = () => {
+  addressForm.value = {
+    address_type: 'home',
+    contact_person_name: auth?.user?.value?.name || '',
+    contact_person_number: auth?.user?.value?.phone || '',
+    phone: auth?.user?.value?.phone || '',
+    address: '',
+    city: '',
+    zip: '55555',
+    country: 'Saudi Arabia',
+    latitude: '24.7136',
+    longitude: '46.6753',
+    is_billing: 1
+  }
+  addressFormError.value = ''
+  showAddressModal.value = true
+  // Initialize map after modal opens
+  nextTick(() => {
+    setTimeout(() => initMap(), 100)
+  })
+}
+
+// Close address modal
+const closeAddressModal = () => {
+  showAddressModal.value = false
+  addressFormError.value = ''
+  if (map.value) {
+    map.value.remove()
+    map.value = null
+    marker.value = null
+    mapInitialized.value = false
+  }
+}
+
+// Initialize map
+const initMap = async () => {
+  if (!process.client || mapInitialized.value || !mapContainer.value) return
+  
+  try {
+    const leafletModule = await import('leaflet')
+    const L = (leafletModule as any).default || leafletModule
+    
+    delete (L.Icon.Default.prototype as any)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    })
+    
+    if (process.client && !document.querySelector('link[href*="leaflet.css"]')) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
+    }
+    
+    const lat = parseFloat(addressForm.value.latitude) || 24.7136
+    const lng = parseFloat(addressForm.value.longitude) || 46.6753
+    
+    map.value = L.map(mapContainer.value, { center: [lat, lng], zoom: 13 })
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map.value)
+    
+    marker.value = L.marker([lat, lng], { draggable: true }).addTo(map.value)
+    
+    marker.value.on('dragend', (e: any) => {
+      const position = e.target.getLatLng()
+      addressForm.value.latitude = position.lat.toFixed(6)
+      addressForm.value.longitude = position.lng.toFixed(6)
+    })
+    
+    map.value.on('click', (e: any) => {
+      const { lat, lng } = e.latlng
+      addressForm.value.latitude = lat.toFixed(6)
+      addressForm.value.longitude = lng.toFixed(6)
+      if (marker.value) {
+        marker.value.setLatLng([lat, lng])
+      }
+    })
+    
+    mapInitialized.value = true
+    setTimeout(() => { if (map.value) map.value.invalidateSize() }, 300)
+  } catch (error) {
+    console.error('Error initializing map:', error)
+  }
+}
+
+// Search location on map
+const searchLocation = async () => {
+  if (!searchQuery.value.trim() || !map.value) return
+  
+  searching.value = true
+  searchResults.value = []
+  showSearchResults.value = false
+  
+  try {
+    const query = encodeURIComponent(searchQuery.value.trim())
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5&addressdetails=1&accept-language=ar,en`)
+    const data = await response.json()
+    
+    if (Array.isArray(data) && data.length > 0) {
+      searchResults.value = data
+      showSearchResults.value = true
+    } else {
+      addressFormError.value = 'لم يتم العثور على نتائج'
+    }
+  } catch (error) {
+    console.error('Error searching location:', error)
+    addressFormError.value = 'حدث خطأ أثناء البحث'
+  } finally {
+    searching.value = false
+  }
+}
+
+// Select search result
+const selectSearchResult = (result: any) => {
+  const lat = parseFloat(result.lat)
+  const lng = parseFloat(result.lon)
+  
+  if (!isNaN(lat) && !isNaN(lng)) {
+    addressForm.value.latitude = lat.toFixed(6)
+    addressForm.value.longitude = lng.toFixed(6)
+    
+    if (map.value) {
+      map.value.setView([lat, lng], 15)
+      if (marker.value) marker.value.setLatLng([lat, lng])
+    }
+    
+    const address = result.address || {}
+    if (address.road || address.street) {
+      addressForm.value.address = (address.road || address.street || '') + (address.house_number ? ` ${address.house_number}` : '')
+    }
+    if (address.city || address.town || address.village) {
+      addressForm.value.city = address.city || address.town || address.village || ''
+    }
+    
+    searchQuery.value = ''
+    searchResults.value = []
+    showSearchResults.value = false
+  }
+}
+
+// Get current location
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    addressFormError.value = 'المتصفح لا يدعم تحديد الموقع'
+    return
+  }
+  
+  searching.value = true
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+      addressForm.value.latitude = lat.toFixed(6)
+      addressForm.value.longitude = lng.toFixed(6)
+      if (map.value) {
+        map.value.setView([lat, lng], 15)
+        if (marker.value) marker.value.setLatLng([lat, lng])
+      }
+      searching.value = false
+    },
+    (error) => {
+      console.error('Geolocation error:', error)
+      addressFormError.value = 'فشل في تحديد موقعك الحالي'
+      searching.value = false
+    }
+  )
+}
+
+// Submit address form
+const submitAddress = async () => {
+  addressFormLoading.value = true
+  addressFormError.value = ''
+
+  try {
+    const formData = {
+      address_type: addressForm.value.address_type,
+      contact_person_name: addressForm.value.contact_person_name,
+      contact_person_number: addressForm.value.phone,
+      address: addressForm.value.address,
+      city: addressForm.value.city,
+      zip: addressForm.value.zip,
+      country: addressForm.value.country,
+      phone: addressForm.value.phone,
+      latitude: addressForm.value.latitude || '24.7136',
+      longitude: addressForm.value.longitude || '46.6753',
+      is_billing: 1
+    }
+
+    await $post('v1/customer/address/add', formData)
+    closeAddressModal()
+    await loadAddresses()
+    
+    // Auto-select the newly added address
+    if (addresses.value.length > 0) {
+      selectedAddress.value = addresses.value[addresses.value.length - 1]
+    }
+  } catch (err: any) {
+    console.error('Error saving address:', err)
+    addressFormError.value = err?.data?.message || 'خطأ في حفظ العنوان'
+  } finally {
+    addressFormLoading.value = false
+  }
+}
 
 // Computed
 const items = computed(() => cart.items.value || [])
@@ -923,12 +1161,12 @@ onMounted(async () => {
           <section class="section card">
             <div class="section-header">
               <h2>{{ t('checkout.delivery_address') || 'عنوان التسليم' }}</h2>
-              <NuxtLink  v-if="auth?.user?.value" to="/account/addresses" class="add-address-btn">
+              <span v-if="auth?.user?.value" @click="openAddressModal" class="add-address-btn" style="cursor: pointer;">
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
                 {{ t('checkout.add_new_address') || 'إضافة عنوان جديد' }}
-              </NuxtLink>
+              </span>
             </div>
             
             <div v-if="addresses.length === 0" class="empty-addresses">
@@ -950,12 +1188,12 @@ onMounted(async () => {
                 </span>
               </div>
               <div v-else class="address-actions">
-                <NuxtLink to="/account/addresses" class="add-address-btn">
+                <span @click="openAddressModal" class="add-address-btn" style="cursor: pointer;">
                   <svg width="16" height="16" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                   </svg>
                   {{ t('checkout.add_address') || 'إضافة عنوان' }}
-                </NuxtLink>
+                </span>
               </div>
             </div>
             
@@ -1230,6 +1468,90 @@ onMounted(async () => {
               <span v-if="taqnyatAuth.resendingOtp.value">{{ t('loading') || 'جاري التحميل...' }}</span>
               <span v-else-if="otpCountdown > 0">{{ t('taqnyat.resend_in') || 'إعادة الإرسال خلال' }} {{ otpCountdown }} {{ t('taqnyat.seconds') || 'ثانية' }}</span>
               <span v-else>{{ t('taqnyat.resend_otp') || 'إعادة إرسال رمز التحقق' }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </teleport>
+
+  <!-- Address Modal -->
+  <teleport to="body">
+    <div v-if="showAddressModal" class="address-modal-overlay" @click.self="closeAddressModal">
+      <div class="address-modal" dir="rtl">
+        <div class="modal-header">
+          <h2>إضافة عنوان جديد</h2>
+          <button class="close-btn" @click="closeAddressModal">
+            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="submitAddress" class="address-form">
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label>اسم المستلم</label>
+              <input v-model="addressForm.contact_person_name" type="text" required :disabled="addressFormLoading" placeholder="اسم المستلم" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>العنوان التفصيلي</label>
+            <input v-model="addressForm.address" type="text" required :disabled="addressFormLoading" placeholder="الشارع، الحي، رقم المبنى" />
+          </div>
+
+          <div class="form-group">
+            <label>المدينة</label>
+            <input v-model="addressForm.city" type="text" required :disabled="addressFormLoading" placeholder="المدينة" />
+          </div>
+
+          <!-- Map Section -->
+          <ClientOnly>
+            <div class="form-group">
+              <label>تحديد الموقع على الخريطة</label>
+              <p class="map-instructions">ابحث عن موقعك أو انقر على الخريطة</p>
+              
+              <div class="map-search-container">
+                <div class="search-input-wrapper">
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    class="map-search-input"
+                    placeholder="ابحث عن عنوان..."
+                    @keyup.enter="searchLocation"
+                    :disabled="addressFormLoading || searching"
+                  />
+                  <button type="button" @click="searchLocation" class="search-btn" :disabled="addressFormLoading || searching || !searchQuery.trim()">
+                    <svg v-if="!searching" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <div v-else class="search-spinner"></div>
+                  </button>
+                  <button type="button" @click="getCurrentLocation" class="location-btn" :disabled="addressFormLoading || searching" title="تحديد موقعي">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div v-if="showSearchResults && searchResults.length > 0" class="search-results">
+                  <div v-for="(result, index) in searchResults" :key="index" class="search-result-item" @click="selectSearchResult(result)">
+                    <span class="result-icon">📍</span>
+                    <span class="result-name">{{ result.display_name }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div ref="mapContainer" class="map-container"></div>
+            </div>
+          </ClientOnly>
+
+          <div v-if="addressFormError" class="error-message">{{ addressFormError }}</div>
+
+          <div class="form-actions">
+            <button type="button" @click="closeAddressModal" class="cancel-btn" :disabled="addressFormLoading">إلغاء</button>
+            <button type="submit" class="submit-btn" :disabled="addressFormLoading">
+              <span v-if="addressFormLoading">جاري الحفظ...</span>
+              <span v-else>إضافة العنوان</span>
             </button>
           </div>
         </form>
@@ -2146,5 +2468,299 @@ onMounted(async () => {
 
   [dir="ltr"] .login-modal {
     text-align: left;
+  }
+
+  /* Address Modal Styles */
+  .address-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+
+  .address-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .address-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+  }
+
+  .address-modal .modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+  }
+
+  .address-modal .close-btn {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s;
+  }
+
+  .address-modal .close-btn:hover {
+    background: #ef4444;
+    color: white;
+  }
+
+  .address-form {
+    padding: 24px;
+  }
+
+  .address-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .address-form .form-group {
+    margin-bottom: 16px;
+  }
+
+  .address-form label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  .address-form input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+
+  .address-form input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .address-form input:disabled {
+    background: #f3f4f6;
+    cursor: not-allowed;
+  }
+
+  .map-instructions {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0 0 12px;
+  }
+
+  .map-search-container {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .search-input-wrapper {
+    display: flex;
+    gap: 8px;
+  }
+
+  .map-search-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .search-btn, .location-btn {
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+  }
+
+  .search-btn:hover, .location-btn:hover {
+    background: #2563eb;
+  }
+
+  .search-btn:disabled, .location-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .location-btn {
+    background: #10b981;
+  }
+
+  .location-btn:hover {
+    background: #059669;
+  }
+
+  .search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 9999;
+  }
+
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .search-result-item:hover {
+    background: #f3f4f6;
+  }
+
+  .search-result-item:last-child {
+    border-bottom: none;
+  }
+
+  .result-icon {
+    font-size: 16px;
+  }
+
+  .result-name {
+    font-size: 13px;
+    color: #374151;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-container {
+    height: 250px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    overflow: hidden;
+  }
+
+  .search-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .address-form .error-message {
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  .cancel-btn {
+    padding: 12px 24px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .cancel-btn:hover:not(:disabled) {
+    background: #e5e7eb;
+  }
+
+  .submit-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .submit-btn:disabled, .cancel-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 640px) {
+    .address-form .form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .address-modal {
+      max-height: 95vh;
+    }
+
+    .form-actions {
+      flex-direction: column-reverse;
+    }
+
+    .cancel-btn, .submit-btn {
+      width: 100%;
+    }
   }
 </style>

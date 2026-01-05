@@ -255,6 +255,34 @@ const handleMaxSliderInput = (e: Event) => {
   updatePriceFromSlider()
 }
 
+// Handle manual min price input
+const handleMinPriceInput = (e: Event) => {
+  let value = Number((e.target as HTMLInputElement).value)
+  if (!isNaN(value)) {
+    // Clamp value within valid range
+    value = Math.max(priceRangeMin.value, Math.min(value, priceRangeMax.value))
+    priceSliderMin.value = value
+    updatePriceFromSlider()
+  } else {
+    // Reset to current valid value if invalid input
+    (e.target as HTMLInputElement).value = String(actualMin.value)
+  }
+}
+
+// Handle manual max price input
+const handleMaxPriceInput = (e: Event) => {
+  let value = Number((e.target as HTMLInputElement).value)
+  if (!isNaN(value)) {
+    // Clamp value within valid range
+    value = Math.max(priceRangeMin.value, Math.min(value, priceRangeMax.value))
+    priceSliderMax.value = value
+    updatePriceFromSlider()
+  } else {
+    // Reset to current valid value if invalid input
+    (e.target as HTMLInputElement).value = String(actualMax.value)
+  }
+}
+
 const sanitizePriceValue = (value: any): number | null => {
   const num = Number(value)
   if (!Number.isFinite(num) || num <= 0) return null
@@ -1822,9 +1850,21 @@ const handleProductDetails = () => {
           </div>
           <div class="price-range-slider-container" :class="{ 'is-rtl': isRTL }">
             <div class="price-range-display" :class="{ 'is-rtl': isRTL }">
-              <span class="price-value">{{ formatPrice(actualMin) }}</span>
+              <input 
+                type="number" 
+                class="price-input" 
+                :value="actualMin"
+                @change="handleMinPriceInput"
+                :dir="isRTL ? 'rtl' : 'ltr'"
+              />
               <span class="price-separator">-</span>
-              <span class="price-value">{{ formatPrice(actualMax) }}</span>
+              <input 
+                type="number" 
+                class="price-input" 
+                :value="actualMax"
+                @change="handleMaxPriceInput"
+                :dir="isRTL ? 'rtl' : 'ltr'"
+              />
             </div>
             <div class="price-range-slider-wrapper" :class="{ 'is-rtl': isRTL }">
               <div class="price-range-track">
@@ -2606,6 +2646,25 @@ const handleProductDetails = () => {
 .price-value {
   color: #F58040;
   font-size: 16px;
+}
+
+.price-input {
+  width: 90px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 600;
+  text-align: center;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.price-input:focus {
+  outline: none;
+  border-color: #F58040;
+  box-shadow: 0 0 0 3px rgba(245, 128, 64, 0.1);
 }
 
 .price-range-display.is-rtl {
