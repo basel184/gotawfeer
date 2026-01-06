@@ -3835,10 +3835,6 @@
       return
     }
     
-    if (!guestReviewForm.value.email.trim()) {
-      guestReviewError.value = 'يرجى إدخال البريد الإلكتروني'
-      return
-    }
     
     guestReviewLoading.value = true
     guestReviewError.value = ''
@@ -5561,14 +5557,13 @@
                     >
                   </div>
                   <div class="mb-3">
-                    <label for="reviewEmail" class="form-label">{{ t('product.email') }} <span class="text-danger">*</span></label>
+                    <label for="reviewEmail" class="form-label">{{ t('product.email') }}</label>
                     <input 
                       v-model="guestReviewForm.email" 
                       type="email" 
                       class="form-control" 
                       id="reviewEmail" 
                       aria-describedby="emailHelp"
-                      required
                     >
                   </div>
                   <div class="mb-3 form-check d-flex align-items-center gap-2">
@@ -5605,13 +5600,13 @@
                       {{ formatDate(review?.created_at || review?.date || review?.created_date) }}
                     </small>
                   </div>
-                  <div class="review-rating d-flex align-items-center gap-1">
-                    <span v-for="star in 5" :key="star" class="star-rating">
-                      <i 
-                        class="fa-solid fa-star"
-                        :class="{ 'open': star <= (review?.rating || review?.stars || 0) }"
-                      ></i>
-                    </span>
+                  <div class="review-rating rating d-flex align-items-center gap-1">
+                    <i 
+                      v-for="star in 5" 
+                      :key="star"
+                      class="fa-solid fa-star"
+                      :class="{ 'open': star <= (review?.rating || review?.stars || 0) }"
+                    ></i>
                   </div>
                 </div>
                 <div class="review-content mt-3">
