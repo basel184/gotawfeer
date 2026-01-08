@@ -1,1255 +1,1323 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useBrands } from '../composables/useBrands'
-import { useWishlist } from '../composables/useWishlist'
-import { useCart } from '../composables/useCart'
-import { useCompare } from '../composables/useCompare'
+  import { computed, ref, watchEffect, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import { useBrands } from '../composables/useBrands'
+  import { useWishlist } from '../composables/useWishlist'
+  import { useCart } from '../composables/useCart'
+  import { useCompare } from '../composables/useCompare'
 
-const { locale, t } = useI18n()
+  const { locale, t } = useI18n()
 
-const props = defineProps<{ product: any; qty?: number; busy?: boolean }>()
-const emit = defineEmits<{
-  (e: 'add', product: any): void;
-  (e: 'update', payload: { product: any; qty: number }): void;
-  (e: 'remove', product: any): void;
-}>()
+  const props = defineProps<{ product: any; qty?: number; busy?: boolean }>()
+  const emit = defineEmits<{
+    (e: 'add', product: any): void;
+    (e: 'update', payload: { product: any; qty: number }): void;
+    (e: 'remove', product: any): void;
+  }>()
 
-const cfg = useRuntimeConfig() as any
-const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
-const fixPath = (s: string) => {
-  if (!s || !s.trim()) {
-    if (process.client) console.warn('[ProductCard] fixPath: empty input')
-    return ''
-  }
-  
-  let p = s.trim().replace(/\\/g, '/')
-  
-  // If it's already a full URL, return as is (handled in normalize)
-  if (/^(https?:|data:|blob:)/i.test(p)) {
-    if (process.client) console.log('[ProductCard] fixPath: already full URL', p)
-    return p
-  }
-  
-  // Remove common prefixes
-  p = p.replace(/^public\//, '')
-  p = p.replace(/^app\/public\//, '')
-  p = p.replace(/^storage\/app\/public\/product\/thumbnail\//, '')
-  p = p.replace(/^storage\/app\/public\//, '')
-  p = p.replace(/^storage\/product\/thumbnail\//, '')
-  p = p.replace(/^storage\//, '')
-  
-  // Clean up slashes
-  p = p.replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '')
-  
-  // If empty after cleanup, return empty
-  if (!p) {
-    if (process.client) console.warn('[ProductCard] fixPath: empty after cleanup', { original: s })
-    return ''
-  }
-  
-  // If it's just a filename (no slashes), assume it's a product thumbnail
-  // This handles cases like: 66666.webp, 2025-10-16-68f09dce45585.webp, etc.
-  if (!p.includes('/')) {
-    // Always add to product/thumbnail path for filenames only
-    p = `storage/app/public/product/thumbnail/${p}`
-    if (process.client) console.log('[ProductCard] fixPath: filename only, added path', { original: s, result: p })
-  } else {
-    // If it already has a path structure, ensure it starts with storage/app/public/
-    if (!p.startsWith('storage/app/public/')) {
-      p = `storage/app/public/${p}`
-    }
-    if (process.client) console.log('[ProductCard] fixPath: path structure', { original: s, result: p })
-  }
-  
-  return p
-}
-// Normalize various backend image shapes: string path/URL, JSON string, object with path/url, or arrays
-const normalize = (s: any): string => {
-  if (!s) {
-    if (process.client) console.warn('[ProductCard] normalize: empty input')
-    return ''
-  }
-  // If array, take first
-  if (Array.isArray(s)) return normalize(s[0])
-  let v: any = s
-  if (typeof s === 'string') {
-    const trimmed = s.trim()
-    // Skip empty strings
-    if (!trimmed) {
-      if (process.client) console.warn('[ProductCard] normalize: empty string after trim')
-      return ''
-    }
-    // Attempt to parse JSON arrays/objects like images: "[...]"
-    if ((trimmed.startsWith('[') || trimmed.startsWith('{'))) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        return normalize(parsed)
-      } catch {
-        // not JSON; continue as plain string
+  const cfg = useRuntimeConfig() as any
+  const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
+  const fixPath = (s: string) => {
+    let p = (s || '').trim().replace(/\\/g, '/')
+    
+    // Handle different path formats (same as [slug].vue)
+    if (p.startsWith('public/')) {
+      p = p.replace(/^public\//, '')
+    } else if (p.startsWith('app/public/')) {
+      p = p.replace(/^app\/public\//, 'storage/')
+    } else if (p.startsWith('storage/')) {
+      // Already correct format
+    } else if (!p.startsWith('http') && !p.startsWith('/')) {
+      // If it's just a filename, determine the correct storage path
+      if (p.includes('testimonial')) {
+        p = `storage/testimonials/${p}`
+      } else if (p.includes('brand')) {
+        p = `storage/brand/${p}`
+      } else if (p.includes('product')) {
+        p = `storage/product/${p}`
+      } else {
+        p = `storage/${p}`
       }
-    }
-    v = trimmed
-  } else if (typeof s === 'object') {
-    // common keys: path/url/image, or nested objects with .path
-    v = (s as any).path || (s as any).url || (s as any).image || ''
-  }
-  v = (typeof v === 'string' ? v : '').trim()
-  if (!v) {
-    if (process.client) console.warn('[ProductCard] normalize: empty value after processing', { input: s, type: typeof s })
-    return ''
-  }
-  // If it's already a full URL, return as is
-  if (/^(https?:|data:|blob:)/i.test(v)) {
-    if (process.client) console.log('[ProductCard] normalize: already full URL', v)
-    return v
-  }
-  // Fix path and build full URL
-  const fixedPath = fixPath(v)
-  if (!fixedPath) {
-    if (process.client) console.warn('[ProductCard] normalize: fixPath returned empty', { input: v })
-    return ''
-  }
-  const result = `${assetBase}/${fixedPath}`
-  if (process.client) console.log('[ProductCard] normalize: final result', { input: s, value: v, fixedPath, result })
-  return result
-}
-
-const findImagePathInProduct = (imageKey: string, productObj: any): string => {
-  const keyTrimmed = String(imageKey || '').trim()
-  if (!keyTrimmed) return ''
-
-  const collections = [
-    productObj?.color_images_full_url,
-    productObj?.images_full_url,
-    productObj?.gallery_images_full_url,
-    productObj?.product?.color_images_full_url,
-    productObj?.product?.images_full_url,
-    productObj?.product?.gallery_images_full_url
-  ]
-
-  for (const collection of collections) {
-    if (!Array.isArray(collection)) continue
-
-    const matched = collection.find((img: any) => {
-      const imgKey = typeof img?.image_name === 'string'
-        ? img.image_name.trim()
-        : (img?.image_name?.key || img?.key || '').trim?.()
-
-      const path = typeof img?.image_name === 'object' && img?.image_name?.path
-        ? String(img.image_name.path).trim()
-        : (img?.path ? String(img.path).trim() : '')
-
-      if (imgKey && imgKey === keyTrimmed) return true
-      if (path && path.includes(keyTrimmed)) return true
-      return false
-    })
-
-    if (matched) {
-      if (matched.path) return String(matched.path).trim()
-      if (matched?.image_name?.path) return String(matched.image_name.path).trim()
-      if (matched?.image_name?.key) return String(matched.image_name.key).trim()
-      if (matched.key) return String(matched.key).trim()
-    }
-  }
-
-  return keyTrimmed
-}
-
-const resolveColorImagePath = (foundImage: any, productObj: any): string => {
-  if (!foundImage) return ''
-
-  if (typeof foundImage === 'string') {
-    return findImagePathInProduct(foundImage, productObj)
-  }
-
-  if (foundImage.image_name) {
-    if (typeof foundImage.image_name === 'string') {
-      return findImagePathInProduct(foundImage.image_name, productObj)
-    }
-
-    if (foundImage.image_name.path) {
-      return String(foundImage.image_name.path).trim()
-    }
-
-    if (foundImage.image_name.key) {
-      return findImagePathInProduct(foundImage.image_name.key, productObj)
-    }
-  }
-
-  if (foundImage.path) {
-    return String(foundImage.path).trim()
-  }
-
-  return ''
-}
-
-const getImageByIndex = (collection: any, index: number, productObj: any): string => {
-  if (!Array.isArray(collection) || index < 0 || index >= collection.length) {
-    return ''
-  }
-
-  const entry = collection[index]
-  if (!entry) return ''
-
-  const resolved = resolveColorImagePath(entry, productObj)
-  if (resolved) return resolved
-
-  if (typeof entry === 'string') {
-    return entry
-  }
-
-  if (entry?.path) {
-    return String(entry.path).trim()
-  }
-
-  if (entry?.key) {
-    return findImagePathInProduct(entry.key, productObj)
-  }
-
-  return ''
-}
-
-// Helper function to get localized path with proper i18n handling
-const getLocalizedPath = (path: string): string => {
-  // Ensure path starts with /
-  const cleanPath = path.startsWith('/') ? path : `/${path}`
-  
-  // Get current locale from i18n
-  const currentLocale = locale.value || 'ar'
-  
-  // If English locale, add /en prefix
-  if (currentLocale === 'en') {
-    // Don't add prefix if already present
-    if (cleanPath.startsWith('/en')) {
-      return cleanPath
-    }
-    // Add /en prefix
-    return `/en${cleanPath}`
-  }
-  
-  // For Arabic (default), remove /en prefix if present
-  if (cleanPath.startsWith('/en')) {
-    return cleanPath.substring(3) || '/'
-  }
-  
-  return cleanPath
-}
-
-const link = computed(() => {
-  const p: any = props.product || {}
-  const slug = p?.slug || p?.product?.slug
-  if (!slug) return ''
-  
-  // Create base path with encoded slug
-  const basePath = `/product/${encodeURIComponent(String(slug))}`
-  
-  // Apply i18n localization
-  return getLocalizedPath(basePath)
-})
-const imgSrc = computed(() => {
-  const p: any = props.product || {}
-  
-  // Helper to check if URL object is valid
-  const isValidUrlObject = (obj: any): boolean => {
-    if (!obj || typeof obj !== 'object') return false
-    // If it's an object, check if path exists and status is not 404
-    if (obj.path && obj.status !== 404) return true
-    // If key exists but path is null/404, consider it invalid
-    if (obj.key && (!obj.path || obj.status === 404)) return false
-    return true
-  }
-  
-  // Helper to extract value from URL object
-  const extractUrlValue = (obj: any): any => {
-    if (!obj || typeof obj !== 'object') return obj
-    // If path exists and is valid, use it
-    if (obj.path && obj.status !== 404) return obj.path
-    // If key exists but path is invalid, return key as fallback
-    if (obj.key) return obj.key
-    return null
-  }
-  
-  // Try to get thumbnail_full_url, but check if it's valid
-  let thumbnailFullUrl = p?.thumbnail_full_url || p?.product?.thumbnail_full_url
-  if (thumbnailFullUrl && typeof thumbnailFullUrl === 'object') {
-    // If it's an object with invalid path (null/404), skip it and use thumbnail instead
-    if (!isValidUrlObject(thumbnailFullUrl)) {
-      thumbnailFullUrl = null
-    } else {
-      thumbnailFullUrl = extractUrlValue(thumbnailFullUrl)
-    }
-  }
-  
-  // Try to get image_full_url, but check if it's valid
-  let imageFullUrl = p?.image_full_url || p?.product?.image_full_url
-  if (imageFullUrl && typeof imageFullUrl === 'object') {
-    if (!isValidUrlObject(imageFullUrl)) {
-      imageFullUrl = null
-    } else {
-      imageFullUrl = extractUrlValue(imageFullUrl)
-    }
-  }
-  
-  // Helper to get string value from field (handle arrays)
-  const getStringValue = (field: any): string | null => {
-    if (!field) return null
-    if (typeof field === 'string') return field
-    if (Array.isArray(field) && field.length > 0) {
-      // If array, take first element that is a string
-      const first = field.find((item: any) => typeof item === 'string')
-      return first || null
-    }
-    if (typeof field === 'object' && field.path) return field.path
-    if (typeof field === 'object' && field.key) return field.key
-    return null
-  }
-  
-  // Try each field and get string value
-  const raw =
-    // Prefer valid full URLs if provided
-    getStringValue(thumbnailFullUrl) ||
-    getStringValue(imageFullUrl) ||
-    getStringValue(p?.photo_full_url) ||
-    getStringValue(p?.images_full_url) ||
-    getStringValue(p?.product?.photo_full_url) ||
-    getStringValue(p?.product?.images_full_url) ||
-    // Fall back to simple fields (these are usually strings)
-    getStringValue(p?.thumbnail) ||
-    getStringValue(p?.image) ||
-    getStringValue(p?.photo) ||
-    getStringValue(p?.images) ||
-    getStringValue(p?.gallery_images) ||
-    // Nested under product
-    getStringValue(p?.product?.thumbnail) ||
-    getStringValue(p?.product?.image) ||
-    getStringValue(p?.product?.photo) ||
-    getStringValue(p?.product?.images) ||
-    getStringValue(p?.product?.gallery_images) ||
-    ''
-  // Debug: Log what we're getting from product
-  if (process.client) {
-    console.log('[ProductCard] Raw thumbnail data:', {
-      productId: p?.id || p?.product_id,
-      productName: p?.name || p?.product_name,
-      thumbnail: p?.thumbnail,
-      thumbnail_full_url: p?.thumbnail_full_url,
-      image: p?.image,
-      image_full_url: p?.image_full_url,
-      raw: raw,
-      assetBase: assetBase
-    })
-  }
-  
-  const result = normalize(raw)
-  
-  // Debug logging
-  if (process.client) {
-    console.log('[ProductCard] Image URL generated:', {
-      raw,
-      result,
-      isEmpty: !result || result === `${assetBase}/`,
-      productId: p?.id || p?.product_id,
-      productName: p?.name || p?.product_name
-    })
-  }
-  
-  // If no result, return placeholder
-  if (!result || result === `${assetBase}/`) {
-    if (process.client) {
-      console.warn('[ProductCard] No image URL generated, using placeholder:', {
-        raw,
-        productId: p?.id || p?.product_id
-      })
-    }
-    return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
-  }
-  
-  return result
-})
-const title = computed(() => {
-  const p: any = props.product || {}
-  return p?.name || p?.product_name || p?.product?.name || p?.product?.product_name || 'Product'
-})
-const status = computed(() => {
-  const p: any = props.product || {}
-  return p?.condition || p?.product?.condition 
-})
-
-const statusClass = computed(() => {
-  const statusValue = status.value
-  if (!statusValue) return ''
-  
-  // Convert to lowercase for case-insensitive matching
-  const statusLower = String(statusValue).toLowerCase().trim()
-  
-  if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
-    return 'most-popular'
-  } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
-    return 'best-offers'
-  } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
-    return 'best-selling'
-  } else if (statusLower === 'new' || statusLower === 'جديد') {
-    return 'new'
-  }
-  
-  return 'available' // Default class
-})
-
-const translatedStatus = computed(() => {
-  const statusValue = status.value
-  if (!statusValue) return ''
-  
-  // Convert to lowercase for case-insensitive matching
-  const statusLower = String(statusValue).toLowerCase().trim()
-  
-  if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
-    return t('product.status.most_popular') || 'الأكثر شهرة'
-  } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
-    return t('product.status.best_offers') || 'أقوى العروض'
-  } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
-    return t('product.status.best_selling') || 'الأكثر مبيعاً'
-  } else if (statusLower === 'new' || statusLower === 'جديد') {
-    return t('product.status.new') || 'جديد'
-  }
-  
-  return statusValue // Return original value if no translation found
-})
-const { ensure: ensureBrands, nameOf: brandNameOf, ensureBrand } = useBrands() as any
-const cart = useCart()
-const wishlist = useWishlist()
-const compare = useCompare()
-
-// Load cart, wishlist and compare on component mount
-// Tooltip instances
-const tooltipInstances = ref<any[]>([])
-
-// Initialize tooltips for a specific element
-const initTooltip = (element: any) => {
-  if (!element || !process.client || !(window as any).bootstrap) return null
-  
-  // Check if element is in DOM
-  if (!document.contains(element)) {
-    return null
-  }
-  
-  try {
-    // Dispose existing tooltip if any (safely)
-    try {
-      const existingTooltip = (window as any).bootstrap.Tooltip.getInstance(element)
-      if (existingTooltip) {
-        // Only dispose if element is still in DOM
-        if (document.contains(element)) {
-          existingTooltip.dispose()
-        }
-      }
-    } catch (e) {
-      // Ignore errors when disposing existing tooltip
     }
     
-    // Create new tooltip only if element is still in DOM
+    // Clean up slashes
+    p = p.replace(/\/+/g, '/').replace(/^\//, '')
+    
+    return p
+  }
+  // Normalize various backend image shapes: string path/URL, JSON string, object with path/url, or arrays
+  // Same logic as [slug].vue
+  const normalize = (s: any): string => {
+    if (!s) return ''
+    if (Array.isArray(s)) return normalize(s[0])
+    let v: any = s
+    if (typeof s === 'string') {
+      const trimmed = s.trim()
+      if ((trimmed.startsWith('[') || trimmed.startsWith('{'))) {
+        try { const parsed = JSON.parse(trimmed); return normalize(parsed) } catch {}
+      }
+      v = trimmed
+    } else if (typeof s === 'object') {
+      // Handle different object formats (same as [slug].vue)
+      v = (s as any).path || (s as any).url || (s as any).image || (s as any).key || ''
+    }
+    v = (typeof v === 'string' ? v : '').trim()
+    if (!v) return ''
+    if (/^(https?:|data:|blob:)/i.test(v)) return v
+    return `${assetBase}/${fixPath(v)}`
+  }
+
+  const findImagePathInProduct = (imageKey: string, productObj: any): string => {
+    const keyTrimmed = String(imageKey || '').trim()
+    if (!keyTrimmed) return ''
+
+    const collections = [
+      productObj?.color_images_full_url,
+      productObj?.images_full_url,
+      productObj?.gallery_images_full_url,
+      productObj?.product?.color_images_full_url,
+      productObj?.product?.images_full_url,
+      productObj?.product?.gallery_images_full_url
+    ]
+
+    for (const collection of collections) {
+      if (!Array.isArray(collection)) continue
+
+      const matched = collection.find((img: any) => {
+        const imgKey = typeof img?.image_name === 'string'
+          ? img.image_name.trim()
+          : (img?.image_name?.key || img?.key || '').trim?.()
+
+        const path = typeof img?.image_name === 'object' && img?.image_name?.path
+          ? String(img.image_name.path).trim()
+          : (img?.path ? String(img.path).trim() : '')
+
+        if (imgKey && imgKey === keyTrimmed) return true
+        if (path && path.includes(keyTrimmed)) return true
+        return false
+      })
+
+      if (matched) {
+        if (matched.path) return String(matched.path).trim()
+        if (matched?.image_name?.path) return String(matched.image_name.path).trim()
+        if (matched?.image_name?.key) return String(matched.image_name.key).trim()
+        if (matched.key) return String(matched.key).trim()
+      }
+    }
+
+    return keyTrimmed
+  }
+
+  // Same logic as [slug].vue - extract image path properly
+  const resolveColorImagePath = (foundImage: any, productObj: any): string => {
+    if (!foundImage) return ''
+
+    let imagePath = ''
+    
+    if (foundImage.image_name) {
+      if (typeof foundImage.image_name === 'string') {
+        // Search in images_full_url for the matching path (same as [slug].vue)
+        const imageKey = foundImage.image_name.trim()
+        const imagesFullUrl = productObj?.images_full_url || productObj?.product?.images_full_url
+        if (imagesFullUrl && Array.isArray(imagesFullUrl)) {
+          const matchedImage = imagesFullUrl.find((fullImg: any) => {
+            if (fullImg.key && fullImg.key === imageKey) {
+              return true
+            }
+            if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+              return true
+            }
+            return false
+          })
+          if (matchedImage && matchedImage.path) {
+            imagePath = matchedImage.path
+          } else {
+            imagePath = foundImage.image_name
+          }
+        } else {
+          imagePath = foundImage.image_name
+        }
+      } else if (foundImage.image_name.path) {
+        imagePath = foundImage.image_name.path
+      } else if (foundImage.image_name.key) {
+        // Search in images_full_url for the matching path using key (same as [slug].vue)
+        const imageKey = foundImage.image_name.key
+        const imagesFullUrl = productObj?.images_full_url || productObj?.product?.images_full_url
+        if (imagesFullUrl && Array.isArray(imagesFullUrl)) {
+          const matchedImage = imagesFullUrl.find((fullImg: any) => {
+            if (fullImg.key && fullImg.key === imageKey) {
+              return true
+            }
+            if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
+              return true
+            }
+            return false
+          })
+          if (matchedImage && matchedImage.path) {
+            imagePath = matchedImage.path
+          } else {
+            imagePath = foundImage.image_name.key
+          }
+        } else {
+          imagePath = foundImage.image_name.key
+        }
+      }
+    } else if (foundImage.path) {
+      imagePath = String(foundImage.path).trim()
+    } else if (typeof foundImage === 'string') {
+      imagePath = foundImage
+    }
+
+    return imagePath
+  }
+
+  const getImageByIndex = (collection: any, index: number, productObj: any): string => {
+    if (!Array.isArray(collection) || index < 0 || index >= collection.length) {
+      return ''
+    }
+
+    const entry = collection[index]
+    if (!entry) return ''
+
+    const resolved = resolveColorImagePath(entry, productObj)
+    if (resolved) return resolved
+
+    if (typeof entry === 'string') {
+      return entry
+    }
+
+    if (entry?.path) {
+      return String(entry.path).trim()
+    }
+
+    if (entry?.key) {
+      return findImagePathInProduct(entry.key, productObj)
+    }
+
+    return ''
+  }
+
+  // Helper function to get localized path with proper i18n handling
+  const getLocalizedPath = (path: string): string => {
+    // Ensure path starts with /
+    const cleanPath = path.startsWith('/') ? path : `/${path}`
+    
+    // Get current locale from i18n
+    const currentLocale = locale.value || 'ar'
+    
+    // If English locale, add /en prefix
+    if (currentLocale === 'en') {
+      // Don't add prefix if already present
+      if (cleanPath.startsWith('/en')) {
+        return cleanPath
+      }
+      // Add /en prefix
+      return `/en${cleanPath}`
+    }
+    
+    // For Arabic (default), remove /en prefix if present
+    if (cleanPath.startsWith('/en')) {
+      return cleanPath.substring(3) || '/'
+    }
+    
+    return cleanPath
+  }
+
+  const link = computed(() => {
+    const p: any = props.product || {}
+    const slug = p?.slug || p?.product?.slug
+    if (!slug) return ''
+    
+    // Create base path with encoded slug
+    const basePath = `/product/${encodeURIComponent(String(slug))}`
+    
+    // Apply i18n localization
+    return getLocalizedPath(basePath)
+  })
+  const imgSrc = computed(() => {
+    const p: any = props.product || {}
+    
+    // Helper to check if URL object is valid
+    const isValidUrlObject = (obj: any): boolean => {
+      if (!obj || typeof obj !== 'object') return false
+      // If it's an object, check if path exists and status is not 404
+      if (obj.path && obj.status !== 404) return true
+      // If key exists but path is null/404, consider it invalid
+      if (obj.key && (!obj.path || obj.status === 404)) return false
+      return true
+    }
+    
+    // Helper to extract value from URL object
+    const extractUrlValue = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj
+      // If path exists and is valid, use it
+      if (obj.path && obj.status !== 404) return obj.path
+      // If key exists but path is invalid, return key as fallback
+      if (obj.key) return obj.key
+      return null
+    }
+    
+    // Try to get thumbnail_full_url, but check if it's valid
+    let thumbnailFullUrl = p?.thumbnail_full_url || p?.product?.thumbnail_full_url
+    if (thumbnailFullUrl && typeof thumbnailFullUrl === 'object') {
+      // If it's an object with invalid path (null/404), skip it and use thumbnail instead
+      if (!isValidUrlObject(thumbnailFullUrl)) {
+        thumbnailFullUrl = null
+      } else {
+        thumbnailFullUrl = extractUrlValue(thumbnailFullUrl)
+      }
+    }
+    
+    // Try to get image_full_url, but check if it's valid
+    let imageFullUrl = p?.image_full_url || p?.product?.image_full_url
+    if (imageFullUrl && typeof imageFullUrl === 'object') {
+      if (!isValidUrlObject(imageFullUrl)) {
+        imageFullUrl = null
+      } else {
+        imageFullUrl = extractUrlValue(imageFullUrl)
+      }
+    }
+    
+    // Helper to get string value from field (handle arrays)
+    const getStringValue = (field: any): string | null => {
+      if (!field) return null
+      if (typeof field === 'string') return field
+      if (Array.isArray(field) && field.length > 0) {
+        // If array, take first element that is a string
+        const first = field.find((item: any) => typeof item === 'string')
+        return first || null
+      }
+      if (typeof field === 'object' && field.path) return field.path
+      if (typeof field === 'object' && field.key) return field.key
+      return null
+    }
+    
+    // Try each field and get string value
+    const raw =
+      // Prefer valid full URLs if provided
+      getStringValue(thumbnailFullUrl) ||
+      getStringValue(imageFullUrl) ||
+      getStringValue(p?.photo_full_url) ||
+      getStringValue(p?.images_full_url) ||
+      getStringValue(p?.product?.photo_full_url) ||
+      getStringValue(p?.product?.images_full_url) ||
+      // Fall back to simple fields (these are usually strings)
+      getStringValue(p?.thumbnail) ||
+      getStringValue(p?.image) ||
+      getStringValue(p?.photo) ||
+      getStringValue(p?.images) ||
+      getStringValue(p?.gallery_images) ||
+      // Nested under product
+      getStringValue(p?.product?.thumbnail) ||
+      getStringValue(p?.product?.image) ||
+      getStringValue(p?.product?.photo) ||
+      getStringValue(p?.product?.images) ||
+      getStringValue(p?.product?.gallery_images) ||
+      ''
+    // Debug: Log what we're getting from product
+    if (process.client) {
+      console.log('[ProductCard] Raw thumbnail data:', {
+        productId: p?.id || p?.product_id,
+        productName: p?.name || p?.product_name,
+        thumbnail: p?.thumbnail,
+        thumbnail_full_url: p?.thumbnail_full_url,
+        image: p?.image,
+        image_full_url: p?.image_full_url,
+        raw: raw,
+        assetBase: assetBase
+      })
+    }
+    
+    const result = normalize(raw)
+    
+    // Debug logging
+    if (process.client) {
+      console.log('[ProductCard] Image URL generated:', {
+        raw,
+        result,
+        isEmpty: !result || result === `${assetBase}/`,
+        productId: p?.id || p?.product_id,
+        productName: p?.name || p?.product_name
+      })
+    }
+    
+    // If no result, return placeholder
+    if (!result || result === `${assetBase}/`) {
+      if (process.client) {
+        console.warn('[ProductCard] No image URL generated, using placeholder:', {
+          raw,
+          productId: p?.id || p?.product_id
+        })
+      }
+      return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+    }
+    
+    return result
+  })
+  const title = computed(() => {
+    const p: any = props.product || {}
+    return p?.name || p?.product_name || p?.product?.name || p?.product?.product_name || 'Product'
+  })
+  const status = computed(() => {
+    const p: any = props.product || {}
+    return p?.condition || p?.product?.condition 
+  })
+
+  const statusClass = computed(() => {
+    const statusValue = status.value
+    if (!statusValue) return ''
+    
+    // Convert to lowercase for case-insensitive matching
+    const statusLower = String(statusValue).toLowerCase().trim()
+    
+    if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
+      return 'most-popular'
+    } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
+      return 'best-offers'
+    } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
+      return 'best-selling'
+    } else if (statusLower === 'new' || statusLower === 'جديد') {
+      return 'new'
+    }
+    
+    return 'available' // Default class
+  })
+
+  const translatedStatus = computed(() => {
+    const statusValue = status.value
+    if (!statusValue) return ''
+    
+    // Convert to lowercase for case-insensitive matching
+    const statusLower = String(statusValue).toLowerCase().trim()
+    
+    if (statusLower === 'most_popular' || statusLower === 'الأكثر شهرة') {
+      return t('product.status.most_popular') || 'الأكثر شهرة'
+    } else if (statusLower === 'best_offers' || statusLower === 'أقوى العروض') {
+      return t('product.status.best_offers') || 'أقوى العروض'
+    } else if (statusLower === 'best_selling' || statusLower === 'الأكثر مبيعاً' || statusLower === 'الأكثر مبيعا') {
+      return t('product.status.best_selling') || 'الأكثر مبيعاً'
+    } else if (statusLower === 'new' || statusLower === 'جديد') {
+      return t('product.status.new') || 'جديد'
+    }
+    
+    return statusValue // Return original value if no translation found
+  })
+  const { ensure: ensureBrands, nameOf: brandNameOf, ensureBrand } = useBrands() as any
+  const cart = useCart()
+  const wishlist = useWishlist()
+  const compare = useCompare()
+
+  // Load cart, wishlist and compare on component mount
+  // Tooltip instances
+  const tooltipInstances = ref<any[]>([])
+
+  // Initialize tooltips for a specific element
+  const initTooltip = (element: any) => {
+    if (!element || !process.client || !(window as any).bootstrap) return null
+    
+    // Check if element is in DOM
     if (!document.contains(element)) {
       return null
     }
     
-    const tooltip = new (window as any).bootstrap.Tooltip(element, {
-      trigger: 'hover',
-      placement: element.getAttribute('data-bs-placement') || 'top',
-      container: 'body',
-      html: false
-    })
-    
-    tooltipInstances.value.push(tooltip)
-    return tooltip
-  } catch (error) {
-    console.warn('Failed to initialize tooltip:', error)
-    return null
-  }
-}
-
-onMounted(async () => {
-  try {
-    // Only load cart if not already loaded (avoid duplicate API calls)
-    // Cart is usually loaded at page level (shop/index.vue, etc.)
-    if (!cart.items.value || cart.items.value.length === 0) {
-      await cart.list().catch(() => {
-        // Silently fail - cart might be loading elsewhere
-      })
-    }
-    
-    // Only load wishlist if not already loaded
-    if (!wishlist.wishlist.value || wishlist.wishlist.value.length === 0) {
-      await wishlist.list().catch(() => {
-        // Silently fail - wishlist might be loading elsewhere
-      })
-    }
-    
-    compare.init()
-  } catch (error) {
-    // Silently handle errors - these are non-critical
-  }
-
-  // Initialize Bootstrap tooltips - use requestAnimationFrame for better performance
-  if (process.client && (window as any).bootstrap) {
-    await nextTick()
-    // Use requestAnimationFrame instead of setTimeout for better performance
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-        tooltipTriggerList.forEach((tooltipTriggerEl: any) => {
-          initTooltip(tooltipTriggerEl)
-        })
-      })
-    })
-  }
-  
-  // Initialize discount countdown if applicable
-  if (showDiscountCountdown.value) {
-    initializeDiscountCountdown()
-  }
-})
-
-// Cleanup tooltips and countdown on unmount
-onBeforeUnmount(() => {
-  if (!process.client) return
-  
-  // Clear countdown interval
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
-  
-  // Dispose all tooltips safely
-  tooltipInstances.value.forEach((tooltip: any) => {
     try {
-      if (!tooltip) return
-      
-      // Get the element from tooltip instance
-      const element = tooltip._element || tooltip._config?.element || tooltip.element
-      
-      // Only dispose if element exists and is in DOM
-      if (element && typeof element.closest === 'function') {
-        // Check if element is still in DOM
-        if (document.contains(element)) {
-          // Check if dispose method exists
-          if (typeof tooltip.dispose === 'function') {
-            tooltip.dispose()
+      // Dispose existing tooltip if any (safely)
+      try {
+        const existingTooltip = (window as any).bootstrap.Tooltip.getInstance(element)
+        if (existingTooltip) {
+          // Only dispose if element is still in DOM
+          if (document.contains(element)) {
+            existingTooltip.dispose()
           }
         }
+      } catch (e) {
+        // Ignore errors when disposing existing tooltip
       }
+      
+      // Create new tooltip only if element is still in DOM
+      if (!document.contains(element)) {
+        return null
+      }
+      
+      const tooltip = new (window as any).bootstrap.Tooltip(element, {
+        trigger: 'hover',
+        placement: element.getAttribute('data-bs-placement') || 'top',
+        container: 'body',
+        html: false
+      })
+      
+      tooltipInstances.value.push(tooltip)
+      return tooltip
     } catch (error) {
-      // Silently ignore errors during cleanup (element may already be removed)
-      // This is safe - tooltip cleanup errors don't affect functionality
-    }
-  })
-  
-  // Clear the array
-  tooltipInstances.value = []
-  
-  // Also dispose any tooltips that might be attached to elements in this component
-  if (process.client && (window as any).bootstrap?.Tooltip) {
-    try {
-      const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
-      if (cardElement) {
-        const tooltipElements = cardElement.querySelectorAll('[data-bs-toggle="tooltip"]')
-        tooltipElements.forEach((el: any) => {
-          try {
-            const tooltip = (window as any).bootstrap.Tooltip.getInstance(el)
-            if (tooltip && typeof tooltip.dispose === 'function') {
-              // Check if element is still in DOM before disposing
-              if (el && typeof el.closest === 'function' && document.contains(el)) {
-                tooltip.dispose()
-              }
-            }
-          } catch (e) {
-            // Ignore errors
-          }
-        })
-  }
-    } catch (e) {
-      // Ignore errors
-    }
-  }
-})
-
-
-
-await ensureBrands()
-// Ensure specific brand is loaded if only brand_id provided
-watchEffect(async () => {
-  const p: any = props.product || {}
-  if (p?.brand_id) {
-    try { await ensureBrand(p.brand_id) } catch {}
-  }
-})
-const brandName = computed(() => {
-  const p: any = props.product || {}
-  return p?.brand_name || p?.brand?.name || p?.product?.brand_name || p?.product?.brand?.name || brandNameOf(p?.brand_id)
-})
-// Pricing & discount
-const basePrice = computed<number>(() => {
-  const p: any = props.product || {}
-  const v = p?.unit_price ?? p?.price ?? p?.product?.unit_price ?? p?.product?.price
-  const n = Number(v)
-  return isFinite(n) && n > 0 ? n : 0
-})
-const discountValue = computed<number>(() => {
-  const p: any = props.product || {}
-  const v = p?.discount ?? p?.product?.discount ?? 0
-  const n = Number(v)
-  return isFinite(n) && n > 0 ? n : 0
-})
-const discountType = computed<string>(() => {
-  const p: any = props.product || {}
-  return p?.discount_type || p?.product?.discount_type || 'flat'
-})
-const oldPrice = computed<number>(() => basePrice.value)
-const finalPrice = computed<number>(() => {
-  const bp = basePrice.value
-  const dv = discountValue.value
-  if (!bp || !dv) return bp
-  const isPercent = String(discountType.value).toLowerCase().startsWith('per')
-  const diff = isPercent ? (bp * dv) / 100 : dv
-  return Math.max(0, bp - diff)
-})
-const hasDiscount = computed<boolean>(() => finalPrice.value > 0 && finalPrice.value < oldPrice.value)
-const discountPercent = computed<number>(() => {
-  const bp = oldPrice.value
-  const dv = discountValue.value
-  if (!bp || !dv) return 0
-  const isPercent = String(discountType.value).toLowerCase().startsWith('per')
-  return Math.max(0, Math.round(isPercent ? dv : (dv / bp) * 100))
-})
-
-// Discount countdown timer
-const discountStartDate = computed<string | null>(() => {
-  const p: any = props.product || {}
-  return p?.discount_start_date || p?.product?.discount_start_date || null
-})
-
-const discountEndDate = computed<string | null>(() => {
-  const p: any = props.product || {}
-  return p?.discount_end_date || p?.product?.discount_end_date || null
-})
-
-const discountPeriodType = computed<string | null>(() => {
-  const p: any = props.product || {}
-  return p?.discount_period_type || p?.product?.discount_period_type || null
-})
-
-const showDiscountCountdown = computed(() => {
-  return discountPeriodType.value === 'temporary' && discountStartDate.value && discountEndDate.value
-})
-
-// Countdown state
-const countdownDays = ref(0)
-const countdownHours = ref(0)
-const countdownMinutes = ref(0)
-const countdownSeconds = ref(0)
-const countdownExpired = ref(false)
-let countdownInterval: any = null
-
-// Initialize countdown
-const initializeDiscountCountdown = () => {
-  if (!process.client || !showDiscountCountdown.value) return
-  
-  const updateCountdown = () => {
-    if (!discountEndDate.value) {
-      countdownExpired.value = true
-      return
-    }
-    
-    const endDate = new Date(discountEndDate.value)
-    const now = new Date()
-    const distance = endDate.getTime() - now.getTime()
-    
-    if (distance < 0) {
-      countdownExpired.value = true
-      countdownDays.value = 0
-      countdownHours.value = 0
-      countdownMinutes.value = 0
-      countdownSeconds.value = 0
-      return
-    }
-    
-    countdownDays.value = Math.floor(distance / (1000 * 60 * 60 * 24))
-    countdownHours.value = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    countdownMinutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
-    countdownSeconds.value = Math.floor((distance % (1000 * 60)) / 1000)
-  }
-  
-  // Update immediately
-  updateCountdown()
-  
-  // Update every second
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-  }
-  countdownInterval = setInterval(updateCountdown, 1000)
-}
-
-// Format countdown number with leading zero
-const formatCountdown = (num: number): string => {
-  return num.toString().padStart(2, '0')
-}
-const formatPrice = (n: number) => {
-  if (!isFinite(n)) return ''
-  try { return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
-  catch { return String(n) }
-}
-// Rating (0..5)
-const rating = computed<number>(() => {
-  const p: any = props.product || {}
-  const r = p?.reviews_avg_rating ?? p?.avg_rating ?? p?.rating?.[0]?.average ?? 0
-  const n = Number(r)
-  return isFinite(n) && n >= 0 ? Math.min(5, Math.max(0, n)) : 0
-})
-const reviewsCount = computed<number>(() => {
-  const p: any = props.product || {}
-  const c = p?.reviews_count ?? p?.rating?.[0]?.count ?? 0
-  const n = Number(c)
-  return isFinite(n) && n >= 0 ? Math.round(n) : 0
-})
-const onErr = (e: any) => {
-  const failedSrc = e.target.src
-  console.error('[ProductCard] Image load failed:', {
-    failedSrc,
-    product: props.product?.id || props.product?.product_id,
-    imgSrc: imgSrc.value
-  })
-  
-  // Prevent infinite loop - only set placeholder if not already set
-  if (!failedSrc.includes('data:image/svg+xml')) {
-    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
-    e.target.onerror = null // Prevent infinite loop
-  }
-}
-
-// Wishlist + Add to cart
-const wished = computed(() => {
-  const p: any = props.product || {}
-  const productId = p?.id || p?.product_id
-  if (!productId) return false
-  
-  // Check if product is in wishlist using useWishlist
-  const result = wishlist.isInWishlist(String(productId))
-  return result
-})
-const wishlistLoading = computed(() => wishlist.loading.value)
-
-// Compare functionality
-const isInCompare = computed(() => {
-  const productId = props.product?.id || props.product?.product_id
-  if (!productId) return false
-  return compare.isInCompare(Number(productId))
-})
-
-// Watch for state changes to update tooltip text
-watch([wished, isInCompare], () => {
-  if (process.client && (window as any).bootstrap) {
-    nextTick(() => {
-      // Update tooltip titles dynamically
-      const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
-      if (!cardElement) return
-      
-      // Update wishlist tooltip
-      const wishButton = cardElement.querySelector('[data-bs-toggle="tooltip"][data-wished]')
-      if (wishButton) {
-        const tooltip = (window as any).bootstrap.Tooltip.getInstance(wishButton)
-        if (tooltip) {
-          const newTitle = wished.value ? t('product.remove_from_wishlist') : t('product.add_to_wishlist')
-          wishButton.setAttribute('data-bs-title', newTitle)
-          tooltip.setContent({ '.tooltip-inner': newTitle })
-        }
-      }
-      
-      // Update compare tooltip
-      const compareButton = cardElement.querySelector('[data-bs-toggle="tooltip"].compare-btn')
-      if (compareButton) {
-        const tooltip = (window as any).bootstrap.Tooltip.getInstance(compareButton)
-        if (tooltip) {
-          const newTitle = isInCompare.value ? t('product.remove_from_compare') : t('product.add_to_compare')
-          compareButton.setAttribute('data-bs-title', newTitle)
-          tooltip.setContent({ '.tooltip-inner': newTitle })
-        }
-      }
-    })
-  }
-})
-
-const toggleWish = async (e: Event) => {
-  e.preventDefault()
-  e.stopPropagation()
-  
-  // Check if user is logged in
-  const auth = useAuth()
-  if (!auth?.user?.value) {
-    // Open login modal using global state
-    const loginModalOpen = useState('loginModalOpen', () => false)
-    loginModalOpen.value = true
-    return
-  }
-  
-  if (wishlistLoading.value) return
-  
-  try {
-    const productId = props.product?.id || props.product?.product_id
-    
-    if (!productId) {
-      throw new Error('Product ID not found')
-    }
-    
-    // console.log(`[ProductCard] Toggling wishlist for product ${productId}`)
-    // console.log(`[ProductCard] Current wishlist state:`, wishlist.wishlist.value)
-    // console.log(`[ProductCard] Is in wishlist:`, wished.value)
-    
-    // Use wishlist.toggle to add/remove
-    await wishlist.toggle(String(productId))
-    
-    // Show success message
-    const message = wished.value 
-      ? t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة' : t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
-    showSuccessToast(message)
-  } catch (error: any) {
-    console.error('Wishlist error:', error)
-    
-    // Handle specific error cases
-    if (error?.status === 409 || error?.data?.message?.includes('Already in your wishlist')) {
-      console.log('المنتج موجود بالفعل في المفضلة')
-      return
-    }
-    
-    if (error?.status === 404 || error?.data?.message?.includes('not in your wishlist')) {
-      console.log('المنتج غير موجود في المفضلة')
-      return
-    }
-    
-    console.error('حدث خطأ أثناء تحديث المفضلة:', error?.data?.message || error.message)
-  }
-}
-
-const toggleCompare = async (e: Event) => {
-  e.preventDefault()
-  e.stopPropagation()
-  
-  const productId = props.product?.id || props.product?.product_id
-  if (!productId) {
-    console.warn('No product ID found for compare toggle')
-    return
-  }
-  
-  if (compare.loading.value) return
-  
-  try {
-    if (isInCompare.value) {
-      // Remove from compare
-      const success = compare.remove(Number(productId))
-      if (success) {
-        const message = t('product.product_removed_from_compare') || 'تم إزالة المنتج من المقارنة'
-        showSuccessToast(message)
-      }
-    } else {
-      // Check if compare is full
-      if (compare.isFull.value) {
-        const message = t('product.compare_max_products') || 'تم الوصول إلى الحد الأقصى للمنتجات في المقارنة'
-        showSuccessToast(message)
-        return
-      }
-      
-      // Add to compare
-      const success = compare.add(props.product)
-      if (success) {
-        const message = t('product.product_added_to_compare') || 'تم إضافة المنتج إلى المقارنة'
-        showSuccessToast(message)
-      } else {
-        const errorMsg = compare.error.value || t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء إضافة المنتج إلى المقارنة'
-        showSuccessToast(errorMsg)
-      }
-    }
-  } catch (error: any) {
-    console.error('Error toggling compare:', error)
-    const errorMsg = t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء تحديث المقارنة'
-    showSuccessToast(errorMsg)
-  }
-}
-const currencySymbol = computed(() => {
-  const p: any = props.product || {}
-  return p?.currency_symbol || 'ر.س'
-})
-
-const currencyImage = computed(() => {
-  return '/images/Group 1171274840.png'
-})
-
-// Helper function to convert color name/code to hex
-const colorToHex = (color: string): string => {
-  if (!color) return '#ccc'
-  
-  // If already a hex code, return it
-  if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
-    return color
-  }
-
-  // If hex code without hash, add the hash prefix
-  if (/^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
-    return `#${color.toUpperCase()}`
-  }
-  
-  // Common color name to hex mapping
-  const colorMap: Record<string, string> = {
-    'red': '#FF0000',
-    'green': '#00FF00',
-    'blue': '#0000FF',
-    'yellow': '#FFFF00',
-    'orange': '#FFA500',
-    'purple': '#800080',
-    'pink': '#FFC0CB',
-    'black': '#000000',
-    'white': '#FFFFFF',
-    'gray': '#808080',
-    'grey': '#808080',
-    'brown': '#A52A2A',
-    'cyan': '#00FFFF',
-    'magenta': '#FF00FF',
-    'lime': '#00FF00',
-    'navy': '#000080',
-    'maroon': '#800000',
-    'olive': '#808000',
-    'teal': '#008080',
-    'silver': '#C0C0C0',
-    'gold': '#FFD700',
-    'beige': '#F5F5DC',
-    'ivory': '#FFFFF0',
-    'coral': '#FF7F50',
-    'salmon': '#FA8072',
-    'turquoise': '#40E0D0',
-    'violet': '#EE82EE',
-    'indigo': '#4B0082',
-    'أحمر': '#FF0000',
-    'أخضر': '#00FF00',
-    'أزرق': '#0000FF',
-    'أصفر': '#FFFF00',
-    'برتقالي': '#FFA500',
-    'بنفسجي': '#800080',
-    'وردي': '#FFC0CB',
-    'أسود': '#000000',
-    'أبيض': '#FFFFFF',
-    'رمادي': '#808080',
-    'بني': '#A52A2A'
-  }
-  
-  const normalizedColor = color.toLowerCase().trim()
-  if (colorMap[normalizedColor]) {
-    return colorMap[normalizedColor]
-  }
-  
-  return '#ccc'
-}
-
-// Helper to normalize color code (remove # and uppercase)
-const normalizeColorCode = (code: string | null | undefined): string => {
-  if (!code) return ''
-  return String(code).toUpperCase().replace(/^#/, '').trim()
-}
-
-// Helper to parse color_image if it's a JSON string
-const parseColorImage = (colorImage: any): any[] | null => {
-  if (!colorImage) return null
-  if (Array.isArray(colorImage)) return colorImage
-  if (typeof colorImage === 'string') {
-    try {
-      const parsed = JSON.parse(colorImage)
-      return Array.isArray(parsed) ? parsed : null
-    } catch (e) {
+      console.warn('Failed to initialize tooltip:', error)
       return null
     }
   }
-  return null
-}
 
-// Helper function to normalize image path
-const normalizeImage = (imagePath: string | null | undefined): string => {
-  if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) return ''
-  const trimmed = String(imagePath).trim()
-  // If it's already a full URL, return as is
-  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
-    return trimmed
-  }
-  // Otherwise normalize it
-  const normalized = normalize(trimmed)
-  return normalized
-}
-
-// Helper function to get color value (hex or fallback) for CSS purposes
-const getColorValue = (colorCode: string): string => {
-  if (!colorCode) return '#cccccc'
-
-  const trimmed = String(colorCode).trim()
-  if (/^#([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
-    return trimmed.toUpperCase()
-  }
-
-  if (/^([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
-    return `#${trimmed.toUpperCase()}`
-  }
-
-  if (/^[a-z]+$/i.test(trimmed) && trimmed.length < 20) {
-    return trimmed
-  }
-
-  return colorToHex(trimmed)
-}
-
-const toTitleCase = (value: string): string => {
-  return value
-    .split(' ')
-    .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-const isNonEmptyString = (value: unknown): value is string => {
-  return typeof value === 'string' && value.trim() !== ''
-}
-
-const normalizeOriginalName = (value: string): string => {
-  return value.replace(/[_-]+/g, ' ').trim()
-}
-
-const isGenericColorName = (value: string): boolean => {
-  return /^color\s*\d+$/i.test(value)
-}
-
-const hasMeaningfulOriginalName = (color: any): boolean => {
-  const rawName = typeof color?.originalName === 'string' ? color.originalName.trim() : ''
-  if (!rawName) return false
-
-  const normalizedRaw = normalizeOriginalName(rawName)
-  if (!normalizedRaw) return false
-
-  return !isGenericColorName(normalizedRaw)
-}
-
-const getColorDisplayName = (color: any, index: number): string => {
-  if (!color) return `Color ${index + 1}`
-  
-  if (hasMeaningfulOriginalName(color)) {
-    return toTitleCase(normalizeOriginalName(String(color.originalName)))
-  }
-
-  const fallbackCode = color?.code || color?.hex || color?.hexCode
-  if (fallbackCode) {
-    const displayValue = getColorValue(String(fallbackCode))
-    if (displayValue) {
-      return displayValue.startsWith('#') ? displayValue.toUpperCase() : displayValue
-    }
-  }
-
-  return `Color ${index + 1}`
-}
-
-const hasColorImage = (color: any): boolean => {
-  return !!(color?.image && typeof color.image === 'string' && color.image.trim() !== '')
-}
-
-const isLikelyColorCode = (code: string | null | undefined): boolean => {
-  if (!code) return false
-  const value = String(code).trim()
-  if (!value) return false
-
-  if (/^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value)) return true
-  if (/^[a-z]{2,20}$/i.test(value)) return true
-
-  return false
-}
-
-// Product colors with advanced image mapping - only show colors with images
-const productColors = computed(() => {
-  const product: any = props.product || {}
-
-  const colorsMap = new Map<string, any>()
-
-  const rootParsedColorImage = parseColorImage(product?.color_image)
-  const nestedProduct = product?.product || {}
-  const nestedParsedColorImage = parseColorImage(nestedProduct?.color_image)
-
-  const ensureHexCode = (code: string | null | undefined): string => {
-    if (!code) return ''
-    const normalized = normalizeColorCode(code)
-    return normalized ? `#${normalized}` : ''
-  }
-
-  const normalizeImagePath = (path: string): string => {
-    if (!path) return ''
-    if (/^(https?:|data:|blob:)/i.test(path)) {
-      return path
-    }
-    return normalize(path)
-  }
-
-  const mergeColor = (colorData: any) => {
-    const rawCode =  colorData?.code 
-    const codeNormalized = normalizeColorCode(rawCode)
-    if (!codeNormalized) return
-
-    const existing = colorsMap.get(codeNormalized) || {}
-
-    const hexCode = colorData?.hexCode || colorData?.hex || ensureHexCode(colorData?.code || existing?.code)
-    const finalHex = hexCode || existing?.hex || ensureHexCode(codeNormalized)
-
-    const resolvedImage = colorData?.image || existing?.image || ''
-
-    const nameCandidate = colorData?.name || colorData?.displayName || colorData?.colorName || existing?.displayName || existing?.colorName || existing?.name || finalHex || codeNormalized
-
-    const likelyColorCode = colorData?.isLikelyColorCode ?? existing?.isLikelyColorCode ?? isLikelyColorCode(rawCode)
-
-    colorsMap.set(codeNormalized, {
-      name: nameCandidate,
-      originalName: colorData?.originalName ?? existing?.originalName ?? null,
-      code: codeNormalized,
-      hex: finalHex,
-      hexCode: finalHex,
-      image: resolvedImage,
-      colorName: colorData?.colorName ?? existing?.colorName ?? colorData?.name ?? existing?.name ?? null,
-      displayName: nameCandidate,
-      qty: colorData?.qty ?? existing?.qty ?? 0,
-      available: colorData?.available ?? existing?.available ?? true,
-      rawCode,
-      isLikelyColorCode: likelyColorCode
-    })
-  }
-
-  const findColorImageForCode = (codeNormalized: string, productObj: any, parsedColorImage?: any[] | null): string => {
-    if (!codeNormalized || !productObj) return ''
-
-    const colorImages = productObj?.color_images_full_url
-    if (Array.isArray(colorImages)) {
-      const found = colorImages.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
-      if (found) {
-        const path = resolveColorImagePath(found, productObj)
-        if (path) return normalizeImagePath(path)
-      }
-    }
-
-    if (parsedColorImage && Array.isArray(parsedColorImage)) {
-      const foundFromParsed = parsedColorImage.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
-      if (foundFromParsed) {
-        const path = resolveColorImagePath(foundFromParsed, productObj)
-        if (path) return normalizeImagePath(path)
-        if (foundFromParsed?.image_name) {
-          const candidate = resolveColorImagePath(foundFromParsed.image_name, productObj)
-          if (candidate) return normalizeImagePath(candidate)
-        }
-      }
-    }
-
-    return ''
-  }
-
-  const processColorsFormatted = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
-    if (!Array.isArray(colorsSource)) return
-    const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
-
-    colorsSource.forEach((color: any) => {
-      const codeNormalized = normalizeColorCode(color?.code || color?.hexCode || color?.hex)
-      if (!codeNormalized) return
-
-      const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
-        || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
-        || (color?.image ? normalizeImagePath(String(color.image)) : '')
-
-      mergeColor({
-        code: codeNormalized,
-        hexCode: ensureHexCode(color?.code || color?.hexCode || color?.hex || codeNormalized),
-        name: color?.name || color?.display_name || color?.title || ensureHexCode(color?.code || color?.hexCode || codeNormalized),
-        originalName: color?.name ?? null,
-        colorName: color?.name ?? null,
-        displayName: color?.name || color?.display_name || color?.title || null,
-        image: imageFromSource,
-        rawCode: color?.code || color?.hexCode || color?.hex,
-        isLikelyColorCode: isLikelyColorCode(color?.code || color?.hexCode || color?.hex)
-      })
-    })
-  }
-
-  const processSimpleColorsArray = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
-    if (!Array.isArray(colorsSource)) return
-    const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
-
-    colorsSource.forEach((color: any, index: number) => {
-      if (typeof color === 'string') {
-        const codeNormalized = normalizeColorCode(color)
-        if (!codeNormalized) return
-
-        const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
-          || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
-
-        mergeColor({
-          code: codeNormalized,
-          hexCode: ensureHexCode(codeNormalized),
-          name: color,
-          displayName: color,
-          originalName: color,
-          image: imageFromSource,
-          qty: 0,
-          available: true,
-          rawCode: color,
-          isLikelyColorCode: isLikelyColorCode(color)
+  onMounted(async () => {
+    try {
+      // Only load cart if not already loaded (avoid duplicate API calls)
+      // Cart is usually loaded at page level (shop/index.vue, etc.)
+      if (!cart.items.value || cart.items.value.length === 0) {
+        await cart.list().catch(() => {
+          // Silently fail - cart might be loading elsewhere
         })
+      }
+      
+      // Only load wishlist if not already loaded
+      if (!wishlist.wishlist.value || wishlist.wishlist.value.length === 0) {
+        await wishlist.list().catch(() => {
+          // Silently fail - wishlist might be loading elsewhere
+        })
+      }
+      
+      compare.init()
+    } catch (error) {
+      // Silently handle errors - these are non-critical
+    }
+
+    // Initialize Bootstrap tooltips - use requestAnimationFrame for better performance
+    if (process.client && (window as any).bootstrap) {
+      await nextTick()
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+          tooltipTriggerList.forEach((tooltipTriggerEl: any) => {
+            initTooltip(tooltipTriggerEl)
+          })
+        })
+      })
+    }
+    
+    // Initialize discount countdown if applicable
+    if (showDiscountCountdown.value) {
+      initializeDiscountCountdown()
+    }
+  })
+
+  // Cleanup tooltips and countdown on unmount
+  onBeforeUnmount(() => {
+    if (!process.client) return
+    
+    // Clear countdown interval
+    if (countdownInterval) {
+      clearInterval(countdownInterval)
+      countdownInterval = null
+    }
+    
+    // Dispose all tooltips safely
+    tooltipInstances.value.forEach((tooltip: any) => {
+      try {
+        if (!tooltip) return
+        
+        // Get the element from tooltip instance
+        const element = tooltip._element || tooltip._config?.element || tooltip.element
+        
+        // Only dispose if element exists and is in DOM
+        if (element && typeof element.closest === 'function') {
+          // Check if element is still in DOM
+          if (document.contains(element)) {
+            // Check if dispose method exists
+            if (typeof tooltip.dispose === 'function') {
+              tooltip.dispose()
+            }
+          }
+        }
+      } catch (error) {
+        // Silently ignore errors during cleanup (element may already be removed)
+        // This is safe - tooltip cleanup errors don't affect functionality
+      }
+    })
+    
+    // Clear the array
+    tooltipInstances.value = []
+    
+    // Also dispose any tooltips that might be attached to elements in this component
+    if (process.client && (window as any).bootstrap?.Tooltip) {
+      try {
+        const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
+        if (cardElement) {
+          const tooltipElements = cardElement.querySelectorAll('[data-bs-toggle="tooltip"]')
+          tooltipElements.forEach((el: any) => {
+            try {
+              const tooltip = (window as any).bootstrap.Tooltip.getInstance(el)
+              if (tooltip && typeof tooltip.dispose === 'function') {
+                // Check if element is still in DOM before disposing
+                if (el && typeof el.closest === 'function' && document.contains(el)) {
+                  tooltip.dispose()
+                }
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          })
+    }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  })
+
+
+
+  await ensureBrands()
+  // Ensure specific brand is loaded if only brand_id provided
+  watchEffect(async () => {
+    const p: any = props.product || {}
+    if (p?.brand_id) {
+      try { await ensureBrand(p.brand_id) } catch {}
+    }
+  })
+  const brandName = computed(() => {
+    const p: any = props.product || {}
+    return p?.brand_name || p?.brand?.name || p?.product?.brand_name || p?.product?.brand?.name || brandNameOf(p?.brand_id)
+  })
+  // Pricing & discount
+  const basePrice = computed<number>(() => {
+    const p: any = props.product || {}
+    const v = p?.unit_price ?? p?.price ?? p?.product?.unit_price ?? p?.product?.price
+    const n = Number(v)
+    return isFinite(n) && n > 0 ? n : 0
+  })
+  const discountValue = computed<number>(() => {
+    const p: any = props.product || {}
+    const v = p?.discount ?? p?.product?.discount ?? 0
+    const n = Number(v)
+    return isFinite(n) && n > 0 ? n : 0
+  })
+  const discountType = computed<string>(() => {
+    const p: any = props.product || {}
+    return p?.discount_type || p?.product?.discount_type || 'flat'
+  })
+  const oldPrice = computed<number>(() => basePrice.value)
+  const finalPrice = computed<number>(() => {
+    const bp = basePrice.value
+    const dv = discountValue.value
+    if (!bp || !dv) return bp
+    const isPercent = String(discountType.value).toLowerCase().startsWith('per')
+    const diff = isPercent ? (bp * dv) / 100 : dv
+    return Math.max(0, bp - diff)
+  })
+  const hasDiscount = computed<boolean>(() => finalPrice.value > 0 && finalPrice.value < oldPrice.value)
+  const discountPercent = computed<number>(() => {
+    const bp = oldPrice.value
+    const dv = discountValue.value
+    if (!bp || !dv) return 0
+    const isPercent = String(discountType.value).toLowerCase().startsWith('per')
+    return Math.max(0, Math.round(isPercent ? dv : (dv / bp) * 100))
+  })
+
+  // Discount countdown timer
+  const discountStartDate = computed<string | null>(() => {
+    const p: any = props.product || {}
+    return p?.discount_start_date || p?.product?.discount_start_date || null
+  })
+
+  const discountEndDate = computed<string | null>(() => {
+    const p: any = props.product || {}
+    return p?.discount_end_date || p?.product?.discount_end_date || null
+  })
+
+  const discountPeriodType = computed<string | null>(() => {
+    const p: any = props.product || {}
+    return p?.discount_period_type || p?.product?.discount_period_type || null
+  })
+
+  const showDiscountCountdown = computed(() => {
+    return discountPeriodType.value === 'temporary' && discountStartDate.value && discountEndDate.value
+  })
+
+  // Countdown state
+  const countdownDays = ref(0)
+  const countdownHours = ref(0)
+  const countdownMinutes = ref(0)
+  const countdownSeconds = ref(0)
+  const countdownExpired = ref(false)
+  let countdownInterval: any = null
+
+  // Initialize countdown
+  const initializeDiscountCountdown = () => {
+    if (!process.client || !showDiscountCountdown.value) return
+    
+    const updateCountdown = () => {
+      if (!discountEndDate.value) {
+        countdownExpired.value = true
         return
       }
+      
+      const endDate = new Date(discountEndDate.value)
+      const now = new Date()
+      const distance = endDate.getTime() - now.getTime()
+      
+      if (distance < 0) {
+        countdownExpired.value = true
+        countdownDays.value = 0
+        countdownHours.value = 0
+        countdownMinutes.value = 0
+        countdownSeconds.value = 0
+        return
+      }
+      
+      countdownDays.value = Math.floor(distance / (1000 * 60 * 60 * 24))
+      countdownHours.value = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      countdownMinutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      countdownSeconds.value = Math.floor((distance % (1000 * 60)) / 1000)
+    }
+    
+    // Update immediately
+    updateCountdown()
+    
+    // Update every second
+    if (countdownInterval) {
+      clearInterval(countdownInterval)
+    }
+    countdownInterval = setInterval(updateCountdown, 1000)
+  }
 
-      if (color && typeof color === 'object') {
-        const codeNormalized = normalizeColorCode(color?.code || color?.hex)
+  // Format countdown number with leading zero
+  const formatCountdown = (num: number): string => {
+    return num.toString().padStart(2, '0')
+  }
+  const formatPrice = (n: number) => {
+    if (!isFinite(n)) return ''
+    try { return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
+    catch { return String(n) }
+  }
+  // Rating (0..5)
+  const rating = computed<number>(() => {
+    const p: any = props.product || {}
+    const r = p?.reviews_avg_rating ?? p?.avg_rating ?? p?.rating?.[0]?.average ?? 0
+    const n = Number(r)
+    return isFinite(n) && n >= 0 ? Math.min(5, Math.max(0, n)) : 0
+  })
+  const reviewsCount = computed<number>(() => {
+    const p: any = props.product || {}
+    const c = p?.reviews_count ?? p?.rating?.[0]?.count ?? 0
+    const n = Number(c)
+    return isFinite(n) && n >= 0 ? Math.round(n) : 0
+  })
+  const onErr = (e: any) => {
+    const failedSrc = e.target.src
+    console.error('[ProductCard] Image load failed:', {
+      failedSrc,
+      product: props.product?.id || props.product?.product_id,
+      imgSrc: imgSrc.value
+    })
+    
+    // Prevent infinite loop - only set placeholder if not already set
+    if (!failedSrc.includes('data:image/svg+xml')) {
+      e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="16">No image</text></svg>'
+      e.target.onerror = null // Prevent infinite loop
+    }
+  }
+
+  // Wishlist + Add to cart
+  const wished = computed(() => {
+    const p: any = props.product || {}
+    const productId = p?.id || p?.product_id
+    if (!productId) return false
+    
+    // Check if product is in wishlist using useWishlist
+    const result = wishlist.isInWishlist(String(productId))
+    return result
+  })
+  const wishlistLoading = computed(() => wishlist.loading.value)
+
+  // Compare functionality
+  const isInCompare = computed(() => {
+    const productId = props.product?.id || props.product?.product_id
+    if (!productId) return false
+    return compare.isInCompare(Number(productId))
+  })
+
+  // Watch for state changes to update tooltip text
+  watch([wished, isInCompare], () => {
+    if (process.client && (window as any).bootstrap) {
+      nextTick(() => {
+        // Update tooltip titles dynamically
+        const cardElement = document.querySelector(`[data-product-id="${props.product?.id || props.product?.product_id}"]`)
+        if (!cardElement) return
+        
+        // Update wishlist tooltip
+        const wishButton = cardElement.querySelector('[data-bs-toggle="tooltip"][data-wished]')
+        if (wishButton) {
+          const tooltip = (window as any).bootstrap.Tooltip.getInstance(wishButton)
+          if (tooltip) {
+            const newTitle = wished.value ? t('product.remove_from_wishlist') : t('product.add_to_wishlist')
+            wishButton.setAttribute('data-bs-title', newTitle)
+            tooltip.setContent({ '.tooltip-inner': newTitle })
+          }
+        }
+        
+        // Update compare tooltip
+        const compareButton = cardElement.querySelector('[data-bs-toggle="tooltip"].compare-btn')
+        if (compareButton) {
+          const tooltip = (window as any).bootstrap.Tooltip.getInstance(compareButton)
+          if (tooltip) {
+            const newTitle = isInCompare.value ? t('product.remove_from_compare') : t('product.add_to_compare')
+            compareButton.setAttribute('data-bs-title', newTitle)
+            tooltip.setContent({ '.tooltip-inner': newTitle })
+          }
+        }
+      })
+    }
+  })
+
+  const toggleWish = async (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Check if user is logged in
+    const auth = useAuth()
+    if (!auth?.user?.value) {
+      // Open login modal using global state
+      const loginModalOpen = useState('loginModalOpen', () => false)
+      loginModalOpen.value = true
+      return
+    }
+    
+    if (wishlistLoading.value) return
+    
+    try {
+      const productId = props.product?.id || props.product?.product_id
+      
+      if (!productId) {
+        throw new Error('Product ID not found')
+      }
+      
+      // console.log(`[ProductCard] Toggling wishlist for product ${productId}`)
+      // console.log(`[ProductCard] Current wishlist state:`, wishlist.wishlist.value)
+      // console.log(`[ProductCard] Is in wishlist:`, wished.value)
+      
+      // Use wishlist.toggle to add/remove
+      await wishlist.toggle(String(productId))
+      
+      // Show success message
+      const message = wished.value 
+        ? t('product.product_removed_from_wishlist') || 'تم إزالة المنتج من المفضلة' : t('product.product_added_to_wishlist') || 'تم إضافة المنتج إلى المفضلة'
+      showSuccessToast(message)
+    } catch (error: any) {
+      console.error('Wishlist error:', error)
+      
+      // Handle specific error cases
+      if (error?.status === 409 || error?.data?.message?.includes('Already in your wishlist')) {
+        console.log('المنتج موجود بالفعل في المفضلة')
+        return
+      }
+      
+      if (error?.status === 404 || error?.data?.message?.includes('not in your wishlist')) {
+        console.log('المنتج غير موجود في المفضلة')
+        return
+      }
+      
+      console.error('حدث خطأ أثناء تحديث المفضلة:', error?.data?.message || error.message)
+    }
+  }
+
+  const toggleCompare = async (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const productId = props.product?.id || props.product?.product_id
+    if (!productId) {
+      console.warn('No product ID found for compare toggle')
+      return
+    }
+    
+    if (compare.loading.value) return
+    
+    try {
+      if (isInCompare.value) {
+        // Remove from compare
+        const success = compare.remove(Number(productId))
+        if (success) {
+          const message = t('product.product_removed_from_compare') || 'تم إزالة المنتج من المقارنة'
+          showSuccessToast(message)
+        }
+      } else {
+        // Check if compare is full
+        if (compare.isFull.value) {
+          const message = t('product.compare_max_products') || 'تم الوصول إلى الحد الأقصى للمنتجات في المقارنة'
+          showSuccessToast(message)
+          return
+        }
+        
+        // Add to compare
+        const success = compare.add(props.product)
+        if (success) {
+          const message = t('product.product_added_to_compare') || 'تم إضافة المنتج إلى المقارنة'
+          showSuccessToast(message)
+        } else {
+          const errorMsg = compare.error.value || t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء إضافة المنتج إلى المقارنة'
+          showSuccessToast(errorMsg)
+        }
+      }
+    } catch (error: any) {
+      console.error('Error toggling compare:', error)
+      const errorMsg = t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء تحديث المقارنة'
+      showSuccessToast(errorMsg)
+    }
+  }
+  const currencySymbol = computed(() => {
+    const p: any = props.product || {}
+    return p?.currency_symbol || 'ر.س'
+  })
+
+  const currencyImage = computed(() => {
+    return '/images/Group 1171274840.png'
+  })
+
+  // Helper function to convert color name/code to hex
+  const colorToHex = (color: string): string => {
+    if (!color) return '#ccc'
+    
+    // If already a hex code, return it
+    if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
+      return color
+    }
+
+    // If hex code without hash, add the hash prefix
+    if (/^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
+      return `#${color.toUpperCase()}`
+    }
+    
+    // Common color name to hex mapping
+    const colorMap: Record<string, string> = {
+      'red': '#FF0000',
+      'green': '#00FF00',
+      'blue': '#0000FF',
+      'yellow': '#FFFF00',
+      'orange': '#FFA500',
+      'purple': '#800080',
+      'pink': '#FFC0CB',
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'gray': '#808080',
+      'grey': '#808080',
+      'brown': '#A52A2A',
+      'cyan': '#00FFFF',
+      'magenta': '#FF00FF',
+      'lime': '#00FF00',
+      'navy': '#000080',
+      'maroon': '#800000',
+      'olive': '#808000',
+      'teal': '#008080',
+      'silver': '#C0C0C0',
+      'gold': '#FFD700',
+      'beige': '#F5F5DC',
+      'ivory': '#FFFFF0',
+      'coral': '#FF7F50',
+      'salmon': '#FA8072',
+      'turquoise': '#40E0D0',
+      'violet': '#EE82EE',
+      'indigo': '#4B0082',
+      'أحمر': '#FF0000',
+      'أخضر': '#00FF00',
+      'أزرق': '#0000FF',
+      'أصفر': '#FFFF00',
+      'برتقالي': '#FFA500',
+      'بنفسجي': '#800080',
+      'وردي': '#FFC0CB',
+      'أسود': '#000000',
+      'أبيض': '#FFFFFF',
+      'رمادي': '#808080',
+      'بني': '#A52A2A'
+    }
+    
+    const normalizedColor = color.toLowerCase().trim()
+    if (colorMap[normalizedColor]) {
+      return colorMap[normalizedColor]
+    }
+    
+    return '#ccc'
+  }
+
+  // Helper to normalize color code (remove # and uppercase)
+  const normalizeColorCode = (code: string | null | undefined): string => {
+    if (!code) return ''
+    return String(code).toUpperCase().replace(/^#/, '').trim()
+  }
+
+  // Helper to parse color_image if it's a JSON string
+  const parseColorImage = (colorImage: any): any[] | null => {
+    if (!colorImage) return null
+    if (Array.isArray(colorImage)) return colorImage
+    if (typeof colorImage === 'string') {
+      try {
+        const parsed = JSON.parse(colorImage)
+        return Array.isArray(parsed) ? parsed : null
+      } catch (e) {
+        return null
+      }
+    }
+    return null
+  }
+
+  // Helper function to normalize image path
+  const normalizeImage = (imagePath: string | null | undefined): string => {
+    if (!imagePath || (typeof imagePath === 'string' && imagePath.trim() === '')) return ''
+    const trimmed = String(imagePath).trim()
+    // If it's already a full URL, return as is
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+      return trimmed
+    }
+    // Otherwise normalize it
+    const normalized = normalize(trimmed)
+    return normalized
+  }
+
+  // Helper function to get color value (hex or fallback) for CSS purposes
+  const getColorValue = (colorCode: string): string => {
+    if (!colorCode) return '#cccccc'
+
+    const trimmed = String(colorCode).trim()
+    if (/^#([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
+      return trimmed.toUpperCase()
+    }
+
+    if (/^([0-9A-F]{3}){1,2}$/i.test(trimmed)) {
+      return `#${trimmed.toUpperCase()}`
+    }
+
+    if (/^[a-z]+$/i.test(trimmed) && trimmed.length < 20) {
+      return trimmed
+    }
+
+    return colorToHex(trimmed)
+  }
+
+  const toTitleCase = (value: string): string => {
+    return value
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  const isNonEmptyString = (value: unknown): value is string => {
+    return typeof value === 'string' && value.trim() !== ''
+  }
+
+  const normalizeOriginalName = (value: string): string => {
+    return value.replace(/[_-]+/g, ' ').trim()
+  }
+
+  const isGenericColorName = (value: string): boolean => {
+    return /^color\s*\d+$/i.test(value)
+  }
+
+  const hasMeaningfulOriginalName = (color: any): boolean => {
+    const rawName = typeof color?.originalName === 'string' ? color.originalName.trim() : ''
+    if (!rawName) return false
+
+    const normalizedRaw = normalizeOriginalName(rawName)
+    if (!normalizedRaw) return false
+
+    return !isGenericColorName(normalizedRaw)
+  }
+
+  const getColorDisplayName = (color: any, index: number): string => {
+    if (!color) return `Color ${index + 1}`
+    
+    if (hasMeaningfulOriginalName(color)) {
+      return toTitleCase(normalizeOriginalName(String(color.originalName)))
+    }
+
+    const fallbackCode = color?.code || color?.hex || color?.hexCode
+    if (fallbackCode) {
+      const displayValue = getColorValue(String(fallbackCode))
+      if (displayValue) {
+        return displayValue.startsWith('#') ? displayValue.toUpperCase() : displayValue
+      }
+    }
+
+    return `Color ${index + 1}`
+  }
+
+  const hasColorImage = (color: any): boolean => {
+    return !!(color?.image && typeof color.image === 'string' && color.image.trim() !== '')
+  }
+
+  const isLikelyColorCode = (code: string | null | undefined): boolean => {
+    if (!code) return false
+    const value = String(code).trim()
+    if (!value) return false
+
+    if (/^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value)) return true
+    if (/^[a-z]{2,20}$/i.test(value)) return true
+
+    return false
+  }
+
+  // Product colors with advanced image mapping - only show colors with images
+  const productColors = computed(() => {
+    const product: any = props.product || {}
+
+    const colorsMap = new Map<string, any>()
+
+    const rootParsedColorImage = parseColorImage(product?.color_image)
+    const nestedProduct = product?.product || {}
+    const nestedParsedColorImage = parseColorImage(nestedProduct?.color_image)
+
+    const ensureHexCode = (code: string | null | undefined): string => {
+      if (!code) return ''
+      const normalized = normalizeColorCode(code)
+      return normalized ? `#${normalized}` : ''
+    }
+
+    const normalizeImagePath = (path: string): string => {
+      if (!path) return ''
+      if (/^(https?:|data:|blob:)/i.test(path)) {
+        return path
+      }
+      return normalize(path)
+    }
+
+    const mergeColor = (colorData: any) => {
+      const rawCode =  colorData?.code 
+      const codeNormalized = normalizeColorCode(rawCode)
+      if (!codeNormalized) return
+
+      const existing = colorsMap.get(codeNormalized) || {}
+
+      const hexCode = colorData?.hexCode || colorData?.hex || ensureHexCode(colorData?.code || existing?.code)
+      const finalHex = hexCode || existing?.hex || ensureHexCode(codeNormalized)
+
+      const resolvedImage = colorData?.image || existing?.image || ''
+
+      const nameCandidate = colorData?.name || colorData?.displayName || colorData?.colorName || existing?.displayName || existing?.colorName || existing?.name || finalHex || codeNormalized
+
+      const likelyColorCode = colorData?.isLikelyColorCode ?? existing?.isLikelyColorCode ?? isLikelyColorCode(rawCode)
+
+      colorsMap.set(codeNormalized, {
+        name: nameCandidate,
+        originalName: colorData?.originalName ?? existing?.originalName ?? null,
+        code: codeNormalized,
+        hex: finalHex,
+        hexCode: finalHex,
+        image: resolvedImage,
+        colorName: colorData?.colorName ?? existing?.colorName ?? colorData?.name ?? existing?.name ?? null,
+        displayName: nameCandidate,
+        qty: colorData?.qty ?? existing?.qty ?? 0,
+        available: colorData?.available ?? existing?.available ?? true,
+        rawCode,
+        isLikelyColorCode: likelyColorCode
+      })
+    }
+
+    // Helper function to extract image path from image object (same as [slug].vue extractImagePath)
+    const extractImagePath = (img: any, productObj: any): string | null => {
+      if (!img) return null
+      
+      // Try image_name first - prioritize path if it's a full URL
+      if (img.image_name) {
+        // IMPORTANT: Check if image_name is an object with path FIRST (this is the case for color_images_full_url)
+        if (typeof img.image_name === 'object' && img.image_name.path) {
+          // If path is a full URL, return it directly (this is the preferred source)
+          const pathStr = String(img.image_name.path).trim()
+          if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+            return pathStr
+          }
+          return normalize(img.image_name.path)
+        } else if (typeof img.image_name === 'object' && img.image_name.key) {
+          // Search in images_full_url for the matching path using key
+          const imageKey = img.image_name.key
+          const imagesFullUrl = productObj?.images_full_url || productObj?.product?.images_full_url || product?.images_full_url
+          if (imagesFullUrl && Array.isArray(imagesFullUrl)) {
+            const matchedImage = imagesFullUrl.find((fullImg: any) => {
+              if (fullImg.key && fullImg.key === imageKey) return true
+              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) return true
+              return false
+            })
+            
+            if (matchedImage && matchedImage.path) {
+              const pathStr = String(matchedImage.path).trim()
+              if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+                return pathStr
+              }
+              return normalize(matchedImage.path)
+            }
+          }
+          // Fallback to normalize the key
+          return normalize(img.image_name.key)
+        }
+      }
+      
+      // Try direct image fields
+      if (img.image) {
+        if (typeof img.image === 'string') {
+          const trimmed = img.image.trim()
+          if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+            return trimmed
+          }
+          return normalize(trimmed)
+        } else if (img.image.path) {
+          const pathStr = String(img.image.path).trim()
+          if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+            return pathStr
+          }
+          return normalize(img.image.path)
+        } else if (img.image.key) {
+          return normalize(img.image.key)
+        }
+      }
+      
+      // Try path or key directly
+      if (img.path) {
+        const pathStr = String(img.path).trim()
+        if (/^(https?:|data:|blob:)/i.test(pathStr)) {
+          return pathStr
+        }
+        return normalize(img.path)
+      }
+      if (img.key) return normalize(img.key)
+      
+      return null
+    }
+
+    // Same logic as [slug].vue - find color image and extract path from images_full_url
+    const findColorImageForCode = (codeNormalized: string, productObj: any, parsedColorImage?: any[] | null): string => {
+      if (!codeNormalized || !productObj) return ''
+
+      // Find corresponding image from color_images_full_url (same as [slug].vue)
+      const colorImages = productObj?.color_images_full_url
+      let foundImage: any = null
+      
+      if (Array.isArray(colorImages)) {
+        foundImage = colorImages.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
+      }
+
+      // Also check color_image field (singular) if it exists (same as [slug].vue)
+      if (!foundImage && parsedColorImage && Array.isArray(parsedColorImage)) {
+        foundImage = parsedColorImage.find((img: any) => normalizeColorCode(img?.color) === codeNormalized)
+      }
+
+      if (!foundImage) return ''
+
+      // Use extractImagePath to get the image path (same as [slug].vue)
+      const imagePath = extractImagePath(foundImage, productObj)
+      return imagePath || ''
+    }
+
+    const processColorsFormatted = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
+      if (!Array.isArray(colorsSource)) return
+      const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
+
+      colorsSource.forEach((color: any) => {
+        const codeNormalized = normalizeColorCode(color?.code || color?.hexCode || color?.hex)
         if (!codeNormalized) return
 
-        const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+        // Same logic as [slug].vue - find image from color_images_full_url first
+        let finalImagePath = ''
+        const imageFromColorImages = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
           || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
-          || (color?.image ? normalizeImagePath(String(color.image)) : '')
+        
+        if (imageFromColorImages) {
+          finalImagePath = imageFromColorImages
+        } else if (color?.image) {
+          // Fallback to color.image if no image found (same as [slug].vue)
+          if (typeof color.image === 'string') {
+            if (color.image.startsWith('http://') || color.image.startsWith('https://')) {
+              finalImagePath = color.image
+            } else {
+              finalImagePath = normalize(color.image)
+            }
+          }
+        }
 
         mergeColor({
           code: codeNormalized,
-          hexCode: ensureHexCode(color?.code || color?.hex || codeNormalized),
-          name: color?.name || color?.title || `Color ${index + 1}`,
+          hexCode: ensureHexCode(color?.code || color?.hexCode || color?.hex || codeNormalized),
+          name: color?.name || color?.display_name || color?.title || ensureHexCode(color?.code || color?.hexCode || codeNormalized),
           originalName: color?.name ?? null,
           colorName: color?.name ?? null,
-          displayName: color?.name || color?.title || null,
-          image: imageFromSource,
-          rawCode: color?.code || color?.hex || color?.name,
-          isLikelyColorCode: isLikelyColorCode(color?.code || color?.hex || color?.name)
+          displayName: color?.name || color?.display_name || color?.title || null,
+          image: finalImagePath,
+          rawCode: color?.code || color?.hexCode || color?.hex,
+          isLikelyColorCode: isLikelyColorCode(color?.code || color?.hexCode || color?.hex)
         })
-      }
-    })
-  }
-
-  const processColorImagesOnly = (productObj: any, parsedColorImage?: any[] | null) => {
-    const colorImages = productObj?.color_images_full_url
-    if (!Array.isArray(colorImages)) return
-
-    colorImages.forEach((img: any) => {
-      const codeNormalized = normalizeColorCode(img?.color)
-      if (!codeNormalized) return
-
-      const imagePath = resolveColorImagePath(img, productObj)
-      mergeColor({
-        code: codeNormalized,
-        hexCode: ensureHexCode(img?.color || codeNormalized),
-        name: img?.color_name || img?.label || img?.color || ensureHexCode(codeNormalized),
-        originalName: img?.color_name || null,
-        colorName: img?.color_name || null,
-        displayName: img?.color_name || img?.label || null,
-        image: imagePath ? normalizeImagePath(imagePath) : '',
-        rawCode: img?.color,
-        isLikelyColorCode: isLikelyColorCode(img?.color)
       })
-    })
+    }
 
-    if (parsedColorImage && Array.isArray(parsedColorImage)) {
-      parsedColorImage.forEach((img: any) => {
+    const processSimpleColorsArray = (colorsSource: any[], sourceProduct: any, fallbackParsed: any[] | null) => {
+      if (!Array.isArray(colorsSource)) return
+      const parsedColorImage = parseColorImage(sourceProduct?.color_image) || fallbackParsed
+
+      colorsSource.forEach((color: any, index: number) => {
+        if (typeof color === 'string') {
+          const codeNormalized = normalizeColorCode(color)
+          if (!codeNormalized) return
+
+          const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+            || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
+
+          mergeColor({
+            code: codeNormalized,
+            hexCode: ensureHexCode(codeNormalized),
+            name: color,
+            displayName: color,
+            originalName: color,
+            image: imageFromSource,
+            qty: 0,
+            available: true,
+            rawCode: color,
+            isLikelyColorCode: isLikelyColorCode(color)
+          })
+          return
+        }
+
+        if (color && typeof color === 'object') {
+          const codeNormalized = normalizeColorCode(color?.code || color?.hex)
+          if (!codeNormalized) return
+
+          const imageFromSource = findColorImageForCode(codeNormalized, sourceProduct, parsedColorImage)
+            || findColorImageForCode(codeNormalized, product, rootParsedColorImage)
+            || (color?.image ? normalizeImagePath(String(color.image)) : '')
+
+          mergeColor({
+            code: codeNormalized,
+            hexCode: ensureHexCode(color?.code || color?.hex || codeNormalized),
+            name: color?.name || color?.title || `Color ${index + 1}`,
+            originalName: color?.name ?? null,
+            colorName: color?.name ?? null,
+            displayName: color?.name || color?.title || null,
+            image: imageFromSource,
+            rawCode: color?.code || color?.hex || color?.name,
+            isLikelyColorCode: isLikelyColorCode(color?.code || color?.hex || color?.name)
+          })
+        }
+      })
+    }
+
+    const processColorImagesOnly = (productObj: any, parsedColorImage?: any[] | null) => {
+      const colorImages = productObj?.color_images_full_url
+      if (!Array.isArray(colorImages)) return
+
+      // Group images by color and take first image for each color
+      const colorImageMap = new Map<string, string>()
+      colorImages.forEach((img: any) => {
+        const codeNormalized = normalizeColorCode(img?.color)
+        if (!codeNormalized) return
+        
+        // Only take first image for each color
+        if (!colorImageMap.has(codeNormalized)) {
+          // Get image path directly from image_name.path (this is the full URL)
+          const imagePath = img?.image_name?.path || ''
+          if (imagePath) {
+            colorImageMap.set(codeNormalized, imagePath)
+          }
+        }
+      })
+
+      // Now create color entries with the first image
+      colorImages.forEach((img: any) => {
         const codeNormalized = normalizeColorCode(img?.color)
         if (!codeNormalized) return
 
-        const imagePath = resolveColorImagePath(img, productObj)
+        // Get the first image for this color
+        const firstImagePath = colorImageMap.get(codeNormalized) || ''
+        
         mergeColor({
           code: codeNormalized,
           hexCode: ensureHexCode(img?.color || codeNormalized),
@@ -1257,526 +1325,546 @@ const productColors = computed(() => {
           originalName: img?.color_name || null,
           colorName: img?.color_name || null,
           displayName: img?.color_name || img?.label || null,
-          image: imagePath ? normalizeImagePath(imagePath) : '',
+          image: firstImagePath,
           rawCode: img?.color,
           isLikelyColorCode: isLikelyColorCode(img?.color)
         })
       })
-    }
-  }
 
-  processColorsFormatted(product?.colors_formatted, product, rootParsedColorImage)
-  processColorsFormatted(nestedProduct?.colors_formatted, nestedProduct, nestedParsedColorImage)
+      if (parsedColorImage && Array.isArray(parsedColorImage)) {
+        parsedColorImage.forEach((img: any) => {
+          const codeNormalized = normalizeColorCode(img?.color)
+          if (!codeNormalized) return
 
-  processSimpleColorsArray(product?.colors, product, rootParsedColorImage)
-  processSimpleColorsArray(nestedProduct?.colors, nestedProduct, nestedParsedColorImage)
-
-  processColorImagesOnly(product, rootParsedColorImage)
-  processColorImagesOnly(nestedProduct, nestedParsedColorImage)
-
-  const colorsArray = Array.from(colorsMap.values())
-
-  if (colorsArray.length === 0) {
-    return []
-  }
-
-  const filterRenderableColors = (colors: any[]) => {
-    return colors.filter((color: any) => {
-      if (color.image && typeof color.image === 'string' && color.image.trim() !== '') {
-        return true
-      }
-
-      if (color.originalName && String(color.originalName).trim() !== '') {
-        return true
-      }
-
-      if (color.isLikelyColorCode) {
-        return true
-      }
-
-      if (color.rawCode && String(color.rawCode).trim() !== '') {
-        return true
-      }
-
-      return false
-    })
-  }
-
-  const variationsRaw = Array.isArray(product?.variation) && product.variation.length > 0
-    ? product.variation
-    : (Array.isArray(nestedProduct?.variation) ? nestedProduct.variation : [])
-
-  const choiceOptionsRaw = [
-    ...(Array.isArray(product?.choice_options) ? product.choice_options : []),
-    ...(Array.isArray(nestedProduct?.choice_options) ? nestedProduct.choice_options : [])
-  ]
-
-  let hasActualVariations = false
-  if (choiceOptionsRaw.length > 0) {
-    const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
-    if (sizeOption && Array.isArray(sizeOption.options) && sizeOption.options.length > 0) {
-      hasActualVariations = true
-    }
-  }
-
-  if (!hasActualVariations && variationsRaw.length > 0) {
-    hasActualVariations = variationsRaw.some((v: any) => {
-      const typeStr = typeof v?.type === 'string' ? v.type.trim() : ''
-      return typeStr.length > 0
-    })
-  }
-
-  let variationsLinkedToColors = false
-  const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
-  const sizeOptionsSet = new Set<string>(Array.isArray(sizeOption?.options) ? sizeOption.options : [])
-
-  if (hasActualVariations && variationsRaw.length > 0 && sizeOptionsSet.size > 0) {
-    variationsLinkedToColors = variationsRaw.some((v: any) => {
-      if (!v?.type || typeof v.type !== 'string') return false
-      const parts = v.type.split('-')
-      if (parts.length < 2) return false
-      const lastPart = parts[parts.length - 1].trim()
-      return sizeOptionsSet.has(lastPart)
-    })
-  }
-
-  const hexToColorNameMap = new Map<string, string>()
-
-  if (variationsRaw.length > 0) {
-    if (!variationsLinkedToColors) {
-      const colorNamesArray = variationsRaw
-        .map((v: any) => typeof v?.type === 'string' ? v.type.trim() : '')
-        .filter(Boolean)
-      const uniqueColorNames = Array.from(new Set(colorNamesArray))
-      const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
-
-      if (uniqueColorNames.length === hexCodesArray.length && uniqueColorNames.length > 0) {
-        uniqueColorNames.forEach((name, index: number) => {
-          const hexCode = hexCodesArray[index]
-          if (hexCode) {
-            hexToColorNameMap.set(hexCode, name)
-          }
+          // Use extractImagePath instead of resolveColorImagePath (same as [slug].vue)
+          const imagePath = extractImagePath(img, productObj)
+          mergeColor({
+            code: codeNormalized,
+            hexCode: ensureHexCode(img?.color || codeNormalized),
+            name: img?.color_name || img?.label || img?.color || ensureHexCode(codeNormalized),
+            originalName: img?.color_name || null,
+            colorName: img?.color_name || null,
+            displayName: img?.color_name || img?.label || null,
+            image: imagePath || '',
+            rawCode: img?.color,
+            isLikelyColorCode: isLikelyColorCode(img?.color)
+          })
         })
       }
-    } else {
-      const colorNamesSet = new Set<string>()
-      variationsRaw.forEach((v: any) => {
-        if (typeof v?.type !== 'string') return
+    }
+
+    processColorsFormatted(product?.colors_formatted, product, rootParsedColorImage)
+    processColorsFormatted(nestedProduct?.colors_formatted, nestedProduct, nestedParsedColorImage)
+
+    processSimpleColorsArray(product?.colors, product, rootParsedColorImage)
+    processSimpleColorsArray(nestedProduct?.colors, nestedProduct, nestedParsedColorImage)
+
+    processColorImagesOnly(product, rootParsedColorImage)
+    processColorImagesOnly(nestedProduct, nestedParsedColorImage)
+
+    const colorsArray = Array.from(colorsMap.values())
+
+    if (colorsArray.length === 0) {
+      return []
+    }
+
+    const filterRenderableColors = (colors: any[]) => {
+      return colors.filter((color: any) => {
+        if (color.image && typeof color.image === 'string' && color.image.trim() !== '') {
+          return true
+        }
+
+        if (color.originalName && String(color.originalName).trim() !== '') {
+          return true
+        }
+
+        if (color.isLikelyColorCode) {
+          return true
+        }
+
+        if (color.rawCode && String(color.rawCode).trim() !== '') {
+          return true
+        }
+
+        return false
+      })
+    }
+
+    const variationsRaw = Array.isArray(product?.variation) && product.variation.length > 0
+      ? product.variation
+      : (Array.isArray(nestedProduct?.variation) ? nestedProduct.variation : [])
+
+    const choiceOptionsRaw = [
+      ...(Array.isArray(product?.choice_options) ? product.choice_options : []),
+      ...(Array.isArray(nestedProduct?.choice_options) ? nestedProduct.choice_options : [])
+    ]
+
+    let hasActualVariations = false
+    if (choiceOptionsRaw.length > 0) {
+      const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
+      if (sizeOption && Array.isArray(sizeOption.options) && sizeOption.options.length > 0) {
+        hasActualVariations = true
+      }
+    }
+
+    if (!hasActualVariations && variationsRaw.length > 0) {
+      hasActualVariations = variationsRaw.some((v: any) => {
+        const typeStr = typeof v?.type === 'string' ? v.type.trim() : ''
+        return typeStr.length > 0
+      })
+    }
+
+    let variationsLinkedToColors = false
+    const sizeOption = choiceOptionsRaw.find((option: any) => option?.title === 'Size' || option?.name === 'choice_2')
+    const sizeOptionsSet = new Set<string>(Array.isArray(sizeOption?.options) ? sizeOption.options.map((o: any) => String(o)) : [])
+
+    if (hasActualVariations && variationsRaw.length > 0 && sizeOptionsSet.size > 0) {
+      variationsLinkedToColors = variationsRaw.some((v: any) => {
+        if (!v?.type || typeof v.type !== 'string') return false
         const parts = v.type.split('-')
-        if (parts.length < 2) return
-        const colorName = parts.slice(0, -1).join('-').trim()
-        if (colorName) {
-          colorNamesSet.add(colorName)
+        if (parts.length < 2) return false
+        const lastPart = parts[parts.length - 1].trim()
+        return sizeOptionsSet.has(lastPart)
+      })
+    }
+
+    const hexToColorNameMap = new Map<string, string>()
+
+    if (variationsRaw.length > 0) {
+      if (!variationsLinkedToColors) {
+        const colorNamesArray = variationsRaw
+          .map((v: any) => typeof v?.type === 'string' ? v.type.trim() : '')
+          .filter(Boolean)
+        const uniqueColorNames = Array.from(new Set(colorNamesArray))
+        const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
+
+        if (uniqueColorNames.length === hexCodesArray.length && uniqueColorNames.length > 0) {
+          uniqueColorNames.forEach((name, index: number) => {
+            const hexCode = hexCodesArray[index]
+            if (hexCode) {
+              hexToColorNameMap.set(hexCode, name)
+            }
+          })
+        }
+      } else {
+        const colorNamesSet = new Set<string>()
+        variationsRaw.forEach((v: any) => {
+          if (typeof v?.type !== 'string') return
+          const parts = v.type.split('-')
+          if (parts.length < 2) return
+          const colorName = parts.slice(0, -1).join('-').trim()
+          if (colorName) {
+            colorNamesSet.add(colorName)
+          }
+        })
+
+        const colorNamesArray = Array.from(colorNamesSet)
+        const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
+
+        if (colorNamesArray.length === hexCodesArray.length && colorNamesArray.length > 0) {
+          colorNamesArray.forEach((name: string, index: number) => {
+            const hexCode = hexCodesArray[index]
+            if (hexCode) {
+              hexToColorNameMap.set(hexCode, name)
+            }
+          })
+        }
+      }
+    }
+
+    const colorsWithNames = colorsArray.map((color: any) => {
+      const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
+      const mappedName = normalizedCode ? hexToColorNameMap.get(normalizedCode) : null
+      const finalDisplayName = mappedName || color?.displayName || color?.colorName || color?.originalName || color?.name
+
+      return {
+        ...color,
+        name: finalDisplayName || color?.name,
+        displayName: finalDisplayName || color?.displayName || color?.name,
+        colorName: mappedName || color?.colorName || color?.originalName || color?.name
+      }
+    })
+
+    if (variationsRaw.length === 0) {
+      const colorsWithQtyFallback = colorsWithNames.map((color: any) => {
+        const fallbackQty = Number(color?.qty ?? product?.current_stock ?? product?.stock ?? product?.quantity ?? 0) || 0
+        return {
+          ...color,
+          qty: fallbackQty,
+          available: fallbackQty > 0
         }
       })
 
-      const colorNamesArray = Array.from(colorNamesSet)
-      const hexCodesArray: string[] = colorsArray.map((c: any) => normalizeColorCode(c?.code || c?.hex || c?.hexCode || c?.name))
-
-      if (colorNamesArray.length === hexCodesArray.length && colorNamesArray.length > 0) {
-        colorNamesArray.forEach((name: string, index: number) => {
-          const hexCode = hexCodesArray[index]
-          if (hexCode) {
-            hexToColorNameMap.set(hexCode, name)
-          }
-        })
-      }
+      return filterRenderableColors(colorsWithQtyFallback)
     }
-  }
 
-  const colorsWithNames = colorsArray.map((color: any) => {
-    const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
-    const mappedName = normalizedCode ? hexToColorNameMap.get(normalizedCode) : null
-    const finalDisplayName = mappedName || color?.displayName || color?.colorName || color?.originalName || color?.name
+    const colorsWithQty = colorsWithNames.map((color: any) => {
+      const colorNameToMatch = color?.colorName || color?.displayName || color?.name || ''
+      const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+      const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
 
-    return {
-      ...color,
-      name: finalDisplayName || color?.name,
-      displayName: finalDisplayName || color?.displayName || color?.name,
-      colorName: mappedName || color?.colorName || color?.originalName || color?.name
-    }
-  })
-
-  if (variationsRaw.length === 0) {
-    const colorsWithQtyFallback = colorsWithNames.map((color: any) => {
-      const fallbackQty = Number(color?.qty ?? product?.current_stock ?? product?.stock ?? product?.quantity ?? 0) || 0
-      return {
-        ...color,
-        qty: fallbackQty,
-        available: fallbackQty > 0
-      }
-    })
-
-    return filterRenderableColors(colorsWithQtyFallback)
-  }
-
-  const colorsWithQty = colorsWithNames.map((color: any) => {
-    const colorNameToMatch = color?.colorName || color?.displayName || color?.name || ''
-    const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
-    const normalizedCode = normalizeColorCode(color?.code || color?.hex || color?.hexCode)
-
-    const matchingVariations = variationsRaw.filter((variation: any) => {
-      if (!variation?.type) return false
-      const variationTypeNormalized = String(variation.type).trim().toUpperCase()
-      if (!variationTypeNormalized) return false
-
-      if (colorNameNormalized) {
-        if (variationTypeNormalized === colorNameNormalized) return true
-        if (variationTypeNormalized.includes(colorNameNormalized)) return true
-        if (colorNameNormalized.includes(variationTypeNormalized)) return true
-      }
-
-      const variationParts = variationTypeNormalized.split(/\s+/)
-      if (variationParts.length > 0) {
-        const lastPart = variationParts[variationParts.length - 1]
-        const secondLastPart = variationParts.length > 1 ? variationParts[variationParts.length - 2] : ''
-        const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+      const matchingVariations = variationsRaw.filter((variation: any) => {
+        if (!variation?.type) return false
+        const variationTypeNormalized = String(variation.type).trim().toUpperCase()
+        if (!variationTypeNormalized) return false
 
         if (colorNameNormalized) {
-          if (colorNameNormalized.includes(lastPart) || colorNameNormalized.includes(lastTwoParts)) return true
-          if (lastPart.includes(colorNameNormalized) || lastTwoParts.includes(colorNameNormalized)) return true
+          if (variationTypeNormalized === colorNameNormalized) return true
+          if (variationTypeNormalized.includes(colorNameNormalized)) return true
+          if (colorNameNormalized.includes(variationTypeNormalized)) return true
         }
-      }
 
-      if (variationsLinkedToColors && colorNameNormalized) {
-        const hyphenParts = variationTypeNormalized.split('-')
-        if (hyphenParts.length >= 2) {
-          const colorSegment = hyphenParts.slice(0, -1).join('-').trim()
-          if (colorSegment === colorNameNormalized || colorSegment.includes(colorNameNormalized) || colorNameNormalized.includes(colorSegment)) {
-            return true
+        const variationParts = variationTypeNormalized.split(/\s+/)
+        if (variationParts.length > 0) {
+          const lastPart = variationParts[variationParts.length - 1]
+          const secondLastPart = variationParts.length > 1 ? variationParts[variationParts.length - 2] : ''
+          const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+
+          if (colorNameNormalized) {
+            if (colorNameNormalized.includes(lastPart) || colorNameNormalized.includes(lastTwoParts)) return true
+            if (lastPart.includes(colorNameNormalized) || lastTwoParts.includes(colorNameNormalized)) return true
           }
         }
-      }
 
-      if (normalizedCode) {
-        if (variationTypeNormalized.includes(normalizedCode)) return true
-      }
+        if (variationsLinkedToColors && colorNameNormalized) {
+          const hyphenParts = variationTypeNormalized.split('-')
+          if (hyphenParts.length >= 2) {
+            const colorSegment = hyphenParts.slice(0, -1).join('-').trim()
+            if (colorSegment === colorNameNormalized || colorSegment.includes(colorNameNormalized) || colorNameNormalized.includes(colorSegment)) {
+              return true
+            }
+          }
+        }
 
-      return false
+        if (normalizedCode) {
+          if (variationTypeNormalized.includes(normalizedCode)) return true
+        }
+
+        return false
+      })
+
+      const totalQty = matchingVariations.reduce((sum: number, variation: any) => {
+        const qty = Number(variation?.qty ?? variation?.quantity ?? 0)
+        return sum + (isFinite(qty) ? qty : 0)
+      }, 0)
+
+      return {
+        ...color,
+        qty: totalQty,
+        available: totalQty > 0
+      }
     })
 
-    const totalQty = matchingVariations.reduce((sum: number, variation: any) => {
-      const qty = Number(variation?.qty ?? variation?.quantity ?? 0)
-      return sum + (isFinite(qty) ? qty : 0)
-    }, 0)
-
-    return {
-      ...color,
-      qty: totalQty,
-      available: totalQty > 0
-    }
+    return filterRenderableColors(colorsWithQty)
   })
 
-  return filterRenderableColors(colorsWithQty)
-})
+  // Selected color and variation state
+  const selectedColorIndex = ref<number | null>(null)
+  const selectedVariationIndex = ref<number | null>(null)
 
-// Selected color and variation state
-const selectedColorIndex = ref<number | null>(null)
-const selectedVariationIndex = ref<number | null>(null)
+  const visibleColors = computed(() => {
+    return productColors.value.slice(0, 3)
+  })
 
-const visibleColors = computed(() => {
-  return productColors.value.slice(0, 3)
-})
+  const remainingColorsCount = computed(() => {
+    const total = productColors.value.length
+    return total > 3 ? total - 3 : 0
+  })
 
-const remainingColorsCount = computed(() => {
-  const total = productColors.value.length
-  return total > 3 ? total - 3 : 0
-})
+  // Check if product has colors
+  const hasColors = computed(() => {
+    return productColors.value.length > 0
+  })
 
-// Check if product has colors
-const hasColors = computed(() => {
-  return productColors.value.length > 0
-})
-
-// Product variations
-const productVariations = computed(() => {
-  const p: any = props.product || {}
-  
-  // Try to get variation array
-  const variations = p?.variation || p?.product?.variation
-  if (!Array.isArray(variations) || variations.length === 0) {
-    return []
-  }
-  
-  return variations.map((v: any, index: number) => ({
-    type: v.type || `Variation ${index + 1}`,
-    price: v.price || 0,
-    qty: v.qty !== undefined ? Number(v.qty) : 0,
-    sku: v.sku || '',
-    discount: v.discount || 0,
-    discount_type: v.discount_type || 'flat'
-  }))
-})
-
-const visibleVariations = computed(() => {
-  return productVariations.value.slice(0, 3)
-})
-
-const remainingVariationsCount = computed(() => {
-  const total = productVariations.value.length
-  return total > 3 ? total - 3 : 0
-})
-
-// Select color function
-const selectColor = (index: number) => {
-  if (productColors.value[index]?.qty === 0) return
-  selectedColorIndex.value = selectedColorIndex.value === index ? null : index
-}
-
-// Select variation function
-const selectVariation = (index: number) => {
-  if (productVariations.value[index]?.qty === 0) return
-  selectedVariationIndex.value = selectedVariationIndex.value === index ? null : index
-}
-
-// Check if product has variations
-const hasVariations = computed(() => {
-  const p: any = props.product || {}
-  // Check choice_options
-  if (p?.choice_options && Array.isArray(p.choice_options) && p.choice_options.length > 0) {
-    return true
-  }
-  // Check variation array
-  if (p?.variation && Array.isArray(p.variation) && p.variation.length > 0) {
-    return true
-  }
-  // Check nested product.choice_options
-  if (p?.product?.choice_options && Array.isArray(p.product.choice_options) && p.product.choice_options.length > 0) {
-    return true
-  }
-  // Check nested product.variation
-  if (p?.product?.variation && Array.isArray(p.product.variation) && p.product.variation.length > 0) {
-    return true
-  }
-  return false
-})
-
-// Check if product has options (colors or variations)
-const hasProductOptions = computed(() => {
-  return hasColors.value || hasVariations.value
-})
-
-// Cart controls with quantity
-const qty = computed(() => {
-  // Use cart.qtyOf if available, otherwise fall back to props.qty
-  return cart.qtyOf(props.product) || props.qty || 0
-})
-
-// Local loading state for this specific product
-const isAddingToCart = ref(false)
-const isUpdatingCart = ref(false)
-const isBusy = computed(() => !!props.busy || isAddingToCart.value || isUpdatingCart.value)
-
-// Success message state
-const showSuccessMessage = ref(false)
-const successMessage = ref('')
-
-// Function to show success message
-const showSuccessToast = (message: string) => {
-  successMessage.value = message
-  showSuccessMessage.value = true
-  setTimeout(() => {
-    showSuccessMessage.value = false
-  }, 3000)
-}
-
-// Function to open cart dropdown
-const openCartDropdown = () => {
-  if (process.client) {
-    const event = new CustomEvent('open-cart')
-    window.dispatchEvent(event)
-  }
-}
-
-const handleAdd = async (e: Event) => {
-  e.preventDefault(); e.stopPropagation()
-  if (isBusy.value) return
-  
-  // If product has colors or variations, navigate to product page instead
-  if (hasProductOptions.value) {
-    const productLink = link.value
-    if (productLink && productLink !== '#') {
-      navigateTo(productLink)
+  // Product variations
+  const productVariations = computed(() => {
+    const p: any = props.product || {}
+    
+    // Try to get variation array
+    const variations = p?.variation || p?.product?.variation
+    if (!Array.isArray(variations) || variations.length === 0) {
+      return []
     }
-    return
+    
+    return variations.map((v: any, index: number) => ({
+      type: v.type || `Variation ${index + 1}`,
+      price: v.price || 0,
+      qty: v.qty !== undefined ? Number(v.qty) : 0,
+      sku: v.sku || '',
+      discount: v.discount || 0,
+      discount_type: v.discount_type || 'flat'
+    }))
+  })
+
+  const visibleVariations = computed(() => {
+    return productVariations.value.slice(0, 3)
+  })
+
+  const remainingVariationsCount = computed(() => {
+    const total = productVariations.value.length
+    return total > 3 ? total - 3 : 0
+  })
+
+  // Select color function
+  const selectColor = (index: number) => {
+    if (productColors.value[index]?.qty === 0) return
+    selectedColorIndex.value = selectedColorIndex.value === index ? null : index
   }
-  
-  try {
-    isAddingToCart.value = true
-    const productId = props.product?.id || props.product?.product_id
-    if (!productId) {
-      console.error('Product ID not found')
+
+  // Select variation function
+  const selectVariation = (index: number) => {
+    if (productVariations.value[index]?.qty === 0) return
+    selectedVariationIndex.value = selectedVariationIndex.value === index ? null : index
+  }
+
+  // Check if product has variations
+  const hasVariations = computed(() => {
+    const p: any = props.product || {}
+    // Check choice_options
+    if (p?.choice_options && Array.isArray(p.choice_options) && p.choice_options.length > 0) {
+      return true
+    }
+    // Check variation array
+    if (p?.variation && Array.isArray(p.variation) && p.variation.length > 0) {
+      return true
+    }
+    // Check nested product.choice_options
+    if (p?.product?.choice_options && Array.isArray(p.product.choice_options) && p.product.choice_options.length > 0) {
+      return true
+    }
+    // Check nested product.variation
+    if (p?.product?.variation && Array.isArray(p.product.variation) && p.product.variation.length > 0) {
+      return true
+    }
+    return false
+  })
+
+  // Check if product has options (colors or variations)
+  const hasProductOptions = computed(() => {
+    return hasColors.value || hasVariations.value
+  })
+
+  // Cart controls with quantity
+  const qty = computed(() => {
+    // Use cart.qtyOf if available, otherwise fall back to props.qty
+    return cart.qtyOf(props.product) || props.qty || 0
+  })
+
+  // Local loading state for this specific product
+  const isAddingToCart = ref(false)
+  const isUpdatingCart = ref(false)
+  const isBusy = computed(() => !!props.busy || isAddingToCart.value || isUpdatingCart.value)
+
+  // Success message state
+  const showSuccessMessage = ref(false)
+  const successMessage = ref('')
+
+  // Function to show success message
+  const showSuccessToast = (message: string) => {
+    successMessage.value = message
+    showSuccessMessage.value = true
+    setTimeout(() => {
+      showSuccessMessage.value = false
+    }, 3000)
+  }
+
+  // Function to open cart dropdown
+  const openCartDropdown = () => {
+    if (process.client) {
+      const event = new CustomEvent('open-cart')
+      window.dispatchEvent(event)
+    }
+  }
+
+  const handleAdd = async (e: Event) => {
+    e.preventDefault(); e.stopPropagation()
+    if (isBusy.value) return
+    
+    // If product has colors or variations, navigate to product page instead
+    if (hasProductOptions.value) {
+      const productLink = link.value
+      if (productLink && productLink !== '#') {
+        navigateTo(productLink)
+      }
       return
     }
     
-    // Prepare cart data
-    const cartData: any = {
-      product_id: Number(productId),
-      quantity: 1
+    try {
+      isAddingToCart.value = true
+      const productId = props.product?.id || props.product?.product_id
+      if (!productId) {
+        console.error('Product ID not found')
+        return
+      }
+      
+      // Prepare cart data
+      const cartData: any = {
+        product_id: Number(productId),
+        quantity: 1
+      }
+      
+      // Add variant info if available
+      if (props.product?.variant) cartData.variant = props.product.variant
+      if (props.product?.color) cartData.color = props.product.color
+      if (props.product?.size) cartData.size = props.product.size
+      if (props.product?.variant_type) cartData.variant_type = props.product.variant_type
+      if (props.product?.sku) cartData.sku = props.product.sku
+      
+      // Add pricing info
+      cartData.price = finalPrice.value
+      cartData.base_price = basePrice.value
+      if (hasDiscount.value) {
+        cartData.discount = discountValue.value
+        cartData.discount_type = discountType.value
+      }
+      
+      // Add to cart - this will set cart.loading, but we use our local isAddingToCart instead
+      await cart.add(cartData)
+      // cart.add() already calls list(true) internally, so UI will update automatically
+      
+      // Wait a bit to ensure cart state is updated
+      await nextTick()
+      
+      // Show success message
+      showSuccessToast(t('product.cart_added_successfully') || 'تم إضافة المنتج إلى السلة بنجاح')
+      
+      // Open cart dropdown
+      openCartDropdown()
+      
+      emit('add', props.product)
+      console.log('✅', t('product.product_added_to_cart_successfully'))
+    } catch (error: any) {
+      console.error('❌ خطأ في إضافة المنتج للسلة:', error)
+      alert(t('product.error_adding_product_to_cart'))
+    } finally {
+      // Reset local loading state immediately after operation completes
+      // This ensures only this card shows loading, not others
+      isAddingToCart.value = false
     }
-    
-    // Add variant info if available
-    if (props.product?.variant) cartData.variant = props.product.variant
-    if (props.product?.color) cartData.color = props.product.color
-    if (props.product?.size) cartData.size = props.product.size
-    if (props.product?.variant_type) cartData.variant_type = props.product.variant_type
-    if (props.product?.sku) cartData.sku = props.product.sku
-    
-    // Add pricing info
-    cartData.price = finalPrice.value
-    cartData.base_price = basePrice.value
-    if (hasDiscount.value) {
-      cartData.discount = discountValue.value
-      cartData.discount_type = discountType.value
-    }
-    
-    // Add to cart - this will set cart.loading, but we use our local isAddingToCart instead
-    await cart.add(cartData)
-    // cart.add() already calls list(true) internally, so UI will update automatically
-    
-    // Wait a bit to ensure cart state is updated
-    await nextTick()
-    
-    // Show success message
-    showSuccessToast(t('product.cart_added_successfully') || 'تم إضافة المنتج إلى السلة بنجاح')
-    
-    // Open cart dropdown
-    openCartDropdown()
-    
-    emit('add', props.product)
-    console.log('✅', t('product.product_added_to_cart_successfully'))
-  } catch (error: any) {
-    console.error('❌ خطأ في إضافة المنتج للسلة:', error)
-    alert(t('product.error_adding_product_to_cart'))
-  } finally {
-    // Reset local loading state immediately after operation completes
-    // This ensures only this card shows loading, not others
-    isAddingToCart.value = false
   }
-}
 
-const inc = async (e: Event) => {
-  e.preventDefault(); e.stopPropagation();
-  if (isBusy.value) return
-  
-  try {
-    isUpdatingCart.value = true
-    const currentQty = qty.value
-    const newQty = currentQty + 1
-    await cart.updateByProduct(props.product, newQty)
-    // Wait a bit to ensure cart state is updated
-    await nextTick()
-    emit('update', { product: props.product, qty: newQty })
-    console.log('تم تحديث الكمية:', newQty)
-  } catch (error: any) {
-    console.error('خطأ في تحديث الكمية:', error)
-  } finally {
-    // Reset local loading state immediately
-    isUpdatingCart.value = false
-  }
-}
-
-const dec = async (e: Event) => {
-  e.preventDefault(); e.stopPropagation();
-  if (isBusy.value) return
-  
-  try {
-    isUpdatingCart.value = true
-    const currentQty = qty.value
-    if (currentQty > 1) {
-      const newQty = currentQty - 1
+  const inc = async (e: Event) => {
+    e.preventDefault(); e.stopPropagation();
+    if (isBusy.value) return
+    
+    try {
+      isUpdatingCart.value = true
+      const currentQty = qty.value
+      const newQty = currentQty + 1
       await cart.updateByProduct(props.product, newQty)
       // Wait a bit to ensure cart state is updated
       await nextTick()
       emit('update', { product: props.product, qty: newQty })
       console.log('تم تحديث الكمية:', newQty)
-    } else if (currentQty === 1) {
+    } catch (error: any) {
+      console.error('خطأ في تحديث الكمية:', error)
+    } finally {
+      // Reset local loading state immediately
+      isUpdatingCart.value = false
+    }
+  }
+
+  const dec = async (e: Event) => {
+    e.preventDefault(); e.stopPropagation();
+    if (isBusy.value) return
+    
+    try {
+      isUpdatingCart.value = true
+      const currentQty = qty.value
+      if (currentQty > 1) {
+        const newQty = currentQty - 1
+        await cart.updateByProduct(props.product, newQty)
+        // Wait a bit to ensure cart state is updated
+        await nextTick()
+        emit('update', { product: props.product, qty: newQty })
+        console.log('تم تحديث الكمية:', newQty)
+      } else if (currentQty === 1) {
+        await cart.removeByProduct(props.product)
+        // Wait a bit to ensure cart state is updated
+        await nextTick()
+        emit('remove', props.product)
+        console.log(t('product.product_removed_from_cart'))
+      }
+    } catch (error: any) {
+      console.error('خطأ في تحديث الكمية:', error)
+    } finally {
+      // Reset local loading state immediately
+      isUpdatingCart.value = false
+    }
+  }
+
+  const clearQty = async (e: Event) => {
+    if (isBusy.value) return
+    e.preventDefault()
+    e.stopPropagation()
+    
+    try {
+      isUpdatingCart.value = true
       await cart.removeByProduct(props.product)
       // Wait a bit to ensure cart state is updated
       await nextTick()
       emit('remove', props.product)
-      console.log(t('product.product_removed_from_cart'))
+      console.log('تم إزالة المنتج من السلة')
+    } catch (error: any) {
+      console.error(t('product.error_removing_product_from_cart'), error)
+    } finally {
+      // Reset local loading state immediately
+      isUpdatingCart.value = false
     }
-  } catch (error: any) {
-    console.error('خطأ في تحديث الكمية:', error)
-  } finally {
-    // Reset local loading state immediately
-    isUpdatingCart.value = false
   }
-}
 
-const clearQty = async (e: Event) => {
-  if (isBusy.value) return
-  e.preventDefault()
-  e.stopPropagation()
-  
-  try {
-    isUpdatingCart.value = true
-    await cart.removeByProduct(props.product)
-    // Wait a bit to ensure cart state is updated
-    await nextTick()
-    emit('remove', props.product)
-    console.log('تم إزالة المنتج من السلة')
-  } catch (error: any) {
-    console.error(t('product.error_removing_product_from_cart'), error)
-  } finally {
-    // Reset local loading state immediately
-    isUpdatingCart.value = false
-  }
-}
+  // Promotional chip
+  const promoChip = computed<{ text: string; tone: 'green' | 'pink' | 'blue' } | null>(() => {
+    const p: any = props.product || {}
+    if (p?.flash_deal_status || p?.flash_deal) return { text: 'عرض اليوم الوطني', tone: 'green' }
+    if (p?.bogo || p?.offer_type === 'buy_one_get_one') return { text: '1+1 مجاناً', tone: 'pink' }
+    if ((p?.order_details_count ?? 0) > 500) return { text: 'الأفضل مبيعًا', tone: 'blue' }
+    if (p?.is_bestseller) return { text: 'الأفضل مبيعًا', tone: 'blue' }
+    return null
+  })
+  const promoText = computed(() => promoChip.value?.text || '')
+  const promoTone = computed(() => promoChip.value?.tone || '')
+  // Stock
+  const current_stock = computed<number>(() => {
+    const p: any = props.product || {}
+    const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
+    return Number(q) || 0
+  })
 
-// Promotional chip
-const promoChip = computed<{ text: string; tone: 'green' | 'pink' | 'blue' } | null>(() => {
-  const p: any = props.product || {}
-  if (p?.flash_deal_status || p?.flash_deal) return { text: 'عرض اليوم الوطني', tone: 'green' }
-  if (p?.bogo || p?.offer_type === 'buy_one_get_one') return { text: '1+1 مجاناً', tone: 'pink' }
-  if ((p?.order_details_count ?? 0) > 500) return { text: 'الأفضل مبيعًا', tone: 'blue' }
-  if (p?.is_bestseller) return { text: 'الأفضل مبيعًا', tone: 'blue' }
-  return null
-})
-const promoText = computed(() => promoChip.value?.text || '')
-const promoTone = computed(() => promoChip.value?.tone || '')
-// Stock
-const current_stock = computed<number>(() => {
-  const p: any = props.product || {}
-  const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
-  return Number(q) || 0
-})
+  const inStock = computed<boolean>(() => {
+    const p: any = props.product || {}
+    const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
+    return (Number(q) > 0) || p?.in_stock === true
+  })
 
-const inStock = computed<boolean>(() => {
-  const p: any = props.product || {}
-  const q = p?.current_stock ?? p?.stock ?? p?.quantity ?? p?.product?.current_stock ?? p?.product?.stock ?? 0
-  return (Number(q) > 0) || p?.in_stock === true
-})
-
-// Open product modal function
-const openProductModal = async (e: Event) => {
-  e.preventDefault()
-  e.stopPropagation()
-  
-  // Set the selected product in global state
-  const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
-  selectedProductForModal.value = props.product
-  
-  // Open the modal using Bootstrap
-  if (process.client) {
-    // Use requestAnimationFrame instead of setTimeout for better performance
-    await nextTick()
-    requestAnimationFrame(() => {
-      const modalElement = document.getElementById('exampleModal')
-      if (modalElement) {
-        const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
-        if (modal) {
-          modal.show()
-        } else {
-          // If modal instance doesn't exist, create one
-          const bsModal = new (window as any).bootstrap.Modal(modalElement)
-          bsModal.show()
+  // Open product modal function
+  const openProductModal = async (e: Event) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Set the selected product in global state
+    const selectedProductForModal = useState<any>('selectedProductForModal', () => null)
+    selectedProductForModal.value = props.product
+    
+    // Open the modal using Bootstrap
+    if (process.client) {
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      await nextTick()
+      requestAnimationFrame(() => {
+        const modalElement = document.getElementById('exampleModal')
+        if (modalElement) {
+          const modal = (window as any).bootstrap?.Modal?.getInstance(modalElement)
+          if (modal) {
+            modal.show()
+          } else {
+            // If modal instance doesn't exist, create one
+            const bsModal = new (window as any).bootstrap.Modal(modalElement)
+            bsModal.show()
+          }
         }
-      }
-    })
+      })
+    }
   }
-}
 </script>
 
 <template>
@@ -1865,7 +1953,7 @@ const openProductModal = async (e: Event) => {
           class="color-option"
           :class="{ 
             'active': selectedColorIndex === index,
-            'has-image': color.image && !color.originalName,
+            'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
             'out-of-stock': color.qty === 0
           }"
           :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))  

@@ -327,7 +327,12 @@ const handleImageLoad = (event: Event) => {
             <!-- Banner and Subcategories -->
             <div v-if="mainCategory.subcategories && mainCategory.subcategories.length > 0" class="subcategories-section">
               <!-- Banner -->
-              <div v-if="mainCategory.banner" class="category-banner">
+              <div 
+                v-if="mainCategory.banner" 
+                class="category-banner"
+                style="cursor: pointer" 
+                @click="goToCategory(mainCategory)"
+              >
                 <img 
                   :src="mainCategory.banner" 
                   :alt="mainCategory?.name || 'Banner'"

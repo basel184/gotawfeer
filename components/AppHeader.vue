@@ -177,7 +177,7 @@ const brandName = computed(() => {
 })
 
 // Categories (fallback if API not ready)
-type Cat = { id: number | string; name: string; children?: Cat[] }
+type Cat = { id: number | string; name: string; count?: number; children?: Cat[] }
 const fallbackCats: Cat[] = [
   { id: 1, name: 'مكياج', children: [
     { id: '1-1', name: 'الوجه' },
@@ -210,6 +210,7 @@ function normalizeCat(item: any): Cat {
   return {
     id: item?.id ?? item?.category_id ?? String(Math.random()),
     name: item?.name || item?.translation?.name || item?.title || '',
+    count: Number(item?.product_count || item?.products_count || 0),
     children: childrenSrc.map((sc: any) => normalizeCat(sc)),
   }
 }
@@ -1694,7 +1695,7 @@ async function handleRegisterSubmit() {
                     class="mobile-menu-link mobile-category-toggle"
                     @click="handleMobileCategoryTap(category)"
                   >
-                    <span>{{ category.name }}</span>
+                    <span>{{ category.name }} <span v-if="category.count" class="cat-count">({{ category.count }})</span></span>
                     <svg width="18" height="18" viewBox="0 0 24 24">
                       <path
                         fill="currentColor"
@@ -1708,13 +1709,20 @@ async function handleRegisterSubmit() {
                       class="mobile-subcategories"
                     >
                       <NuxtLink
+                        :to="getCategoryLink(category)"
+                        class="mobile-subcategory-link fw-bold"
+                        @click="handleMobileSubcategoryTap(category)"
+                      >
+                         {{ isAr ? 'كل منتجات ' + category.name : 'All ' + category.name }}
+                      </NuxtLink>
+                      <NuxtLink
                         v-for="sub in category.children"
                         :key="sub.id"
                         :to="getCategoryLink(sub)"
                         class="mobile-subcategory-link"
                         @click="handleMobileSubcategoryTap(sub)"
                       >
-                        {{ sub.name }}
+                        {{ sub.name }} <span v-if="sub.count" class="cat-count">({{ sub.count }})</span>
                       </NuxtLink>
                     </div>
                   </Transition>

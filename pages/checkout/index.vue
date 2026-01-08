@@ -365,12 +365,17 @@ const subtotal = computed(() => items.value.reduce((s: number, it: any) => s + (
 const discountTotal = computed(() => items.value.reduce((s: number, it: any) => s + (Number(it?.discount || 0) * Number(it?.quantity || it?.qty || 0)), 0))
 const subtotalAfterDiscount = computed(() => Math.max(0, subtotal.value - discountTotal.value))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
-// Fixed shipping cost: 25 SAR per order (not per item)
+// Shipping cost based on order value:
+// - Less than 100 SAR: 30 SAR
+// - 100 to less than 200 SAR: 25 SAR
+// - 299 SAR and above: Free shipping
 const FREE_SHIPPING_THRESHOLD = 299
 const shipping = computed(() => {
   if (items.value.length === 0) return 0
-  if (subtotalAfterDiscount.value >= FREE_SHIPPING_THRESHOLD) return 0
-  return 25 // Fixed shipping cost
+  const orderValue = subtotalAfterDiscount.value
+  if (orderValue >= FREE_SHIPPING_THRESHOLD) return 0
+  if (orderValue >= 100 && orderValue < 200) return 25
+  return 30 // Less than 100 SAR
 })
 
 // Coupon discount
@@ -381,9 +386,19 @@ const couponDiscount = computed(() => {
   return 0
 })
 
+// Payment method fees (8% for Tamara and Tabby)
+const PAYMENT_FEE_PERCENTAGE = 0.08
+const paymentMethodFee = computed(() => {
+  if (selectedPaymentMethod.value === 'tamara' || selectedPaymentMethod.value === 'tabby') {
+    const baseTotal = subtotalAfterDiscount.value + taxExcluded.value + shipping.value - couponDiscount.value
+    return Math.round(baseTotal * PAYMENT_FEE_PERCENTAGE * 100) / 100 // Round to 2 decimal places
+  }
+  return 0
+})
+
 const grandTotal = computed(() => {
   const baseTotal = subtotalAfterDiscount.value + taxExcluded.value + shipping.value
-  return Math.max(0, baseTotal - couponDiscount.value)
+  return Math.max(0, baseTotal - couponDiscount.value + paymentMethodFee.value)
 })
 
 // Currency helper
@@ -758,6 +773,7 @@ async function placeOrder() {
       tax_amount: Number(taxExcluded.value.toFixed(2)),
       shipping_amount: Number(shipping.value.toFixed(2)),
       discount_amount: Number(couponDiscount.value.toFixed(2)),
+      payment_fee: Number(paymentMethodFee.value.toFixed(2)),
       total_amount: Number(grandTotal.value.toFixed(2))
     }
 
@@ -787,6 +803,7 @@ async function placeOrder() {
       tax_amount: totals.tax_amount,
       shipping_amount: totals.shipping_amount,
       discount_amount: totals.discount_amount,
+      payment_fee: totals.payment_fee,
       total_amount: totals.total_amount,
       customer_name: customerName,
       customer_email: customerEmail,
@@ -1353,6 +1370,10 @@ onMounted(async () => {
               <div v-if="appliedCoupon" class="total-row discount">
                 <span>{{ t('checkout.coupon_discount') || 'خصم الكوبون' }} ({{ appliedCoupon.coupon_code }})</span>
                 <span>-{{ money(couponDiscount) }}</span>
+              </div>
+              <div v-if="paymentMethodFee > 0" class="total-row payment-fee">
+                <span>{{ t('checkout.payment_fee') || 'رسوم الدفع' }} (8%)</span>
+                <span>{{ money(paymentMethodFee) }}</span>
               </div>
               <div class="total-row grand-total">
                 <span>{{ t('checkout.total') || 'الإجمالي' }}</span>

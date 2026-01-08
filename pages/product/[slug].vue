@@ -7563,9 +7563,6 @@
   /* Responsive Variants */
   @media (max-width: 768px) {
     
-    .brands-popup .cover-image-class{
-      height:65px !important;
-    }
     .variant-section{ 
       padding:16px; 
       margin-bottom:20px;

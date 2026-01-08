@@ -438,12 +438,17 @@ const subtotalAfterDiscount = computed(() => {
 })
 const taxIncluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'include' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
 const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s + (it?.tax_model === 'exclude' ? Number(it?.tax || 0) * Number(it?.quantity || it?.qty || 0) : 0), 0))
-// Fixed shipping cost: 25 SAR per order (not per item)
+// Shipping cost based on order value:
+// - Less than 100 SAR: 30 SAR
+// - 100 to less than 200 SAR: 25 SAR
+// - 299 SAR and above: Free shipping
 const FREE_SHIPPING_THRESHOLD = 299
 const shipping = computed(() => {
   if (items.value.length === 0) return 0
-  if (subtotalAfterDiscount.value >= FREE_SHIPPING_THRESHOLD) return 0
-  return 25 // Fixed shipping cost
+  const orderValue = subtotalAfterDiscount.value
+  if (orderValue >= FREE_SHIPPING_THRESHOLD) return 0
+  if (orderValue >= 100 && orderValue < 200) return 25
+  return 30 // Less than 100 SAR
 })
 // Grand total: add excluded tax & shipping only; included tax is informational
 const grandTotal = computed(() => {
@@ -772,18 +777,11 @@ function getVariationDisplayName(variation: string): string {
                       </svg>
                       {{ t('cart.color') || 'اللون' }}: {{ it?.color }}
                     </span>
-                    <span v-if="it?.variant_type" class="size-info">
+                    <span v-if="it?.variant_type && !it?.color" class="size-info">
                       <svg width="12" height="12" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
                       {{ t('cart.variation') || 'المتغير' }}: {{ it?.variant_type }}
-                    </span>
-                    <span v-if="it?.choices?.choice_2" class="variation-info">
-                      <svg width="12" height="12" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                      <span class="variation-label">{{ t('cart.variation') || 'المتغير' }}</span>
-                      <span class="variation-value">{{ getVariationDisplayName(it.choices.choice_2) }}</span>
                     </span>
                   </div>
                   

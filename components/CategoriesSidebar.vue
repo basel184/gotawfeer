@@ -71,6 +71,19 @@
         <div class="subcategories-content">
           <div class="subcategories-grid">
             <div 
+              class="subcategory-item view-all"
+              @click="goToCategory(hoveredCategory)"
+            >
+              <h5>{{ locale === 'ar' ? 'كل منتجات ' + hoveredCategory.name : 'All ' + hoveredCategory.name }}</h5>
+              <p>
+                ( {{ getProductCount(hoveredCategory) }} 
+                {{ getProductCount(hoveredCategory) <= 1 
+                  ? t('shop.products') 
+                  : t('products') 
+                }} )
+              </p>
+            </div>
+            <div 
               v-for="subcategory in hoveredCategory.childes" 
               :key="subcategory.id"
               class="subcategory-item"
@@ -505,6 +518,29 @@ onUnmounted(() => {
 }
 
 .subcategory-item:hover p {
+  color: white;
+}
+
+.subcategory-item.view-all {
+  background: #eff6ff;
+  border-color: #3B82F6;
+}
+
+.subcategory-item.view-all h5 {
+  color: #1e40af;
+}
+
+.subcategory-item.view-all p {
+  color: #1d4ed8;
+}
+
+.subcategory-item.view-all:hover {
+  background: #3B82F6;
+  border-color: #3B82F6;
+}
+
+.subcategory-item.view-all:hover h5,
+.subcategory-item.view-all:hover p {
   color: white;
 }
 
