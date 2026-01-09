@@ -368,13 +368,14 @@ const taxExcluded = computed(() => items.value.reduce((s: number, it: any) => s 
 // Shipping cost based on order value:
 // - Less than 100 SAR: 30 SAR
 // - 100 to less than 200 SAR: 25 SAR
+// - 200 to less than 299 SAR: 25 SAR
 // - 299 SAR and above: Free shipping
 const FREE_SHIPPING_THRESHOLD = 299
 const shipping = computed(() => {
   if (items.value.length === 0) return 0
   const orderValue = subtotalAfterDiscount.value
   if (orderValue >= FREE_SHIPPING_THRESHOLD) return 0
-  if (orderValue >= 100 && orderValue < 200) return 25
+  if (orderValue >= 100 && orderValue < 299) return 25
   return 30 // Less than 100 SAR
 })
 
