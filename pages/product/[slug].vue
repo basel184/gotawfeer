@@ -36,6 +36,11 @@
   const product = ref<any>(null)
   const recLoading = ref(true)
   const recommended = ref<any[]>([])
+  
+  // Load more recommended products state
+  const loadingMoreRecommended = ref(false)
+  const canLoadMoreRecommended = ref(true)
+  const recommendedOffset = ref(8)
 
   // Offer products (4 random products)
   const offerProducts = ref<any[]>([])
@@ -3959,16 +3964,61 @@
     try {
       recLoading.value = true
       const id = product.value?.id || product.value?.product_id || product.value?.product?.id
+      console.log('[Recommended] Loading for product ID:', id)
       if (id) {
         const list = await getRelated(id)
-        recommended.value = Array.isArray(list) ? list : []
+        console.log('[Recommended] API response:', list)
+        const products = Array.isArray(list) ? list : (list?.data || list?.products || [])
+        recommended.value = products
+        console.log('[Recommended] Products loaded:', products.length)
       } else {
+        console.log('[Recommended] No product ID found')
         recommended.value = []
       }
-    } catch {
+    } catch (err) {
+      console.error('[Recommended] Error loading:', err)
       recommended.value = []
     } finally {
       recLoading.value = false
+    }
+  }
+
+  // Load more recommended products
+  const loadMoreRecommended = async () => {
+    if (loadingMoreRecommended.value || !canLoadMoreRecommended.value) return
+    
+    loadingMoreRecommended.value = true
+    
+    try {
+      const id = product.value?.id || product.value?.product_id || product.value?.product?.id
+      if (id) {
+        const response = await $get(`v1/products/related-products/${id}?offset=${recommendedOffset.value}&limit=8`)
+        const newProducts = Array.isArray(response) ? response : (response?.data || response?.products || [])
+        
+        if (newProducts.length > 0) {
+          // Filter out duplicates based on product id
+          const existingIds = new Set(recommended.value.map((p: any) => p.id || p.product_id))
+          const uniqueNewProducts = newProducts.filter((p: any) => {
+            const productId = p.id || p.product_id
+            return !existingIds.has(productId)
+          })
+          
+          if (uniqueNewProducts.length > 0) {
+            recommended.value = [...recommended.value, ...uniqueNewProducts]
+          }
+          
+          recommendedOffset.value += 8
+          // Hide button if no new unique products or less than limit returned
+          canLoadMoreRecommended.value = newProducts.length >= 8 && uniqueNewProducts.length > 0
+        } else {
+          canLoadMoreRecommended.value = false
+        }
+      }
+    } catch (error) {
+      console.error('Error loading more recommended products:', error)
+      canLoadMoreRecommended.value = false
+    } finally {
+      loadingMoreRecommended.value = false
     }
   }
 
@@ -5436,7 +5486,18 @@
 
     <!-- Recommended -->
     <div class="rec">
-      <h2>{{ t('product.recommended_products') || 'منتجات موصى بها' }}</h2>
+      <div class="rec-header">
+        <h2>{{ t('product.recommended_products') || 'منتجات موصى بها' }}</h2>
+        <button 
+          v-if="canLoadMoreRecommended"
+          class="load-more-btn-header"
+          @click="loadMoreRecommended"
+          :disabled="loadingMoreRecommended"
+        >
+          <span v-if="loadingMoreRecommended" class="loading-spinner-sm"></span>
+          <span v-else>{{ t('home.load_more') || 'تحميل المزيد' }}</span>
+        </button>
+      </div>
       
       <!-- Recommended Loading State -->
       <div v-if="recLoading" class="recommended-loading">
@@ -5457,7 +5518,7 @@
         </div>
       </div>
       
-      <div v-else class="recommended-swiper">
+      <div v-else-if="recommended && recommended.length > 0" class="recommended-swiper">
         <Swiper
           :modules="[Navigation]"
           :navigation="true"
@@ -5475,6 +5536,9 @@
             <ProductCard :product="p" />
           </SwiperSlide>
         </Swiper>
+      </div>
+      <div v-else class="no-recommended">
+        <p>{{ t('product.no_recommended') || 'لا توجد منتجات موصى بها' }}</p>
       </div>
     </div>
 
@@ -7626,7 +7690,47 @@
 
   /* Recommended */
   .rec{ margin-top:40px; padding-top:20px; border-top:1px solid #e5e7eb }
-  .rec h2{ font-size:20px; font-weight:700; color:#111827; margin-bottom:16px }
+  .rec-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px }
+  .rec h2{ font-size:20px; font-weight:700; color:#111827; margin-bottom:0 }
+  
+  /* Load More Button in Header */
+  .load-more-btn-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #F58040, #e06830);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
+    white-space: nowrap;
+  }
+  .load-more-btn-header:hover:not(:disabled) {
+    background: linear-gradient(135deg, #e06830, #d05820);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 128, 64, 0.4);
+  }
+  .load-more-btn-header:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  .loading-spinner-sm {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
   .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px }
 
   /* Login Modal */

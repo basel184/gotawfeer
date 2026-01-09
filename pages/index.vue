@@ -810,6 +810,57 @@ const handleProductDetails = () => {
 const homeSections = ref<any[]>([])
 const sectionsPending = ref(true)
 
+// Load more state for each section
+const sectionLoadingMore = ref<Map<number, boolean>>(new Map())
+const sectionHasMore = ref<Map<number, boolean>>(new Map())
+const sectionOffsets = ref<Map<number, number>>(new Map())
+
+// Load more products for a section
+const loadMoreProducts = async (sectionId: number, sectionIndex: number) => {
+  if (sectionLoadingMore.value.get(sectionId)) return
+  
+  sectionLoadingMore.value.set(sectionId, true)
+  
+  try {
+    const currentOffset = sectionOffsets.value.get(sectionId) || 8
+    const response = await $get(`v1/home-sections/load-more/${sectionId}?offset=${currentOffset}&limit=8&locale=sa`)
+    
+    const newProducts = Array.isArray(response) ? response : (response?.data || response?.products || [])
+    
+    if (newProducts.length > 0) {
+      // Add new products to the section
+      const section = homeSections.value[sectionIndex]
+      if (section && section.products) {
+        section.products = [...section.products, ...newProducts]
+      }
+      
+      // Update offset for next load
+      sectionOffsets.value.set(sectionId, currentOffset + 8)
+      
+      // Check if there are more products
+      sectionHasMore.value.set(sectionId, newProducts.length >= 8)
+    } else {
+      // No more products
+      sectionHasMore.value.set(sectionId, false)
+    }
+  } catch (error) {
+    console.error('Error loading more products:', error)
+    sectionHasMore.value.set(sectionId, false)
+  } finally {
+    sectionLoadingMore.value.set(sectionId, false)
+  }
+}
+
+// Check if section has more products to load
+const canLoadMore = (sectionId: number): boolean => {
+  return sectionHasMore.value.get(sectionId) !== false
+}
+
+// Check if section is currently loading more
+const isLoadingMore = (sectionId: number): boolean => {
+  return sectionLoadingMore.value.get(sectionId) === true
+}
+
 
 
 // Normalize helpers to handle {data: []} or [] or other keyed arrays
@@ -909,6 +960,73 @@ const onImgErr = (e: any) => {
 </script>
 
 <style scoped>
+/* Section Header Actions */
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Load More Button in Header */
+.load-more-btn-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #F58040, #e06830);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(245, 128, 64, 0.3);
+  white-space: nowrap;
+}
+
+.load-more-btn-header:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e06830, #d05820);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 128, 64, 0.4);
+}
+
+.load-more-btn-header:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.load-more-btn-header:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .section-header-actions {
+    gap: 8px;
+  }
+  
+  .load-more-btn-header {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+}
+
 .special-products-layout {
   display: flex;
   gap: 0;
@@ -1085,10 +1203,21 @@ const onImgErr = (e: any) => {
             <!-- Section Header for Products with View All link -->
             <div class="section-header" v-if="s?.type === 'products' && (s?.feed_type === 'category' ? s?.feed_category_id : s?.slug) && s?.show_title !== false">
               <h2 class="section-title">{{ s?.title }}</h2>
-              <NuxtLink
-                :to="s?.feed_type === 'category' ? `/shop?category=${s?.feed_category_id}` : `/collection/${s?.slug}`"
-                class="view-all"
-            >{{ t('home.view_all') }}</NuxtLink>
+              <div class="section-header-actions">
+                <button 
+                  v-if="s?.id && canLoadMore(s.id)"
+                  class="load-more-btn-header"
+                  @click="loadMoreProducts(s.id, idx)"
+                  :disabled="isLoadingMore(s.id)"
+                >
+                  <span v-if="isLoadingMore(s.id)" class="loading-spinner-sm"></span>
+                  <span v-else>{{ t('home.load_more') || 'تحميل المزيد' }}</span>
+                </button>
+                <NuxtLink
+                  :to="s?.feed_type === 'category' ? `/shop?category=${s?.feed_category_id}` : `/collection/${s?.slug}`"
+                  class="view-all"
+                >{{ t('home.view_all') || 'عرض الكل' }}</NuxtLink>
+              </div>
             </div>
             <!-- Section Header for other types (testimonials, features, etc.) -->
             <div class="section-header2" v-else-if="s?.show_title !== false">
