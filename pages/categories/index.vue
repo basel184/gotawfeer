@@ -158,7 +158,7 @@ const groupedCategories = computed(() => {
 
   const isEnglish = locale.value === 'en'
   const bannerBasePath = isEnglish
-    ? '/images/banners-categories/en'
+    ? 'https://admin.gotawfeer.com/banners-categories'
     : 'https://admin.gotawfeer.com/banners-categories'
   const bannerFiles = isEnglish
     ? [
