@@ -217,23 +217,17 @@ const initializeSlider = () => {
 // Debounce timer for slider updates
 let sliderDebounceTimer: any
 
-// Computed values for actual min/max (handles RTL correctly)
-const actualMin = computed(() => Math.min(priceSliderMin.value, priceSliderMax.value))
-const actualMax = computed(() => Math.max(priceSliderMin.value, priceSliderMax.value))
+// Computed values for slider active bar style
 const isRTL = computed(() => locale.value === 'ar')
 const sliderActiveStyle = computed(() => {
   const range = priceRangeMax.value - priceRangeMin.value
   if (range <= 0) return {}
 
-  const startPercent = ((actualMin.value - priceRangeMin.value) / range) * 100
-  const widthPercent = ((actualMax.value - actualMin.value) / range) * 100
-
-  if (isRTL.value) {
-    return {
-      right: `${startPercent}%`,
-      width: `${widthPercent}%`
-    }
-  }
+  const minVal = Math.min(priceSliderMin.value, priceSliderMax.value)
+  const maxVal = Math.max(priceSliderMin.value, priceSliderMax.value)
+  
+  const startPercent = ((minVal - priceRangeMin.value) / range) * 100
+  const widthPercent = ((maxVal - minVal) / range) * 100
 
   return {
     left: `${startPercent}%`,
@@ -244,42 +238,77 @@ const sliderActiveStyle = computed(() => {
 // Handle min slider input
 const handleMinSliderInput = (e: Event) => {
   const value = Number((e.target as HTMLInputElement).value)
-  priceSliderMin.value = value
-  updatePriceFromSlider()
+  // Ensure min doesn't exceed max
+  if (value <= priceSliderMax.value) {
+    priceSliderMin.value = value
+  } else {
+    priceSliderMin.value = priceSliderMax.value
+  }
+  debouncedUpdatePrice()
 }
 
 // Handle max slider input
 const handleMaxSliderInput = (e: Event) => {
   const value = Number((e.target as HTMLInputElement).value)
-  priceSliderMax.value = value
-  updatePriceFromSlider()
+  // Ensure max doesn't go below min
+  if (value >= priceSliderMin.value) {
+    priceSliderMax.value = value
+  } else {
+    priceSliderMax.value = priceSliderMin.value
+  }
+  debouncedUpdatePrice()
+}
+
+// Debounced price update to avoid too many API calls
+const debouncedUpdatePrice = () => {
+  clearTimeout(sliderDebounceTimer)
+  sliderDebounceTimer = setTimeout(() => {
+    applyPriceFilter()
+  }, 300)
+}
+
+// Apply price filter and reload products
+const applyPriceFilter = () => {
+  const minVal = priceSliderMin.value
+  const maxVal = priceSliderMax.value
+  
+  // Set price_min only if > 0
+  price_min.value = minVal > priceRangeMin.value ? minVal : null
+  // Set price_max only if < max range
+  price_max.value = maxVal < priceRangeMax.value ? maxVal : null
+  
+  // Reset and reload products
+  page.value = 1
+  products.value = []
+  done.value = false
+  loadPage()
 }
 
 // Handle manual min price input
 const handleMinPriceInput = (e: Event) => {
   let value = Number((e.target as HTMLInputElement).value)
-  if (!isNaN(value)) {
+  if (!isNaN(value) && value >= 0) {
     // Clamp value within valid range
-    value = Math.max(priceRangeMin.value, Math.min(value, priceRangeMax.value))
+    value = Math.max(priceRangeMin.value, Math.min(value, priceSliderMax.value))
     priceSliderMin.value = value
-    updatePriceFromSlider()
+    debouncedUpdatePrice()
   } else {
     // Reset to current valid value if invalid input
-    (e.target as HTMLInputElement).value = String(actualMin.value)
+    (e.target as HTMLInputElement).value = String(priceSliderMin.value)
   }
 }
 
 // Handle manual max price input
 const handleMaxPriceInput = (e: Event) => {
   let value = Number((e.target as HTMLInputElement).value)
-  if (!isNaN(value)) {
+  if (!isNaN(value) && value >= 0) {
     // Clamp value within valid range
-    value = Math.max(priceRangeMin.value, Math.min(value, priceRangeMax.value))
+    value = Math.max(priceSliderMin.value, Math.min(value, priceRangeMax.value))
     priceSliderMax.value = value
-    updatePriceFromSlider()
+    debouncedUpdatePrice()
   } else {
     // Reset to current valid value if invalid input
-    (e.target as HTMLInputElement).value = String(actualMax.value)
+    (e.target as HTMLInputElement).value = String(priceSliderMax.value)
   }
 }
 
@@ -377,67 +406,6 @@ const updatePriceRangeFromData = (res: any, products: any[]) => {
   }
 
   initializeSlider()
-}
-
-// Update price_min and price_max from slider
-const updatePriceFromSlider = () => {
-  // Get current slider values
-  const currentMin = priceSliderMin.value
-  const currentMax = priceSliderMax.value
-  
-  // Ensure correct min/max order
-  const actualMin = Math.min(currentMin, currentMax)
-  const actualMax = Math.max(currentMin, currentMax)
-  
-  // Update slider values to ensure correct order
-  if (currentMin !== actualMin || currentMax !== actualMax) {
-    priceSliderMin.value = actualMin
-    priceSliderMax.value = actualMax
-  }
-  
-  // Ensure min doesn't exceed max (with minimum gap)
-  const finalMin = Math.min(priceSliderMin.value, priceSliderMax.value)
-  const finalMax = Math.max(priceSliderMin.value, priceSliderMax.value)
-  
-  if (finalMin >= finalMax) {
-    if (finalMin === priceRangeMin.value) {
-      priceSliderMax.value = Math.min(finalMin + priceRangeStep.value, priceRangeMax.value)
-    } else {
-      priceSliderMin.value = Math.max(finalMax - priceRangeStep.value, priceRangeMin.value)
-    }
-    // Recalculate after adjustment
-    const adjustedMin = Math.min(priceSliderMin.value, priceSliderMax.value)
-    const adjustedMax = Math.max(priceSliderMin.value, priceSliderMax.value)
-    
-    price_min.value = adjustedMin > priceRangeMin.value ? adjustedMin : null
-    price_max.value = adjustedMax < priceRangeMax.value ? adjustedMax : null
-    return
-  }
-  
-  // Update price_min and price_max
-  // Set values if they differ from default range
-  // For min: only set if > 0 (not at minimum)
-  // For max: only set if < max range (not at maximum) and > min (if min exists)
-  const newMin = finalMin > priceRangeMin.value ? finalMin : null
-  // For max: must be < max range, and if min exists, must be > min
-  let newMax: number | null = null
-  if (finalMax < priceRangeMax.value) {
-    if (newMin != null) {
-      // If min exists, max must be > min
-      if (finalMax > finalMin) {
-        newMax = finalMax
-      }
-    } else {
-      // If no min, max can be any value < max range
-      newMax = finalMax > priceRangeMin.value ? finalMax : null
-    }
-  }
-  
-  // Only update if values actually changed
-  if (price_min.value !== newMin || price_max.value !== newMax) {
-    price_min.value = newMin
-    price_max.value = newMax
-  }
 }
 
 // Watch price_min and price_max to sync with slider
@@ -1848,25 +1816,29 @@ const handleProductDetails = () => {
             </svg>
             {{ t('shop.price') }}
           </div>
-          <div class="price-range-slider-container" :class="{ 'is-rtl': isRTL }">
-            <div class="price-range-display" :class="{ 'is-rtl': isRTL }">
+          <div class="price-range-slider-container">
+            <div class="price-range-display">
               <input 
                 type="number" 
                 class="price-input" 
-                :value="actualMin"
+                v-model.number="priceSliderMin"
                 @change="handleMinPriceInput"
-                :dir="isRTL ? 'rtl' : 'ltr'"
+                :min="priceRangeMin"
+                :max="priceRangeMax"
+                dir="ltr"
               />
               <span class="price-separator">-</span>
               <input 
                 type="number" 
                 class="price-input" 
-                :value="actualMax"
+                v-model.number="priceSliderMax"
                 @change="handleMaxPriceInput"
-                :dir="isRTL ? 'rtl' : 'ltr'"
+                :min="priceRangeMin"
+                :max="priceRangeMax"
+                dir="ltr"
               />
             </div>
-            <div class="price-range-slider-wrapper" :class="{ 'is-rtl': isRTL }">
+            <div class="price-range-slider-wrapper">
               <div class="price-range-track">
                 <div 
                   class="price-range-active" 
@@ -1879,9 +1851,9 @@ const handleProductDetails = () => {
                 :min="priceRangeMin"
                 :max="priceRangeMax"
                 :step="priceRangeStep"
-                :value="actualMin"
+                v-model.number="priceSliderMin"
                 @input="handleMinSliderInput"
-                :dir="isRTL ? 'rtl' : 'ltr'"
+                dir="ltr"
               />
               <input 
                 type="range" 
@@ -1889,12 +1861,12 @@ const handleProductDetails = () => {
                 :min="priceRangeMin"
                 :max="priceRangeMax"
                 :step="priceRangeStep"
-                :value="actualMax"
+                v-model.number="priceSliderMax"
                 @input="handleMaxSliderInput"
-                :dir="isRTL ? 'rtl' : 'ltr'"
+                dir="ltr"
               />
             </div>
-            <div class="price-range-labels" :class="{ 'is-rtl': isRTL }">
+            <div class="price-range-labels">
               <span class="price-label-min">{{ formatPrice(priceRangeMin) }}</span>
               <span class="price-label-max">{{ formatPrice(priceRangeMax) }}</span>
             </div>
@@ -2685,10 +2657,6 @@ const handleProductDetails = () => {
   padding: 0 10px;
 }
 
-.price-range-slider-wrapper.is-rtl {
-  direction: rtl;
-}
-
 .price-range-track {
   position: absolute;
   top: 50%;
@@ -2707,29 +2675,7 @@ const handleProductDetails = () => {
   height: 100%;
   background: #F58040;
   border-radius: 3px;
-  transition: all 0.2s ease;
-  z-index: 2;
-}
-
-.price-range-track {
-  position: absolute;
-  top: 50%;
-  left: 10px;
-  right: 10px;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
-  transform: translateY(-50%);
-  z-index: 1;
-}
-
-.price-range-active {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  background: #F58040;
-  border-radius: 3px;
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
   z-index: 2;
 }
 
@@ -2745,11 +2691,11 @@ const handleProductDetails = () => {
   pointer-events: none;
   z-index: 3;
   margin: 0;
+  direction: ltr !important;
 }
 
 .price-range-slider-wrapper.is-rtl .price-range-slider {
-  left: auto;
-  right: 10px;
+  direction: ltr !important;
 }
 
 .price-range-slider::-webkit-slider-thumb {

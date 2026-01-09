@@ -1373,7 +1373,7 @@ onMounted(async () => {
                 <span>-{{ money(couponDiscount) }}</span>
               </div>
               <div v-if="paymentMethodFee > 0" class="total-row payment-fee">
-                <span>{{ t('checkout.payment_fee') || 'رسوم الدفع' }} (8%)</span>
+                <span>{{ t('checkout.payment_fee') || 'رسوم شركة التقسيط' }} (8%)</span>
                 <span>{{ money(paymentMethodFee) }}</span>
               </div>
               <div class="total-row grand-total">

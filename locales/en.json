@@ -303,6 +303,7 @@
   "checkout.shipping": "Shipping",
   "checkout.coupon_discount": "Coupon Discount",
   "checkout.total": "Total",
+  "checkout.payment_fee": "Installment Company Fee",
   "checkout.place_order": "Place Order",
   "checkout.placing_order": "Placing Order...",
   "checkout.back_to_cart": "Back to Cart",
