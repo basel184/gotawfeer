@@ -1,11 +1,26 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
+import { useSeo } from '~/composables/useSeo'
+
 const { t, locale, te } = useI18n()
 const cart = useCart()
 const auth = useAuth()
 const { $get, $post } = useApi()
+
+const {
+  gateways: paymentGateways,
+  loading: paymentGatewaysLoading,
+  error: paymentGatewaysError,
+  loadGateways
+} = usePaymentGateways()
+
+try {
+  await loadGateways()
+} catch (error) {
+  console.error('Failed to load payment gateways config:', error)
+}
 
 // SEO Configuration
 const seo = useSeo()
@@ -89,6 +104,16 @@ const otpCountdown = ref(0)
 let otpTimer: any = null
 const loginSuccess = ref(false)
 
+const gatewayAvailability = computed(() => {
+  const gateways = paymentGateways.value || {}
+  return {
+    tabby: Boolean(gateways.tabby),
+    tamara: Boolean(gateways.tamara),
+    paymob_visa: Boolean(gateways.paymob_visa),
+    paymob_apple_pay: Boolean(gateways.apple_pay ?? gateways.paymob_apple_pay)
+  }
+})
+
 const paymentMethods = computed(() => {
   const translations = {
     ar: {
@@ -107,16 +132,28 @@ const paymentMethods = computed(() => {
   
   const currentLocale = locale.value || 'ar'
   const localeTranslations = translations[currentLocale as keyof typeof translations] || translations.ar
+  const availability = gatewayAvailability.value
   
   const methods = [
-    { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: true },
-    { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: true },
-    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: true, integration_id: 9985 },
-    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: true, integration_id: 9984 }
+    { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: availability.tabby },
+    { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: availability.tamara },
+    { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: availability.paymob_visa, integration_id: 9985 },
+    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: availability.paymob_apple_pay, integration_id: 9984 }
   ]
   
   return methods
 })
+
+watch(
+  gatewayAvailability,
+  (availability) => {
+    const current = selectedPaymentMethod.value
+    if (current && availability && availability[current as keyof typeof availability] === false) {
+      selectedPaymentMethod.value = ''
+    }
+  },
+  { immediate: true }
+)
 // Addresses
 const addresses = ref<any[]>([])
 
@@ -722,9 +759,11 @@ function removeCoupon() {
 
 // Select payment method
 function selectPaymentMethod(methodId: string) {
-  console.log('Payment method clicked:', methodId)
+  const method = paymentMethods.value.find(m => m.id === methodId)
+  if (!method || !method.available) {
+    return
+  }
   selectedPaymentMethod.value = methodId
-  console.log('Selected payment method set to:', selectedPaymentMethod.value)
 }
 
 // Place order
