@@ -5,15 +5,17 @@
       <section class="section card">
         <div class="section-header p-3">
           <h1>{{ t('compare.title') || 'مقارنة المنتجات' }}</h1>
-          <div class="compare-summary" v-if="!compare.isEmpty.value">
-            <span class="items-count">{{ compare.compareCount.value }} {{ t('compare.items_count') || 'منتج للمقارنة' }}</span>
-          </div>
+          <ClientOnly>
+            <div class="compare-summary" v-if="!compare.isEmpty.value">
+              <span class="items-count">{{ compare.compareCount.value }} {{ t('compare.items_count') || 'منتج للمقارنة' }}</span>
+            </div>
+          </ClientOnly>
         </div>
       </section>
 
-      
-      <!-- Empty State -->
-      <section v-if="compare.isEmpty.value" class="section card text-center py-5">
+      <ClientOnly>
+        <!-- Empty State -->
+        <section v-if="compare.isEmpty.value" class="section card text-center py-5">
         <div class="empty-state">
           <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-4">
             <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -33,22 +35,73 @@
             <thead>
               <tr>
                 <th class="feature-column">{{ t('compare.feature') || 'الميزة' }}</th>
-                <th v-for="item in compare.items.value" :key="item.id" class="product-column">
+                <th v-for="item in compare.items.value" :key="item.uniqueKey || item.id" class="product-column">
                   <div class="product-header">
-                    <button @click="removeProduct(item.id)" class="btn btn-sm btn-outline-danger remove-btn">
+                    <button @click="removeProduct(item.uniqueKey || item.id)" class="btn btn-sm btn-outline-danger remove-btn">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
                     </button>
-                    <div class="product-image" v-if="item.image">
-                      <img 
-                        :src="getImageUrl(item.image)" 
-                        :alt="item.name" 
-                        style="width: 100%; height: 100%; object-fit: contain;"
-                        @error="(e: any) => { e.target.src = '/images/placeholder.png' }"
-                      />
+                    
+                    <!-- Product Image with Color Navigation -->
+                    <div class="product-image-container">
+                      <div class="product-image" v-if="item.image || (item.colors && item.colors.length > 0)">
+                        <img 
+                          :src="getProductImage(item)" 
+                          :alt="item.name" 
+                          style="width: 100%; height: 100%; object-fit: contain;"
+                          @error="handleImageError"
+                        />
+                      </div>
+                      
+                      <!-- Color Navigation Arrows -->
+                      <div v-if="item.colors && item.colors.length > 1" class="color-nav-arrows">
+                        <button class="color-nav-btn prev" @click="prevColor(item)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                          </svg>
+                        </button>
+                        <button class="color-nav-btn next" @click="nextColor(item)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <h5 class="product-name">{{ item.name }}</h5>
+                    
+                    <!-- Current Color Info -->
+                    <div v-if="item.colors && item.colors.length > 0" class="current-color-info">
+                      <span 
+                        class="current-color-swatch" 
+                        :style="{ backgroundColor: '#' + (getCurrentColor(item)?.hex || getCurrentColor(item)?.code || 'ccc') }"
+                      ></span>
+                      <span class="current-color-name">{{ getCurrentColor(item)?.name || 'اللون' }}</span>
+                      <span class="color-counter">({{ getSelectedColorIndex(item.uniqueKey || item.id) + 1 }}/{{ item.colors.length }})</span>
+                    </div>
+                    
+                    <!-- Color Thumbnails -->
+                    <div v-if="item.colors && item.colors.length > 1" class="color-thumbnails">
+                      <button 
+                        v-for="(color, index) in item.colors" 
+                        :key="`thumb-${item.id}-${index}`"
+                        class="color-thumb"
+                        :class="{ active: getSelectedColorIndex(item.uniqueKey || item.id) === index }"
+                        :style="{ backgroundColor: '#' + (color.hex || color.code || 'ccc') }"
+                        :title="color.name || color.code"
+                        @click="setSelectedColorIndex(item.uniqueKey || item.id, index)"
+                      ></button>
+                    </div>
+                    
+                    <h5 class="product-name">{{ item.originalName || item.name }}</h5>
+                    <!-- Show selected color badge -->
+                    <div v-if="item.selectedColor" class="selected-variant-badge color-badge">
+                      <span class="color-dot" :style="{ backgroundColor: getColorHex(item.selectedColor, item.colors) }"></span>
+                      {{ item.selectedColor }}
+                    </div>
+                    <!-- Show selected variation badge -->
+                    <div v-if="item.selectedVariation" class="selected-variant-badge variation-badge">
+                      {{ item.selectedVariation }}
+                    </div>
                     <div class="product-price">{{ money(item.price) }}</div>
                     <div class="product-rating" v-if="item.rating > 0">
                       <div class="stars">
@@ -145,15 +198,98 @@
           </table>
         </div>
       </section>
+      </ClientOnly>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useSeo } from '~/composables/useSeo'
 
 const { t, locale } = useI18n()
+
+// Track if component is mounted (client-side only)
+const isMounted = ref(false)
+
+// Track selected color index for each product in compare
+const selectedColorIndex = reactive<Record<string, number>>({})
+
+// Get selected color index for an item
+const getSelectedColorIndex = (itemKey: string): number => {
+  return selectedColorIndex[itemKey] || 0
+}
+
+// Set selected color index for an item
+const setSelectedColorIndex = (itemKey: string, index: number) => {
+  selectedColorIndex[itemKey] = index
+}
+
+// Navigate to next color for an item
+const nextColor = (item: any) => {
+  const key = item.uniqueKey || item.id
+  const colors = item.colors || []
+  if (colors.length === 0) return
+  const currentIndex = getSelectedColorIndex(key)
+  setSelectedColorIndex(key, (currentIndex + 1) % colors.length)
+}
+
+// Navigate to previous color for an item
+const prevColor = (item: any) => {
+  const key = item.uniqueKey || item.id
+  const colors = item.colors || []
+  if (colors.length === 0) return
+  const currentIndex = getSelectedColorIndex(key)
+  setSelectedColorIndex(key, currentIndex === 0 ? colors.length - 1 : currentIndex - 1)
+}
+
+// Get current selected color for an item
+const getCurrentColor = (item: any) => {
+  const colors = item.colors || []
+  if (colors.length === 0) return null
+  const key = item.uniqueKey || item.id
+  const index = getSelectedColorIndex(key)
+  return colors[index] || colors[0]
+}
+
+// Get image for a specific color
+const getColorImage = (item: any, color: any): string => {
+  if (!color) return item.image || ''
+  
+  // Try to find color-specific image from color object
+  if (color.image) {
+    // If it's already a full URL, return as is
+    if (/^(https?:|data:|blob:)/i.test(color.image)) {
+      return color.image
+    }
+    // Build full URL
+    const assetBase = 'https://admin.gotawfeer.com'
+    return `${assetBase}/storage/app/public/product/${color.image}`
+  }
+  
+  // Fallback to main product image
+  return item.image || ''
+}
+
+// Get product image with color support
+const getProductImage = (item: any): string => {
+  const currentColor = getCurrentColor(item)
+  const colorImage = getColorImage(item, currentColor)
+  
+  if (colorImage) {
+    return getImageUrl(colorImage)
+  }
+  
+  return getImageUrl(item.image) || '/images/category-placeholder.png'
+}
+
+// Handle image error - use placeholder
+const handleImageError = (e: any) => {
+  if (e.target && e.target.src !== '/images/category-placeholder.png') {
+    e.target.src = '/images/category-placeholder.png'
+  }
+}
 
 // SEO Configuration
 const seo = useSeo()
@@ -178,6 +314,7 @@ const compare = useCompare()
 // Initialize compare on mount
 onMounted(() => {
   compare.init()
+  isMounted.value = true
 })
 
 // Check if any product has features
@@ -286,8 +423,18 @@ const getImageUrl = (imagePath: any): string => {
 
 
 // Remove product from comparison
-const removeProduct = (productId: number) => {
-  compare.remove(productId)
+const removeProduct = (productIdOrKey: number | string) => {
+  compare.remove(productIdOrKey)
+}
+
+// Get color hex from color name
+const getColorHex = (colorName: string, colors: any[]): string => {
+  if (!colors || !Array.isArray(colors)) return '#ccc'
+  const color = colors.find((c: any) => c.name === colorName || c.code === colorName)
+  if (color) {
+    return color.hex || color.code || '#ccc'
+  }
+  return '#ccc'
 }
 
 // Clear all products
@@ -371,19 +518,122 @@ const clearOldData = () => {
 }
 
 
+/* Product Image Container with Color Navigation */
+.product-image-container {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
 .product-image {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 1rem;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
   border-radius: 0.5rem;
   overflow: hidden;
   background: #f8f9fa;
+  border: 2px solid #e5e7eb;
 }
 
 .product-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+/* Color Navigation Arrows */
+.color-nav-arrows {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  pointer-events: none;
+}
+
+.color-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+  color: #374151;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-nav-btn:hover {
+  background: #F58040;
+  color: white;
+  border-color: #F58040;
+}
+
+/* Current Color Info */
+.current-color-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.current-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.current-color-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.color-counter {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+/* Color Thumbnails */
+.color-thumbnails {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.color-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.color-thumb:hover {
+  transform: scale(1.15);
+  border-color: #F58040;
+}
+
+.color-thumb.active {
+  border-color: #F58040;
+  border-width: 3px;
+  box-shadow: 0 0 0 2px rgba(245, 128, 64, 0.2);
 }
 
 .product-name {
@@ -391,6 +641,34 @@ const clearOldData = () => {
   font-weight: 600;
   margin-bottom: 0.5rem;
   line-height: 1.3;
+}
+
+.selected-variant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.color-badge {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+}
+
+.variation-badge {
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 .product-price {

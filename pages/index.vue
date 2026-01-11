@@ -1302,8 +1302,8 @@ const onImgErr = (e: any) => {
               <BrandCarousel :brands="s.brands" />
             </template>
             <template v-else-if="s?.type === 'banners' && Array.isArray(s?.banners) && s.banners.length">
-              <div v-if="s?.banner_layout === 'slider'">
-                <BannerCarousel :banners="s.banners" />
+              <div v-if="['slider', 'carousel'].includes(s?.banner_layout || '')">
+                <BannerCarousel :banners="s.banners" :layout="(s?.banner_layout as 'slider' | 'carousel') || 'slider'" />
               </div>
               <div v-else>
                 <PromoBannerRow :banners="s.banners" :columns="s?.banner_layout === 'grid_1' ? 1 : (s?.banner_layout === 'grid_2' ? 2 : (s?.banner_layout === 'grid_3' ? 3 : undefined))" />

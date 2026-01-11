@@ -67,17 +67,82 @@ export function useCompare() {
     loadFromStorage()
   }
 
-  // Add product to comparison
-  const add = (product: any) => {
+  // Fetch product details from API by slug
+  const fetchProductBySlug = async (slug: string): Promise<any> => {
+    try {
+      // Always use the admin API base URL for fetching product data
+      const apiBase = 'https://admin.gotawfeer.com/api'
+      
+      const response = await fetch(`${apiBase}/v2/products/${slug}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch product: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      return data.data || data
+    } catch (e: any) {
+      console.error('Error fetching product by slug:', e)
+      return null
+    }
+  }
+
+  // Add product to comparison using slug (fetches full data from API)
+  const addBySlug = async (slug: string, selectedColor?: string, selectedVariation?: string, colorImage?: string): Promise<boolean> => {
+    if (!slug) {
+      error.value = 'Invalid product slug'
+      return false
+    }
+
+    // Check maximum limit first
+    if (items.value.length >= MAX_COMPARE_ITEMS) {
+      error.value = `Maximum ${MAX_COMPARE_ITEMS} items can be compared`
+      return false
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      // Fetch full product data from API
+      const productData = await fetchProductBySlug(slug)
+      
+      if (!productData) {
+        error.value = 'Failed to fetch product data'
+        loading.value = false
+        return false
+      }
+
+      // Use the add function with fetched data
+      const result = add(productData, selectedColor, selectedVariation, colorImage)
+      return result
+    } catch (e: any) {
+      error.value = e?.message || 'Failed to add product to comparison'
+      loading.value = false
+      return false
+    }
+  }
+
+  // Add product to comparison (with optional color and variation)
+  const add = (product: any, selectedColor?: string, selectedVariation?: string, colorImage?: string) => {
     if (!product || !product.id) {
       error.value = 'Invalid product'
       return false
     }
 
-    // Check if already exists
-    const exists = items.value.find(item => item.id === product.id)
+    // Create unique key based on product id + color + variation
+    const uniqueKey = `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
+    
+    // Check if this exact combination already exists
+    const exists = items.value.find(item => item.uniqueKey === uniqueKey)
     if (exists) {
-      error.value = 'Product already in comparison'
+      error.value = 'Product with this color/variation already in comparison'
       return false
     }
 
@@ -174,9 +239,8 @@ export function useCompare() {
           return raw
         }
         
-        // Get base URL from runtime config
-        const cfg = useRuntimeConfig()
-        const assetBase = (cfg?.public?.apiBase || 'https://admin.gotawfeer.com/api').replace(/\/api(?:\/v\d+)?$/, '')
+        // Use fixed base URL
+        const assetBase = 'https://admin.gotawfeer.com'
         
         // Normalize path
         let path = String(raw).trim().replace(/\\/g, '/')
@@ -195,6 +259,36 @@ export function useCompare() {
         return `${assetBase}/${path}`
       }
 
+      // Helper function to get color image from color_images_full_url
+      const getColorImageFromProduct = (product: any, colorCode: string): string | null => {
+        const colorImages = product?.color_images_full_url || product?.product?.color_images_full_url || []
+        if (!Array.isArray(colorImages) || colorImages.length === 0) return null
+        
+        // Normalize color code for comparison
+        const normalizeCode = (code: string) => String(code || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const normalizedColorCode = normalizeCode(colorCode)
+        
+        // Find matching color image
+        const colorImage = colorImages.find((img: any) => {
+          const imgColor = normalizeCode(img.color || img.code || '')
+          return imgColor === normalizedColorCode
+        })
+        
+        if (colorImage) {
+          const imagePath = colorImage.image_name || colorImage.image || colorImage.path
+          if (imagePath) {
+            // If already a full URL, return as is
+            if (/^(https?:|data:|blob:)/i.test(imagePath)) {
+              return imagePath
+            }
+            // Build full URL with fixed base
+            const assetBase = 'https://admin.gotawfeer.com'
+            return `${assetBase}/storage/app/public/product/${imagePath}`
+          }
+        }
+        return null
+      }
+
       // Helper function to extract colors from product
       const extractColors = (product: any): any[] => {
         // Try colors_formatted first
@@ -202,7 +296,8 @@ export function useCompare() {
           return product.colors_formatted.map((color: any) => ({
             name: color.name || color.code || 'Color',
             code: color.code || color.name || '',
-            hex: color.hex || color.code || ''
+            hex: color.hex || color.code || '',
+            image: getColorImageFromProduct(product, color.code || color.name || '')
           }))
         }
         
@@ -211,7 +306,8 @@ export function useCompare() {
           return product.product.colors_formatted.map((color: any) => ({
             name: color.name || color.code || 'Color',
             code: color.code || color.name || '',
-            hex: color.hex || color.code || ''
+            hex: color.hex || color.code || '',
+            image: getColorImageFromProduct(product, color.code || color.name || '')
           }))
         }
         
@@ -222,13 +318,15 @@ export function useCompare() {
               return {
                 name: `Color ${index + 1}`,
                 code: color,
-                hex: color
+                hex: color,
+                image: getColorImageFromProduct(product, color)
               }
             }
             return {
               name: color.name || color.code || `Color ${index + 1}`,
               code: color.code || color.name || color,
-              hex: color.hex || color.code || color
+              hex: color.hex || color.code || color,
+              image: getColorImageFromProduct(product, color.code || color.name || '')
             }
           })
         }
@@ -240,13 +338,15 @@ export function useCompare() {
               return {
                 name: `Color ${index + 1}`,
                 code: color,
-                hex: color
+                hex: color,
+                image: getColorImageFromProduct(product, color)
               }
             }
             return {
               name: color.name || color.code || `Color ${index + 1}`,
               code: color.code || color.name || color,
-              hex: color.hex || color.code || color
+              hex: color.hex || color.code || color,
+              image: getColorImageFromProduct(product, color.code || color.name || '')
             }
           })
         }
@@ -280,11 +380,25 @@ export function useCompare() {
       }
 
       // Add product with essential data including full image URL
+      // Use color-specific image if provided, otherwise use default product image
+      const productImage = colorImage || getProductImageUrl(product)
+      
+      // Build display name with color/variation info
+      let displayName = product.name
+      if (selectedColor || selectedVariation) {
+        const parts = []
+        if (selectedColor) parts.push(selectedColor)
+        if (selectedVariation) parts.push(selectedVariation)
+        displayName = `${product.name} (${parts.join(' - ')})`
+      }
+      
       const compareItem = {
         id: product.id,
-        name: product.name,
+        uniqueKey: `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`,
+        name: displayName,
+        originalName: product.name,
         price: product.price || product.unit_price || product.selling_price || 0,
-        image: getProductImageUrl(product),
+        image: productImage,
         slug: product.slug,
         brand: product.brand?.name || product.brand_name || '',
         category: product.category?.name || product.category_name || '',
@@ -294,6 +408,8 @@ export function useCompare() {
         meta_description: product.meta_description || product.product?.meta_description || product.seo_description || '',
         colors: extractColors(product),
         variation: extractVariation(product),
+        selectedColor: selectedColor || null,
+        selectedVariation: selectedVariation || null,
         features: product.features || [],
         specifications: product.specifications || {},
         added_at: new Date().toISOString()
@@ -310,13 +426,22 @@ export function useCompare() {
     }
   }
 
-  // Remove product from comparison
-  const remove = (productId: number) => {
+  // Remove product from comparison (by uniqueKey or productId)
+  const remove = (productIdOrKey: number | string) => {
     loading.value = true
     error.value = null
 
     try {
-      const index = items.value.findIndex(item => item.id === productId)
+      let index = -1
+      
+      // If it's a string, treat as uniqueKey
+      if (typeof productIdOrKey === 'string') {
+        index = items.value.findIndex(item => item.uniqueKey === productIdOrKey)
+      } else {
+        // If it's a number, find by id (removes first match)
+        index = items.value.findIndex(item => item.id === productIdOrKey)
+      }
+      
       if (index > -1) {
         items.value.splice(index, 1)
         saveToStorage()
@@ -332,9 +457,20 @@ export function useCompare() {
     }
   }
 
-  // Check if product is in comparison
-  const isInCompare = (productId: number) => {
+  // Check if product is in comparison (can check by id only or by id+color+variation)
+  const isInCompare = (productId: number, selectedColor?: string, selectedVariation?: string) => {
+    if (selectedColor || selectedVariation) {
+      // Check for exact match with color/variation
+      const uniqueKey = `${productId}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
+      return items.value.some(item => item.uniqueKey === uniqueKey)
+    }
+    // Check if any variant of this product is in compare
     return items.value.some(item => item.id === productId)
+  }
+  
+  // Get unique key for a product with color/variation
+  const getUniqueKey = (productId: number, selectedColor?: string, selectedVariation?: string) => {
+    return `${productId}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
   }
 
   // Clear all items
@@ -383,8 +519,11 @@ export function useCompare() {
     isEmpty,
     init,
     add,
+    addBySlug,
+    fetchProductBySlug,
     remove,
     isInCompare,
+    getUniqueKey,
     clearAll,
     getItems,
     clearOldData

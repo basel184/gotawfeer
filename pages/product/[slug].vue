@@ -1658,6 +1658,7 @@
   const availableSizes = ref<any[]>([])
   const availableVariations = ref<string[]>([]) // New: available variation types
   const imageChanging = ref(false)
+  
 
 
   // Computed properties for variants
@@ -3696,17 +3697,34 @@
     try {
       const productId = product.value.id || product.value.product_id
       
-      if (isInCompare.value) {
-        // Remove from compare
-        compare.remove(productId)
-        isInCompare.value = false
+      // Get current selected color and variation
+      const currentColor = selectedColor.value || undefined
+      const currentVariation = selectedVariation.value || undefined
+      
+      // Get unique key for this product+color+variation combination
+      const uniqueKey = compare.getUniqueKey(productId, currentColor, currentVariation)
+      
+      // Check if this exact combination is in compare
+      const isThisCombinationInCompare = compare.isInCompare(productId, currentColor, currentVariation)
+      
+      if (isThisCombinationInCompare) {
+        // Remove from compare using uniqueKey
+        compare.remove(uniqueKey)
+        isInCompare.value = compare.isInCompare(productId)
         showSuccess('تم إزالة المنتج من المقارنة')
       } else {
-        // Add to compare
-        const success = compare.add(product.value)
+        // Get the image for current color
+        let colorImage = null
+        if (currentColor && images.value.length > 0) {
+          colorImage = images.value[0] // First image for selected color
+        }
+        
+        // Add to compare using the product data directly (no API call needed)
+        const success = compare.add(product.value, currentColor, currentVariation, colorImage || undefined)
         if (success) {
           isInCompare.value = true
-          showSuccess('تم إضافة المنتج إلى المقارنة')
+          const colorText = currentColor ? ` (${currentColor})` : ''
+          showSuccess(`تم إضافة المنتج${colorText} إلى المقارنة`)
         } else {
           showSuccess(compare.error.value || 'فشل في إضافة المنتج إلى المقارنة')
         }
@@ -5618,16 +5636,6 @@
                       class="form-control" 
                       id="reviewName"
                       required
-                    >
-                  </div>
-                  <div class="mb-3">
-                    <label for="reviewEmail" class="form-label">{{ t('product.email') }}</label>
-                    <input 
-                      v-model="guestReviewForm.email" 
-                      type="email" 
-                      class="form-control" 
-                      id="reviewEmail" 
-                      aria-describedby="emailHelp"
                     >
                   </div>
                   <div class="mb-3 form-check d-flex align-items-center gap-2">
