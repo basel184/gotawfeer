@@ -1411,7 +1411,7 @@ onMounted(async () => {
                 <span>{{ t('checkout.coupon_discount') || 'خصم الكوبون' }} ({{ appliedCoupon.coupon_code }})</span>
                 <span>-{{ money(couponDiscount) }}</span>
               </div>
-              <div v-if="paymentMethodFee > 0" class="total-row payment-fee">
+              <div v-if="paymentMethodFee > 0" class="total-row payment-fee d-none">
                 <span>{{ t('checkout.payment_fee') || 'رسوم شركة التقسيط' }} (8%)</span>
                 <span>{{ money(paymentMethodFee) }}</span>
               </div>

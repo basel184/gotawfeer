@@ -1346,6 +1346,7 @@
   // Auth and review modal
   const showLoginModal = ref(false)
   const auth = useAuth()
+  const isLoggedIn = computed(() => Boolean(auth?.user?.value))
   const { $get, $post, $del } = useApi()
 
   // Login form - OTP Login
@@ -5593,60 +5594,70 @@
             </div>
             <div class="col-lg-6">
               <div class="form-container mt-3">
-                <p v-if="totalReviewsCount === 0">{{ t('product.be_first_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
-                </p>
-                <p v-else>
-                  {{ t('product.share_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
-                </p>
-                <p>
-                  {{ t('product.email_not_published') }} <span class="text-danger">*</span>
-                </p>
-                <div v-if="guestReviewError" class="alert alert-danger" role="alert">
-                  {{ guestReviewError }}
-                </div>
-                <div class="rating d-flex align-items-center gap-2">
-                  <strong>{{ t('product.rating') }}:</strong>
-                  <div class="rating-box d-flex align-items-center gap-2">
-                    <i 
-                      v-for="star in 5" 
-                      :key="star"
-                      class="fa-solid fa-star"
-                      :class="{ open: star <= guestReviewForm.rating }"
-                      @click="guestReviewForm.rating = star"
-                      style="cursor: pointer;"
-                    ></i>
+                <template v-if="isLoggedIn">
+                  <p v-if="totalReviewsCount === 0">
+                    {{ t('product.be_first_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
+                  </p>
+                  <p v-else>
+                    {{ t('product.share_review') }} "{{ product?.name || product?.product_name || t('product.product') }}"
+                  </p>
+                  <p>
+                    {{ t('product.email_not_published') }} <span class="text-danger">*</span>
+                  </p>
+                  <div v-if="guestReviewError" class="alert alert-danger" role="alert">
+                    {{ guestReviewError }}
                   </div>
-                </div>
-                <form @submit="submitGuestReview">
-                  <div class="mb-3">
-                    <label for="reviewComment" class="form-label">{{ t('product.your_review') }} <span class="text-danger">*</span></label>
-                    <textarea 
-                      v-model="guestReviewForm.comment" 
-                      class="form-control" 
-                      id="reviewComment" 
-                      rows="3"
-                      required
-                    ></textarea>
+                  <div class="rating d-flex align-items-center gap-2">
+                    <strong>{{ t('product.rating') }}:</strong>
+                    <div class="rating-box d-flex align-items-center gap-2">
+                      <i 
+                        v-for="star in 5" 
+                        :key="star"
+                        class="fa-solid fa-star"
+                        :class="{ open: star <= guestReviewForm.rating }"
+                        @click="guestReviewForm.rating = star"
+                        style="cursor: pointer;"
+                      ></i>
+                    </div>
                   </div>
-                  <div class="mb-3">
-                    <label for="reviewName" class="form-label">{{ t('product.name') }} <span class="text-danger">*</span></label>
-                    <input 
-                      v-model="guestReviewForm.name" 
-                      type="text" 
-                      class="form-control" 
-                      id="reviewName"
-                      required
-                    >
-                  </div>
-                  <div class="mb-3 form-check d-flex align-items-center gap-2">
-                    <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                    <label class="form-check-label" for="exampleCheck1">{{ t('product.save_info') }}</label>
-                  </div>
-                  <button type="submit" class="main-btn border-0" :disabled="guestReviewLoading">
-                    <span v-if="guestReviewLoading">{{ t('product.sending_review') }}</span>
-                    <span v-else>{{ t('product.submit') }}</span>
+                  <form @submit="submitGuestReview">
+                    <div class="mb-3">
+                      <label for="reviewComment" class="form-label">{{ t('product.your_review') }} <span class="text-danger">*</span></label>
+                      <textarea 
+                        v-model="guestReviewForm.comment" 
+                        class="form-control" 
+                        id="reviewComment" 
+                        rows="3"
+                        required
+                      ></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label for="reviewName" class="form-label">{{ t('product.name') }} <span class="text-danger">*</span></label>
+                      <input 
+                        v-model="guestReviewForm.name" 
+                        type="text" 
+                        class="form-control" 
+                        id="reviewName"
+                        required
+                      >
+                    </div>
+                    <div class="mb-3 form-check d-flex align-items-center gap-2">
+                      <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                      <label class="form-check-label" for="exampleCheck1">{{ t('product.save_info') }}</label>
+                    </div>
+                    <button type="submit" class="main-btn border-0" :disabled="guestReviewLoading">
+                      <span v-if="guestReviewLoading">{{ t('product.sending_review') }}</span>
+                      <span v-else>{{ t('product.submit') }}</span>
+                    </button>
+                </form>
+                </template>
+                <div v-else class="guest-login-warning text-center p-4 border rounded">
+                  <p class="mb-2 fw-semibold">{{ t('product.login_required_review_title') }}</p>
+                  <p class="mb-4 text-muted">{{ t('product.login_required_review_desc') }}</p>
+                  <button type="button" class="main-btn border-0" @click="showLoginModal = true">
+                    {{ t('login') }}
                   </button>
-              </form>
+                </div>
               </div>
             </div>
           </div>
