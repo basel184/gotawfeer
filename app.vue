@@ -20,8 +20,54 @@
   </div>
 </template>
 
-<script setup>
-import { watch, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { watch, onMounted, onBeforeUnmount } from 'vue'
+
+// Nuxt auto-import shims (when types aren't generated locally)
+declare const useNuxtApp: () => any
+declare const useI18n: () => any
+declare const useHead: (input: any) => void
+
+const protectedShortcuts = new Set(['KeyS', 'KeyP', 'KeyC', 'KeyX', 'KeyU'])
+
+const isEditableElement = (el: EventTarget | null): el is HTMLElement => {
+  if (!el || !(el as HTMLElement).tagName) return false
+  const element = el as HTMLElement
+  const tag = element.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || element.isContentEditable
+}
+
+const blockEvent = (event: Event) => {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if ((event.ctrlKey || event.metaKey) && protectedShortcuts.has(event.code)) {
+    if (!isEditableElement(event.target)) {
+      blockEvent(event)
+    }
+  }
+}
+
+const handleClipboard = (event: ClipboardEvent) => {
+  if (!isEditableElement(event.target)) {
+    blockEvent(event)
+  }
+}
+
+const handleContextMenu = (event: MouseEvent) => {
+  if (!isEditableElement(event.target)) {
+    blockEvent(event)
+  }
+}
+
+const handleDragStart = (event: DragEvent) => {
+  const target = event.target as HTMLElement | null
+  if (target && (target.tagName === 'IMG' || target.closest('img'))) {
+    blockEvent(event)
+  }
+}
 
 // Get i18n instance
 const { $i18n } = useNuxtApp()

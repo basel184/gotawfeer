@@ -439,6 +439,23 @@ const grandTotal = computed(() => {
   return Math.max(0, baseTotal - couponDiscount.value + paymentMethodFee.value)
 })
 
+const checkoutIssues = computed(() => {
+  const issues: string[] = []
+  if (!auth?.user?.value) {
+    issues.push(t('checkout.errors.login_first') || 'يرجى تسجيل الدخول لإكمال الطلب')
+  }
+  if (!selectedAddress.value) {
+    issues.push(t('checkout.errors.missing_address') || 'اختر عنوان تسليم')
+  }
+  if (!selectedPaymentMethod.value) {
+    issues.push(t('checkout.errors.missing_payment') || 'اختر طريقة الدفع')
+  }
+  if (items.value.length === 0) {
+    issues.push(t('checkout.errors.empty_cart') || 'السلة فارغة')
+  }
+  return issues
+})
+
 // Currency helper
 const cfg = useRuntimeConfig() as any
 const currencyCode = (cfg?.public?.currencyCode || 'SAR') as string
@@ -1182,6 +1199,32 @@ onMounted(async () => {
 <template>
   <main class="checkout-page" dir="rtl">
     <div class="container">
+      <!-- Checkout Instructions -->
+      <section class="section card checkout-instructions">
+        <div class="instructions-content">
+          <div class="instructions-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </div>
+          <div class="instructions-text">
+            <h4>{{ t('checkout.instructions_title') }}</h4>
+            <ol class="instructions-steps">
+              <li>{{ t('checkout.instruction_login_first') }}</li>
+              <li>{{ t('checkout.instruction_step_1') }}</li>
+              <li>{{ t('checkout.instruction_step_2') }}</li>
+              <li>{{ t('checkout.instruction_step_3') }}</li>
+            </ol>
+            <div v-if="!auth?.user?.value" class="instructions-login-hint">
+              <span>{{ t('checkout.instructions_login_hint') }}</span>
+              <button type="button" class="main-btn" @click="openLoginModal">
+                {{ t('checkout.instructions_login_action') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Header -->
       <section class="section card">
         <div class="section-header">
@@ -1212,7 +1255,7 @@ onMounted(async () => {
       </div>
 
       <!-- Checkout Content -->
-      <div v-else class="checkout-content">
+      <div v-if="!loading" class="checkout-content">
         <div class="checkout-main">
           <!-- Address Selection -->
           <section class="section card">
@@ -1421,11 +1464,18 @@ onMounted(async () => {
               </div>
             </div>
             
+            <div v-if="checkoutIssues.length" class="place-order-warning">
+              <strong>{{ t('checkout.missing_requirements_title') || 'متطلبات مفقودة' }}</strong>
+              <ul>
+                <li v-for="(issue, idx) in checkoutIssues" :key="idx">{{ issue }}</li>
+              </ul>
+            </div>
+
             <!-- Place Order Button -->
             <button 
               class="place-order-btn"
               @click="placeOrder"
-              :disabled="placingOrder || !selectedAddress || !selectedPaymentMethod"
+              :disabled="placingOrder"
             >
               <div v-if="placingOrder" class="loading-spinner"></div>
               <svg v-else width="20" height="20" viewBox="0 0 24 24">
@@ -1683,6 +1733,53 @@ onMounted(async () => {
     font-weight: 600;
     color: #1e293b;
     margin: 0;
+  }
+
+  /* Checkout Instructions */
+  .checkout-instructions {
+    margin-bottom: 24px;
+    padding: 20px 24px;
+  }
+
+  .checkout-instructions::before {
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  }
+
+  .instructions-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .instructions-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .instructions-text h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 12px 0;
+  }
+
+  .instructions-steps {
+    margin: 0;
+    padding-inline-start: 20px;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .instructions-steps li {
+    margin-bottom: 4px;
   }
 
   /* Progress Steps */

@@ -189,6 +189,13 @@
   "checkout.step_payment": "الدفع",
   "checkout.step_confirm": "التأكيد",
   "checkout.loading": "جاري تحميل بيانات الطلب...",
+  "checkout.instructions_title": "خطوات إتمام الطلب",
+  "checkout.instruction_login_first": "سجّل الدخول بحسابك حتى تتمكن من متابعة الطلب",
+  "checkout.instructions_login_hint": "لا يمكنك إتمام الطلب بدون تسجيل الدخول. اضغط على الزر لتسجيل الدخول.",
+  "checkout.instructions_login_action": "تسجيل الدخول الآن",
+  "checkout.instruction_step_1": "اختر عنوان التسليم أو أضف عنواناً جديداً",
+  "checkout.instruction_step_2": "اختر طريقة الدفع المناسبة لك",
+  "checkout.instruction_step_3": "راجع ملخص الطلب ثم اضغط على إتمام الطلب",
   "checkout.delivery_address": "عنوان التسليم",
   "checkout.add_new_address": "إضافة عنوان جديد",
   "checkout.login_required": "يرجى تسجيل الدخول أولاً",
@@ -199,6 +206,7 @@
   "checkout.add_address": "إضافة عنوان",
   "checkout.payment_method": "طريقة الدفع",
   "checkout.not_available": "غير متوفر حالياً",
+  "checkout.missing_requirements_title": "يرجى استكمال المتطلبات التالية",
   "checkout.order_summary": "ملخص الطلب",
   "checkout.coupon_code": "كود الخصم",
   "checkout.coupon_placeholder": "أدخل كود الخصم",
@@ -226,6 +234,16 @@
     "bank_transfer": "تحويل بنكي"
   },
   "checkout": {
+    "errors": {
+      "load_addresses": "خطأ في تحميل العناوين. تأكد من تسجيل الدخول.",
+      "invalid_coupon": "كود الخصم غير صحيح",
+      "apply_coupon": "حدث خطأ في تطبيق كود الخصم",
+      "login_first": "يرجى تسجيل الدخول لإكمال الطلب",
+      "select_payment": "يرجى اختيار طريقة الدفع (Please choose a payment method)",
+      "missing_address": "اختر عنوان تسليم لتتمكن من الاستمرار",
+      "missing_payment": "اختر طريقة الدفع المناسبة (Choose your payment method)",
+      "empty_cart": "سلة التسوق فارغة. أضف منتجات قبل الإتمام."
+    },
     "success": {
     "title": "تم إتمام الطلب بنجاح!",
     "message": "شكراً لك على طلبك. تم إرسال تفاصيل الطلب إلى رقم هاتفك.",
@@ -260,16 +278,11 @@
       "message": "لم يتم إتمام عملية الدفع مع تمارا. يرجى المحاولة مرة أخرى أو اختيار طريقة دفع أخرى."
     }
   },
-  "checkout.errors": {
-    "load_addresses": "خطأ في تحميل العناوين. تأكد من تسجيل الدخول.",
-    "invalid_coupon": "كود الخصم غير صحيح",
-    "apply_coupon": "حدث خطأ في تطبيق كود الخصم",
-    "select_address": "يرجى اختيار عنوان التسليم",
-    "select_payment": "يرجى اختيار طريقة الدفع",
-    "empty_cart": "السلة فارغة",
-    "order_success_no_order": "تم إرسال الطلب بنجاح ولكن لم يتم إنشاء طلب. يرجى المحاولة مرة أخرى.",
-    "order_error": "حدث خطأ في إتمام الطلب"
-  },
+  "select_address": "يرجى اختيار عنوان التسليم",
+  "select_payment": "يرجى اختيار طريقة الدفع",
+  "empty_cart": "السلة فارغة",
+  "order_success_no_order": "تم إرسال الطلب بنجاح ولكن لم يتم إنشاء طلب. يرجى المحاولة مرة أخرى.",
+  "order_error": "حدث خطأ في إتمام الطلب",
   "login.success": "تم تسجيل الدخول بنجاح",
   "register.success": "تم إنشاء الحساب بنجاح",
   "logout.success": "تم تسجيل الخروج بنجاح",
