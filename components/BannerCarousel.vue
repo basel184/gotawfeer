@@ -142,5 +142,10 @@ img { width:100%; height:auto; object-fit:cover; border-radius:18px; border:1px 
 .hero-swiper :deep(.swiper-button-next)::after{ font-size:14px }
 .banner-link { display:block; text-decoration:none; color:inherit }
 .banner-link img { display:block }
+@media (max-width: 768px) {
+  .slide--multi img {
+    height: 340px
+  }
+}
 @media (min-width: 900px){ img { height: 500px } }
 </style>
