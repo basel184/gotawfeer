@@ -428,12 +428,13 @@
          "product": "Product"
        },
        "product": {
+        "no_recommended": "No recommended products",
          "recommended_products": "Recommended Products",
          "write_review": "Write Your Review",
          "your_rating": "Your Rating",
          "your_comment": "Your Comment",
-          "login_required_review_title": "Please log in to add a review",
-          "login_required_review_desc": "Sign in to share your experience and write a review for this product.",
+         "login_required_review_title": "Please log in to add a review",
+         "login_required_review_desc": "Sign in to share your experience and write a review for this product.",
          "write_comment_placeholder": "Write your comment about the product...",
          "sending": "Sending...",
          "submit_review": "Submit Review",

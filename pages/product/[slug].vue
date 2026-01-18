@@ -4813,6 +4813,30 @@
       }
     }
   }
+  // Helper to extract review reply text
+  const getReviewReplyText = (review: any): string => {
+    // Check reply object/string
+    if (review?.reply) {
+      if (typeof review.reply === 'object' && review.reply.reply_text) {
+        return review.reply.reply_text
+      }
+      if (typeof review.reply === 'string') {
+        return review.reply
+      }
+    }
+    
+    // Check response object/string
+    if (review?.response) {
+      if (typeof review.response === 'object' && review.response.reply_text) {
+        return review.response.reply_text
+      }
+      if (typeof review.response === 'string') {
+        return review.response
+      }
+    }
+    
+    return ''
+  }
 </script>
 
 <template>
@@ -5695,11 +5719,11 @@
                 <div class="review-content mt-3">
                   <p>{{ review?.comment || review?.review || review?.text || 'لا يوجد تعليق' }}</p>
                 </div>
-                <div v-if="review?.reply || review?.response" class="review-reply mt-3 p-3 bg-light rounded">
+                <div v-if="getReviewReplyText(review)" class="review-reply mt-3 p-3 bg-light rounded">
                   <div class="reply-header mb-2">
                     <strong class="text-primary">{{ t('product.vendor_reply') }}:</strong>
                   </div>
-                  <p class="mb-0">{{ review?.reply || review?.response }}</p>
+                  <p class="mb-0">{{ getReviewReplyText(review) }}</p>
                 </div>
                 <div class="review-actions mt-3 d-flex align-items-center gap-3">
                   <button 
@@ -7921,7 +7945,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 24px 24px 0;
+    padding: 24px 0px 0;
   }
 
   .review-header h2 {
@@ -8075,7 +8099,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 24px 24px 0;
+    padding: 24px 0px 0px;
   }
 
   .reply-header h2 {

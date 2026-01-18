@@ -463,6 +463,7 @@
     }
   },
   "product": {
+    "no_recommended":"لا يوجد منتجات موصى بها",
     "title":"منتج",
     "login_required_review_title": "يجب تسجيل الدخول لإضافة تقييم",
     "login_required_review_desc": "سجّل دخولك لتتمكن من مشاركة تجربتك وكتابة تقييمك حول المنتج.",
