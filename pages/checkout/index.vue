@@ -110,7 +110,8 @@ const gatewayAvailability = computed(() => {
     tabby: Boolean(gateways.tabby),
     tamara: Boolean(gateways.tamara),
     paymob_visa: Boolean(gateways.paymob_visa),
-    paymob_apple_pay: Boolean(gateways.apple_pay ?? gateways.paymob_apple_pay)
+    paymob_apple_pay: Boolean(gateways.apple_pay ?? gateways.paymob_apple_pay),
+    cash_on_delivery: true
   }
 })
 
@@ -120,13 +121,17 @@ const paymentMethods = computed(() => {
       tabby: 'تابي ',
       tamara: 'تمارا ',
       paymob_visa: ' فيزا / ماستركارد / مدي',
-      paymob_apple_pay: ' Apple Pay'
+      paymob_apple_pay: ' Apple Pay',
+      cash_on_delivery: 'الدفع عند الاستلام',
+      cod_note: '(لمدينة جدة فقط)'
     },
     en: {
       tabby: 'Tabby',
       tamara: 'Tamara ',
       paymob_visa: ' Visa / Mastercard / Mada',
-      paymob_apple_pay: ' Apple Pay'
+      paymob_apple_pay: ' Apple Pay',
+      cash_on_delivery: 'Cash on Delivery',
+      cod_note: '(Jeddah Only)'
     }
   }
   
@@ -138,7 +143,8 @@ const paymentMethods = computed(() => {
     { id: 'tabby', name: localeTranslations.tabby, icon: 'https://admin.gotawfeer.com/pays/tabby-badge.png', available: availability.tabby },
     { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: availability.tamara },
     { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: availability.paymob_visa, integration_id: 9985 },
-    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: availability.paymob_apple_pay, integration_id: 9984 }
+    { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: availability.paymob_apple_pay, integration_id: 9984 },
+    { id: 'cash_on_delivery', name: localeTranslations.cash_on_delivery, note: localeTranslations.cod_note, icon: 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png', available: availability.cash_on_delivery }
   ]
   
   return methods
@@ -1119,7 +1125,7 @@ async function placeOrder() {
       
       // Redirect to success page or order details
       const orderId = response.order_ids[0] // Get first order ID
-      await navigateTo(`/account/orders?order_id=${orderId}`)
+      await navigateTo(`/account?tab=orders&order_id=${orderId}`)
     } else if (response?.order_ids && response.order_ids.length === 0) {
       alert(t('checkout.errors.order_success_no_order') || 'تم إرسال الطلب بنجاح ولكن لم يتم إنشاء طلب. يرجى المحاولة مرة أخرى.')
     } else {
@@ -1345,7 +1351,10 @@ onMounted(async () => {
                   <img :src="method.icon" :alt="method.name" />
                 </div>
                 <div class="method-info">
-                  <h3>{{ method.name }}</h3>
+                  <h3>
+                    {{ method.name }}
+                    <span v-if="method.note" style="color: #ef4444; font-size: 0.85em; margin-inline-start: 8px;">{{ method.note }}</span>
+                  </h3>
                   <p v-if="!method.available">{{ t('checkout.not_available') || 'غير متوفر حالياً' }}</p>
                 </div>
                 <div class="method-radio">
@@ -1460,7 +1469,7 @@ onMounted(async () => {
               </div>
               <div class="total-row grand-total">
                 <span>{{ t('checkout.total') || 'الإجمالي' }}</span>
-                <span>{{ money(grandTotal) }}</span>
+                <span>{{ money(grandTotal - paymentMethodFee) }}</span>
               </div>
             </div>
             
