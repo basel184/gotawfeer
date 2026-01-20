@@ -233,6 +233,9 @@ onMounted(() => {
       if (orderIds.value && orderIds.value.length > 0) {
         orderId.value = orderIds.value[0]
         loading.value = false
+        
+        // Track Purchase event with Facebook Pixel
+        trackPurchaseEvent()
         return
       }
     } catch (e) {
@@ -246,12 +249,55 @@ onMounted(() => {
     // For Tabby, we can show the payment_id as order_id if no order_ids yet
     orderId.value = paymentId
     loading.value = false
+    
+    // Track Purchase event with Facebook Pixel
+    trackPurchaseEvent()
     return
   }
 
   // Process payment success (for other payment methods)
-  processPaymentSuccess()
+  processPaymentSuccess().then(() => {
+    // Track Purchase event after processing
+    trackPurchaseEvent()
+  })
 })
+
+// Track Facebook Pixel Purchase event
+const trackPurchaseEvent = () => {
+  try {
+    const fbPixel = useFacebookPixel()
+    
+    // Get order value from URL params
+    const orderValue = parseFloat(route.query.order_value as string || route.query.value as string || '0')
+    const numItems = parseInt(route.query.num_items as string || '1')
+    const contentIds = route.query.content_ids as string
+    
+    // Parse content_ids if it's a JSON string
+    let productIds: string[] = []
+    if (contentIds) {
+      try {
+        productIds = JSON.parse(decodeURIComponent(contentIds))
+      } catch {
+        productIds = [contentIds]
+      }
+    }
+    
+    // If we have order data, track the purchase
+    if (orderValue > 0 || orderId.value) {
+      fbPixel.trackPurchase({
+        content_ids: productIds.length > 0 ? productIds : ['unknown'],
+        num_items: numItems,
+        value: orderValue,
+        currency: 'SAR',
+        order_id: orderId.value || orderIds.value?.[0] || undefined
+      })
+      
+      console.log('[Success] Facebook Pixel Purchase tracked')
+    }
+  } catch (fbError) {
+    console.warn('[Success] Facebook Pixel Purchase tracking failed:', fbError)
+  }
+}
 </script>
 
 <style scoped>

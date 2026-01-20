@@ -157,6 +157,26 @@
         keywords: keywords,
         type: 'product'
       })
+      
+      // Track ViewContent event with Facebook Pixel (only once per product)
+      if (process.client) {
+        try {
+          const fbPixel = useFacebookPixel()
+          const productId = String(product.value?.id || product.value?.product_id || '')
+          
+          if (productId) {
+            fbPixel.trackViewContent({
+              content_ids: [productId],
+              content_name: productTitle.value,
+              content_type: 'product',
+              value: productPrice.value,
+              currency: 'SAR'
+            })
+          }
+        } catch (fbError) {
+          console.warn('[Product] Facebook Pixel ViewContent tracking failed:', fbError)
+        }
+      }
     }
   }, { immediate: true })
 

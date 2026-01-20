@@ -4,35 +4,37 @@ import { defineNuxtConfig } from 'nuxt/config'
 export default defineNuxtConfig({
   ssr: true,
   srcDir: '.',
-  
+
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
+      fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '',
+      fbConversionApiToken: process.env.NUXT_PUBLIC_FB_CONVERSION_API_TOKEN || '',
     }
   },
-  
+
   nitro: {
     preset: 'node-server',
     compatibilityDate: '2025-09-11',
     routeRules: {
-      '/api/**': { 
+      '/api/**': {
         cors: true,
         headers: { 'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE' }
       }
     }
   },
-  
+
   typescript: {
     strict: false,
     typeCheck: false
   },
-  
+
   vue: {
     compilerOptions: {
       isCustomElement: (tag) => tag.startsWith('swiper-')
     }
   },
-  
+
   app: {
     pageTransition: {
       name: 'page',
@@ -50,7 +52,7 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp' },
-        { rel: 'apple-touch-icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp'},
+        { rel: 'apple-touch-icon', type: 'image/webp', href: 'https://admin.gotawfeer.com/storage/app/public/company/2025-10-16-68f0b5d9d7806.webp' },
         {
           rel: 'stylesheet',
           href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
@@ -119,57 +121,73 @@ export default defineNuxtConfig({
             })(window, document, 'ttq');
           `,
           type: 'text/javascript'
+        },
+        {
+          hid: 'facebook-pixel',
+          innerHTML: `
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${process.env.NUXT_PUBLIC_FB_PIXEL_ID || ''}');
+          `,
+          type: 'text/javascript'
         }
       ],
       __dangerouslyDisableSanitizersByTagID: {
         gtm: ['innerHTML'],
         clarity: ['innerHTML'],
-        tiktok: ['innerHTML']
+        tiktok: ['innerHTML'],
+        'facebook-pixel': ['innerHTML']
       }
     }) as any
   },
-  
+
   experimental: {
     payloadExtraction: false, // Faster page transitions - don't extract payload
     viewTransition: false
   },
-  
+
   // Route Rules - Critical for proper SSR/SPA behavior
   // Note: SSR is enabled globally, so we only need to set prerender: false for dynamic routes
   routeRules: {
     // Homepage - no prerender (dynamic content)
-    '/': { 
+    '/': {
       prerender: false
     },
-    
+
     // Shop pages - no prerender (dynamic content)
-    '/shop': { 
+    '/shop': {
       prerender: false
     },
-    '/shop/**': { 
+    '/shop/**': {
       prerender: false
     },
-    
+
     // Dynamic product pages
     '/product/**': {
       prerender: false
     },
-    
+
     // Dynamic category pages
     '/category/**': {
       prerender: false
     },
-    
+
     // Dynamic brand pages
     '/brand/**': {
       prerender: false
     },
-    
+
     // Collection pages
     '/collection/**': {
       prerender: false
     },
-    
+
     // Static pages - no prerender (may have dynamic content)
     '/about': {
       prerender: false
@@ -180,31 +198,31 @@ export default defineNuxtConfig({
     '/brands': {
       prerender: false
     },
-    
+
     // Account pages - require auth (handled by middleware)
     '/account/**': {
       prerender: false
     },
-    
+
     // Checkout pages
     '/checkout/**': {
       prerender: false
     },
-    
+
     // English locale pages - same rules apply
     '/en/**': {
       prerender: false
     }
   },
-  
+
   modules: [
     '@nuxtjs/i18n'
   ],
-  
+
   plugins: [
     { src: '~/plugins/bootstrap.client.ts', mode: 'client' }
   ],
-  
+
   // @ts-expect-error i18n module runtime typing
   // i18n configuration
   i18n: {

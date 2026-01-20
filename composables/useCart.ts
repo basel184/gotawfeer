@@ -19,19 +19,19 @@ export function useCart() {
       console.log('[Cart:list] Using cached data, items count:', items.value.length)
       return items.value
     }
-    
+
     // Prevent multiple simultaneous requests (but allow if forcing)
     if (loading.value && !force) {
       console.log('[Cart:list] Already loading, returning current items')
       return items.value
     }
-    
+
     loading.value = true
     error.value = null
     try {
       console.log('[Cart:list] Fetching cart from API, force:', force)
       const res: any = await $get('v1/cart/')
-      
+
       // Handle different response structures
       let cartItems: any[] = []
       if (Array.isArray(res)) {
@@ -43,15 +43,15 @@ export function useCart() {
       } else if (res?.cart && Array.isArray(res.cart)) {
         cartItems = res.cart
       }
-      
+
       items.value = cartItems
       lastFetch.value = now
-      
+
       console.log('[Cart:list] Cart loaded successfully, items count:', items.value.length)
       if (items.value.length > 0) {
         console.log('[Cart:list] First item:', items.value[0])
       }
-      
+
       return items.value
     } catch (e: any) {
       error.value = e?.message || 'Failed to load cart'
@@ -67,7 +67,7 @@ export function useCart() {
       }
       // Don't throw timeout errors - just return empty array
       if (!e?.message?.includes('timeout') && !e?.message?.includes('Timeout') && e?.name !== 'TimeoutError') {
-      throw e
+        throw e
       }
       return items.value
     } finally {
@@ -91,17 +91,17 @@ export function useCart() {
   const qtyOf = (product: any): number => {
     const pid = product?.id || product?.product_id || product?.product?.id
     if (!pid) return 0
-    
+
     // Search for item in cart by product_id
     const it = items.value.find((x: any) => {
       const xPid = x?.product_id || x?.product?.id || x?.id
       return String(xPid) === String(pid)
     })
-    
+
     if (it) {
-    return Number(it?.quantity || it?.qty || 0)
+      return Number(it?.quantity || it?.qty || 0)
     }
-    
+
     return 0
   }
 
@@ -109,14 +109,14 @@ export function useCart() {
     loading.value = true
     error.value = null
     console.log('[Cart:add] payload:', payload)
-    
+
     try {
       // Prepare data for API
       const apiData: any = {
         id: payload.product_id,
         quantity: payload.quantity || 1
       }
-      
+
       // Add all variant-related fields
       if (payload.variant) apiData.variant = payload.variant
       if (payload.color) apiData.color = payload.color
@@ -127,18 +127,18 @@ export function useCart() {
       if (payload.base_price) apiData.base_price = payload.base_price
       if (payload.discount) apiData.discount = payload.discount
       if (payload.discount_type) apiData.discount_type = payload.discount_type
-      
+
       // Add choices fields for variations
       if (payload.choices) apiData.choices = payload.choices
       if (payload.choice_2) apiData.choice_2 = payload.choice_2
-      
+
       // Try alternative field names that the API might recognize
       if (payload.price) apiData.final_price = payload.price
       if (payload.price) apiData.unit_price = payload.price
       if (payload.price) apiData.selling_price = payload.price
-      
+
       console.log('[Cart:add] apiData:', apiData)
-      
+
       const response = await $post('v1/cart/add', apiData).catch((err: any) => {
         console.error('[Cart:add] Error details:', {
           message: err.message,
@@ -149,10 +149,34 @@ export function useCart() {
         })
         throw err
       })
-      
+
       console.log('[Cart:add] Success:', response)
       // Force refresh cart list to update UI immediately
       await list(true)
+
+      // Track AddToCart event with Facebook Pixel
+      try {
+        const fbPixel = useFacebookPixel()
+
+        // Extract product details for tracking
+        const productId = String(payload.product_id)
+        const productName = payload.product_name || payload.name || `Product ${productId}`
+        const productPrice = Number(payload.price || payload.unit_price || 0)
+        const quantity = Number(payload.quantity || 1)
+
+        fbPixel.trackAddToCart({
+          content_ids: [productId],
+          content_name: productName,
+          content_type: 'product',
+          value: productPrice * quantity,
+          currency: 'SAR',
+          quantity: quantity
+        })
+      } catch (fbError) {
+        // Don't break cart functionality if pixel tracking fails
+        console.warn('[Cart:add] Facebook Pixel tracking failed:', fbError)
+      }
+
       return items.value
     } catch (e: any) {
       const errorMessage = e?.data?.message || e?.message || 'Failed to add to cart'
@@ -167,7 +191,7 @@ export function useCart() {
   const update = async (payload: { key: number; quantity: number }) => {
     loading.value = true
     error.value = null
-    
+
     try {
       await $put('v1/cart/update', payload)
       // Force refresh cart list to update UI immediately
@@ -197,7 +221,7 @@ export function useCart() {
   const remove = async (key: number) => {
     loading.value = true
     error.value = null
-    
+
     try {
       await $del('v1/cart/remove', { key })
       // Force refresh cart list to update UI immediately
@@ -221,7 +245,7 @@ export function useCart() {
   const clearAll = async () => {
     loading.value = true
     error.value = null
-    
+
     try {
       // API requires a key param but value is unused; pass a sentinel
       await $del('v1/cart/remove-all', { key: 'all' })
