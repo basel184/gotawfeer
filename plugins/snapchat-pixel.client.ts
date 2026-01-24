@@ -37,5 +37,5 @@ export default defineNuxtPlugin(() => {
 
   // تهيئة البيكسل وتتبع الصفحة
   window.snaptr?.("init", pixelId);
-  window.snaptr?.("track", "PAGE_VIEW");
+  // window.snaptr?.("track", "PAGE_VIEW");
 });
