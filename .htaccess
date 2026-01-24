@@ -1,0 +1,25 @@
+# Nuxt.js on Hostinger Configuration
+# ⚠️ IMPORTANT: If you get 403 Forbidden errors, DELETE this file!
+# Node.js App on Hostinger doesn't need .htaccess - it may cause conflicts
+
+# This file is kept for reference only
+# If you experience 403 errors, try deleting this file first
+
+# Allow access to all files and directories
+Options -Indexes +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  
+  # Allow access to static files
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+  
+  # Allow access to directories
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  
+  # For Node.js apps on Hostinger, all requests should go to Node.js
+  # The Node.js server will handle routing
+</IfModule>
+
