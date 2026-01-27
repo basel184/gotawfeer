@@ -3,6 +3,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
 import { useSeo } from '~/composables/useSeo'
+import { usePaymentGateways } from '../../composables/usePaymentGateways'
 
 const { t, locale, te } = useI18n()
 const cart = useCart()
@@ -430,8 +431,8 @@ const couponDiscount = computed(() => {
   return 0
 })
 
-// Payment method fees (8% for Tamara and Tabby)
-const PAYMENT_FEE_PERCENTAGE = 0.08
+// Payment method fees (5% for Tamara and Tabby)
+const PAYMENT_FEE_PERCENTAGE = 0.05
 const paymentMethodFee = computed(() => {
   if (selectedPaymentMethod.value === 'tamara' || selectedPaymentMethod.value === 'tabby') {
     const baseTotal = subtotalAfterDiscount.value + taxExcluded.value + shipping.value - couponDiscount.value
@@ -1463,13 +1464,13 @@ onMounted(async () => {
                 <span>{{ t('checkout.coupon_discount') || 'خصم الكوبون' }} ({{ appliedCoupon.coupon_code }})</span>
                 <span>-{{ money(couponDiscount) }}</span>
               </div>
-              <div v-if="paymentMethodFee > 0" class="total-row payment-fee d-none">
-                <span>{{ t('checkout.payment_fee') || 'رسوم شركة التقسيط' }} (8%)</span>
+              <div v-if="paymentMethodFee > 0" class="total-row payment-fee">
+                <span>{{ t('checkout.payment_fee') || 'رسوم شركة التقسيط' }} (5%)</span>
                 <span>{{ money(paymentMethodFee) }}</span>
               </div>
               <div class="total-row grand-total">
                 <span>{{ t('checkout.total') || 'الإجمالي' }}</span>
-                <span>{{ money(grandTotal - paymentMethodFee) }}</span>
+                <span>{{ money(grandTotal) }}</span>
               </div>
             </div>
             

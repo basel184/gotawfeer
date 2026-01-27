@@ -4,7 +4,7 @@
     <AppLoading />
     <noscript>
       <iframe 
-        src="https://www.googletagmanager.com/ns.html?id=GTM-5796K66F"
+        src="https://www.googletagmanager.com/ns.html?id=GTM-NKR2KJGQ"
         height="0"
         width="0"
         style="display:none;visibility:hidden"

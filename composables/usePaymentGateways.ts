@@ -16,7 +16,7 @@ const defaultGateways: GatewayFlags = {
 }
 
 export const usePaymentGateways = () => {
-  const { $get } = useApi()
+  const { $get, $post } = useApi()
 
   const state = useState('payment-gateways', () => ({
     loading: false,
@@ -64,11 +64,35 @@ export const usePaymentGateways = () => {
   const isEnabled = (gateway: keyof GatewayFlags) =>
     computed(() => Boolean(state.value.gateways[gateway]))
 
+  const toggleGateway = async (gateway: string, enabled: boolean) => {
+    state.value.loading = true
+    state.value.error = null
+
+    try {
+      const response = await $post('v1/gateways/toggle', {
+        gateway,
+        enabled
+      })
+
+      if (response?.success) {
+        state.value.gateways[gateway] = enabled
+      }
+
+      return response
+    } catch (error: any) {
+      state.value.error = error?.message || 'Failed to toggle payment gateway'
+      throw error
+    } finally {
+      state.value.loading = false
+    }
+  }
+
   return {
     gateways,
     loading,
     error,
     loadGateways,
-    isEnabled
+    isEnabled,
+    toggleGateway
   }
 }

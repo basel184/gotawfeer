@@ -47,6 +47,7 @@ export default defineNuxtConfig({
       viewport: 'width=device-width, initial-scale=1',
       title: 'جو توفير - Go Tawfeer',
       meta: [
+        { name: 'google-site-verification', content: '1gyaz0E3NOYy7ltVXVKCUZS1uv2zc044W3FGLpNoXrA' },
         { name: 'description', content: 'مرحباً بكم في جو توفير، وجهتك الأولى للتسوق الإلكتروني في المملكة العربية السعودية.' },
         { name: 'format-detection', content: 'telephone=no' }
       ],
@@ -68,7 +69,7 @@ export default defineNuxtConfig({
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
             j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','GTM-5796K66F');
+            })(window,document,'script','dataLayer','GTM-NKR2KJGQ');
           `,
           type: 'text/javascript'
         },

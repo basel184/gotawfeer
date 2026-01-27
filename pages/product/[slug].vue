@@ -5410,17 +5410,12 @@
 
         <!-- Product Disclaimer -->
         <div class="disclaimer-box">
-          <strong>{{ t('product.disclaimer_title') }}</strong>
           <p>{{ t('product.disclaimer_original') }}</p>
-          <p>{{ t('product.disclaimer_availability') }}:</p>
-          <ul>
-            <li>
-              <p>{{ t('product.disclaimer_availability_1') }}</p>
-            </li>
-            <li>
-              <p>{{ t('product.disclaimer_availability_2') }}</p>
-            </li>
-          </ul>
+          <p>{{ t('product.disclaimer_return_policy') }}</p>
+          <p>{{ t('product.disclaimer_broken_products') }}</p>
+          <p>{{ t('product.disclaimer_availability_policy') }}</p>
+          <p>{{ t('product.disclaimer_packaging_update') }}</p>
+          <p><strong>{{ t('product.disclaimer_footer') }}</strong></p>
         </div>
         <!-- Social Share Buttons -->
         <div class="social-share-section search-box-desktop">
@@ -6926,8 +6921,8 @@
   .promotion-banner{ background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 12px; margin-bottom:16px; text-align:center }
   .promo-text{ color:#dc2626; font-weight:600; font-size:14px }
 
-  .disclaimer-box{ background:#fef7f7; border:1px solid #fed7d7; border-radius:8px; padding:12px; margin-bottom:20px }
-  .disclaimer-box p{ margin:0 0 4px; font-size:12px; color:#7f1d1d }
+  .disclaimer-box{ background:#ebf8ff; border:1px solid #bee3f8; border-radius:8px; padding:12px; margin-bottom:20px }
+  .disclaimer-box p{ margin:0 0 10px; font-size:13px; color:#2b6cb0; line-height: 1.6; }
   .disclaimer-box p:last-child{ margin-bottom:0 }
 
   .payment-options{ display:flex; gap:12px; margin-bottom:20px }
