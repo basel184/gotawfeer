@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
-import { useSeo } from '~/composables/useSeo'
+import { useSeo } from '../../composables/useSeo'
 import { usePaymentGateways } from '../../composables/usePaymentGateways'
 
 const { t, locale, te } = useI18n()
@@ -123,16 +123,14 @@ const paymentMethods = computed(() => {
       tamara: 'تمارا ',
       paymob_visa: ' فيزا / ماستركارد / مدي',
       paymob_apple_pay: ' Apple Pay',
-      cash_on_delivery: 'الدفع عند الاستلام',
-      cod_note: '(لمدينة جدة فقط)'
+      cash_on_delivery: 'الدفع عند الاستلام'
     },
     en: {
       tabby: 'Tabby',
       tamara: 'Tamara ',
       paymob_visa: ' Visa / Mastercard / Mada',
       paymob_apple_pay: ' Apple Pay',
-      cash_on_delivery: 'Cash on Delivery',
-      cod_note: '(Jeddah Only)'
+      cash_on_delivery: 'Cash on Delivery'
     }
   }
   
@@ -145,7 +143,7 @@ const paymentMethods = computed(() => {
     { id: 'tamara', name: localeTranslations.tamara, icon: 'https://admin.gotawfeer.com/pays/5NSVd6hEkYhZvqdeEv3q5A760qtKEFUh4Na1ezMD.png', available: availability.tamara },
     { id: 'paymob_visa', name: localeTranslations.paymob_visa, icon: 'https://admin.gotawfeer.com/pays/tap-pay.png', available: availability.paymob_visa, integration_id: 9985 },
     { id: 'paymob_apple_pay', name: localeTranslations.paymob_apple_pay, icon: 'https://admin.gotawfeer.com/pays/apple-pay.png', available: availability.paymob_apple_pay, integration_id: 9984 },
-    { id: 'cash_on_delivery', name: localeTranslations.cash_on_delivery, note: localeTranslations.cod_note, icon: 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png', available: availability.cash_on_delivery }
+    { id: 'cash_on_delivery', name: localeTranslations.cash_on_delivery, icon: 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png', available: availability.cash_on_delivery }
   ]
   
   return methods
@@ -434,6 +432,9 @@ const couponDiscount = computed(() => {
 // Payment method fees (5% for Tamara and Tabby)
 const PAYMENT_FEE_PERCENTAGE = 0.05
 const paymentMethodFee = computed(() => {
+  if (selectedPaymentMethod.value === 'cash_on_delivery') {
+    return 15
+  }
   if (selectedPaymentMethod.value === 'tamara' || selectedPaymentMethod.value === 'tabby') {
     const baseTotal = subtotalAfterDiscount.value + taxExcluded.value + shipping.value - couponDiscount.value
     return Math.round(baseTotal * PAYMENT_FEE_PERCENTAGE * 100) / 100 // Round to 2 decimal places
@@ -1354,7 +1355,7 @@ onMounted(async () => {
                 <div class="method-info">
                   <h3>
                     {{ method.name }}
-                    <span v-if="method.note" style="color: #ef4444; font-size: 0.85em; margin-inline-start: 8px;">{{ method.note }}</span>
+                    <span v-if="(method as any).note" style="color: #ef4444; font-size: 0.85em; margin-inline-start: 8px;">{{ (method as any).note }}</span>
                   </h3>
                   <p v-if="!method.available">{{ t('checkout.not_available') || 'غير متوفر حالياً' }}</p>
                 </div>
