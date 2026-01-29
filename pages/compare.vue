@@ -459,7 +459,7 @@ const getProductImage = (item: any): string => {
           )
           
           if (currentColor && !variationsLinkedToColors) {
-            const colorCodeToMatch = currentColor.code || normalizeColorCode(currentColor.name)
+            const colorCodeToMatch = normalizeColorCode(currentColor.code || currentColor.name)
             const imgColorNormalized = normalizeColorCode(img.color)
             return matchesVariation && imgColorNormalized === colorCodeToMatch
           }
