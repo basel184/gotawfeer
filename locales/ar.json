@@ -224,6 +224,7 @@
   "checkout.coupon_discount": "خصم الكوبون",
   "checkout.total": "الإجمالي",
   "checkout.payment_fee": "رسوم شركة التقسيط",
+  "checkout.cod_fee": "رسوم الدفع عند الاستلام",
   "checkout.place_order": "إتمام الطلب",
   "checkout.placing_order": "جاري إتمام الطلب...",
   "checkout.back_to_cart": "العودة للسلة",
