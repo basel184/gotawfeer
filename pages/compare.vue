@@ -762,6 +762,7 @@ const clearOldData = () => {
   justify-content: space-between;
   padding: 0 2px;
   pointer-events: none;
+  flex-direction: row-reverse;
 }
 
 .color-nav-btn {
