@@ -493,7 +493,20 @@ const getProductImage = (item: any): string => {
 
   // Fallback to simple color matching if no variation match or no variation selected
   if (currentColor) {
-    if (currentColor.image) {
+    // Try to find image in color_images_full_url first (most reliable source)
+    if (item.color_images_full_url && Array.isArray(item.color_images_full_url)) {
+      const colorCode = normalizeColorCode(currentColor.code || currentColor.name)
+      const matchedColorImage = item.color_images_full_url.find((ci: any) => {
+        return normalizeColorCode(ci.color) === colorCode
+      })
+      
+      if (matchedColorImage) {
+        const extracted = extractImagePath(matchedColorImage)
+        if (extracted) return extracted
+      }
+    }
+
+    if (currentColor.image && !String(currentColor.image).includes('[object Object]')) {
       if (/^(https?:|data:|blob:)/i.test(currentColor.image)) return currentColor.image
       const assetBase = 'https://admin.gotawfeer.com'
       return `${assetBase}/storage/app/public/product/${currentColor.image}`
