@@ -73,7 +73,7 @@
                     <div v-if="item.colors && item.colors.length > 0" class="current-color-info">
                       <span 
                         class="current-color-swatch" 
-                        :style="{ backgroundColor: '#' + (getCurrentColor(item)?.hex || getCurrentColor(item)?.code || 'ccc') }"
+                        :style="{ backgroundColor: getHexStyle(getCurrentColor(item)?.hex || getCurrentColor(item)?.code) }"
                       ></span>
                       <span class="current-color-name">{{ getCurrentColor(item)?.name || 'اللون' }}</span>
                       <span class="color-counter">({{ getSelectedColorIndex(item.uniqueKey || item.id) + 1 }}/{{ item.colors.length }})</span>
@@ -86,7 +86,7 @@
                         :key="`thumb-${item.id}-${index}`"
                         class="color-thumb"
                         :class="{ active: getSelectedColorIndex(item.uniqueKey || item.id) === index }"
-                        :style="{ backgroundColor: '#' + (color.hex || color.code || 'ccc') }"
+                        :style="{ backgroundColor: getHexStyle(color.hex || color.code) }"
                         :title="color.name || color.code"
                         @click="setSelectedColorIndex(item.uniqueKey || item.id, index)"
                       ></button>
@@ -147,13 +147,13 @@
                 <td class="feature-name">{{ t('compare.colors') || 'الألوان المتاحة' }}</td>
                 <td v-for="item in compare.items.value" :key="`colors-${item.id}`" class="product-data">
                   <div v-if="item.colors && item.colors.length > 0" class="colors-display">
-                    <div 
-                      v-for="(color, index) in item.colors" 
-                      :key="`color-${item.id}-${index}`"
-                      class="color-circle"
-                      :style="{ backgroundColor:'#' + color.hex || '#' + color.code || '#ccc' }"
-                      :title="color.name || color.code"
-                    ></div>
+                      <div 
+                        v-for="(color, index) in item.colors" 
+                        :key="`color-${item.id}-${index}`"
+                        class="color-circle"
+                        :style="{ backgroundColor: getHexStyle(color.hex || color.code) }"
+                        :title="color.name || color.code"
+                      ></div>
                   </div>
                   <span v-else class="text-muted">-</span>
                 </td>
@@ -163,15 +163,24 @@
               <tr v-if="hasVariation">
                 <td class="feature-name">{{ t('compare.variation') || 'المتغيرات' }}</td>
                 <td v-for="item in compare.items.value" :key="`variation-${item.id}`" class="product-data">
-                  <div v-if="item.variation" class="variation-display">
-                    <div v-if="typeof item.variation === 'object'">
-                      <div v-for="(value, key) in item.variation" :key="key" class="variation-item">
-                        <strong>{{ key }}:</strong> {{ value.type }}
-                      </div>
+                  <div class="variation-display">
+                    <div v-if="getAvailableVariations(item).length > 0" class="variation-buttons">
+                      <button 
+                        v-for="variation in getAvailableVariations(item)" 
+                        :key="variation"
+                        class="btn btn-sm variation-btn"
+                        :class="{ active: getSelectedVariation(item.uniqueKey || item.id) === variation }"
+                        @click="setSelectedVariation(item.uniqueKey || item.id, variation)"
+                      >
+                        {{ variation }}
+                      </button>
                     </div>
-                    <span v-else>{{ item.variation }}</span>
+                    <div v-else-if="item.variation" class="text-muted">
+                        <span v-if="typeof item.variation === 'string'">{{ item.variation }}</span>
+                        <span v-else>-</span>
+                    </div>
+                    <span v-else class="text-muted">-</span>
                   </div>
-                  <span v-else class="text-muted">-</span>
                 </td>
               </tr>
               
@@ -213,8 +222,42 @@ const { t, locale } = useI18n()
 // Track if component is mounted (client-side only)
 const isMounted = ref(false)
 
+
+
+// SEO Configuration
+const seo = useSeo()
+
+// Set SEO for compare page
+seo.setSeo({
+  title: locale.value === 'ar' ? 'مقارنة المنتجات' : 'Compare Products',
+  description: locale.value === 'ar' 
+    ? 'قارن بين المنتجات في متجر جو توفير لاتخاذ أفضل قرار شراء.'
+    : 'Compare products at Go Tawfeer store to make the best purchase decision.',
+  keywords: locale.value === 'ar' 
+    ? 'مقارنة، منتجات، جو توفير'
+    : 'compare, products, Go Tawfeer',
+  image: '/images/go-tawfeer-1-1.webp',
+  noindex: true // Compare pages typically shouldn't be indexed
+})
+
+// @ts-ignore
+// t and locale are already defined at the top
+const compare = useCompare()
+
+// Initialize compare on mount
+onMounted(() => {
+  compare.init()
+  isMounted.value = true
+})
+
+// Configuration
+const cfg = useRuntimeConfig() as any
+
 // Track selected color index for each product in compare
 const selectedColorIndex = reactive<Record<string, number>>({})
+
+// Track selected variation for each product in compare
+const selectedVariations = reactive<Record<string, string>>({})
 
 // Get selected color index for an item
 const getSelectedColorIndex = (itemKey: string): number => {
@@ -224,6 +267,16 @@ const getSelectedColorIndex = (itemKey: string): number => {
 // Set selected color index for an item
 const setSelectedColorIndex = (itemKey: string, index: number) => {
   selectedColorIndex[itemKey] = index
+}
+
+// Get selected variation for an item
+const getSelectedVariation = (itemKey: string): string => {
+  return selectedVariations[itemKey] || ''
+}
+
+// Set selected variation for an item
+const setSelectedVariation = (itemKey: string, variation: string) => {
+  selectedVariations[itemKey] = variation
 }
 
 // Navigate to next color for an item
@@ -253,119 +306,32 @@ const getCurrentColor = (item: any) => {
   return colors[index] || colors[0]
 }
 
-// Get image for a specific color
-const getColorImage = (item: any, color: any): string => {
-  if (!color) return item.image || ''
-  
-  // Try to find color-specific image from color object
-  if (color.image) {
-    // If it's already a full URL, return as is
-    if (/^(https?:|data:|blob:)/i.test(color.image)) {
-      return color.image
+// Helper to get hex style safely
+const getHexStyle = (colorValue: string | undefined | null) => {
+  if (!colorValue) return '#ccc'
+  const c = String(colorValue).trim()
+  return c.startsWith('#') ? c : '#' + c
+}
+
+// Helper to normalize color code for matching
+const normalizeColorCode = (code: string | null | undefined): string => {
+  if (!code) return ''
+  return String(code).toUpperCase().replace(/^#/, '').trim()
+}
+
+// Helper to parse color_image if it's a JSON string
+const parseColorImage = (colorImage: any): any[] | null => {
+  if (!colorImage) return null
+  if (Array.isArray(colorImage)) return colorImage
+  if (typeof colorImage === 'string') {
+    try {
+      const parsed = JSON.parse(colorImage)
+      return Array.isArray(parsed) ? parsed : null
+    } catch (e) {
+      return null
     }
-    // Build full URL
-    const assetBase = 'https://admin.gotawfeer.com'
-    return `${assetBase}/storage/app/public/product/${color.image}`
   }
-  
-  // Fallback to main product image
-  return item.image || ''
-}
-
-// Get product image with color support
-const getProductImage = (item: any): string => {
-  const currentColor = getCurrentColor(item)
-  const colorImage = getColorImage(item, currentColor)
-  
-  if (colorImage) {
-    return getImageUrl(colorImage)
-  }
-  
-  return getImageUrl(item.image) || '/images/category-placeholder.png'
-}
-
-// Handle image error - use placeholder
-const handleImageError = (e: any) => {
-  if (e.target && e.target.src !== '/images/category-placeholder.png') {
-    e.target.src = '/images/category-placeholder.png'
-  }
-}
-
-// SEO Configuration
-const seo = useSeo()
-
-// Set SEO for compare page
-seo.setSeo({
-  title: locale.value === 'ar' ? 'مقارنة المنتجات' : 'Compare Products',
-  description: locale.value === 'ar' 
-    ? 'قارن بين المنتجات في متجر جو توفير لاتخاذ أفضل قرار شراء.'
-    : 'Compare products at Go Tawfeer store to make the best purchase decision.',
-  keywords: locale.value === 'ar' 
-    ? 'مقارنة، منتجات، جو توفير'
-    : 'compare, products, Go Tawfeer',
-  image: '/images/go-tawfeer-1-1.webp',
-  noindex: true // Compare pages typically shouldn't be indexed
-})
-
-// @ts-ignore
-// t and locale are already defined at the top
-const compare = useCompare()
-
-// Initialize compare on mount
-onMounted(() => {
-  compare.init()
-  isMounted.value = true
-})
-
-// Check if any product has features
-const hasFeatures = computed(() => {
-  return compare.items.value.some((item: any) => item.features && item.features.length > 0)
-})
-
-// Check if any product has meta_description
-const hasMetaDescription = computed(() => {
-  return compare.items.value.some((item: any) => item.meta_description && item.meta_description.trim().length > 0)
-})
-
-// Check if any product has colors
-const hasColors = computed(() => {
-  return compare.items.value.some((item: any) => item.colors && Array.isArray(item.colors) && item.colors.length > 0)
-})
-
-// Check if any product has variation
-const hasVariation = computed(() => {
-  return compare.items.value.some((item: any) => item.variation !== null && item.variation !== undefined)
-})
-
-// Check if any product has description
-const hasDescription = computed(() => {
-  return compare.items.value.some((item: any) => item.description && item.description.trim().length > 0)
-})
-
-// Check if any product has brand
-const hasBrand = computed(() => {
-  return compare.items.value.some((item: any) => item.brand && item.brand.trim().length > 0)
-})
-
-// Check if any product has category
-const hasCategory = computed(() => {
-  return compare.items.value.some((item: any) => item.category && item.category.trim().length > 0)
-})
-
-// Currency helper
-const cfg = useRuntimeConfig() as any
-const currencyCode = (cfg?.public?.currencyCode || 'SAR') as string
-
-function money(n: any): string {
-  const loc = locale?.value === 'ar' ? 'ar-SA' : 'en-US'
-  try {
-    return new Intl.NumberFormat(loc, { style: 'currency', currency: currencyCode }).format(Number((n as any)?.value ?? n) || 0)
-  } catch {
-    const sym = (cfg?.public?.currencySymbol || (locale?.value === 'ar' ? 'ر.س' : 'SAR')) as string
-    const raw = (n as any)?.value ?? n
-    const val = Number(raw != null ? raw : 0)
-    return `${val.toFixed(2)} ${sym}`
-  }
+  return null
 }
 
 // Image URL helper
@@ -395,32 +361,234 @@ const fixPath = (s: string) => {
   return p
 }
 
-const getImageUrl = (imagePath: any): string => {
-  if (!imagePath) return ''
-  
-  if (Array.isArray(imagePath)) return getImageUrl(imagePath[0])
-  
-  let s: any = imagePath
-  if (typeof imagePath === 'string') {
-    const t = imagePath.trim()
-    if (t.startsWith('[') || t.startsWith('{')) {
-      try { return getImageUrl(JSON.parse(t)) } catch {}
-    }
-    s = t
-  } else if (typeof imagePath === 'object') {
-    s = (imagePath as any).path || (imagePath as any).url || (imagePath as any).image || ''
-  }
-  
-  s = (typeof s === 'string' ? s : '').trim()
+const normalize = (s: any): string => {
   if (!s) return ''
-  
-  // If already a full URL, return as is
-  if (/^(https?:|data:|blob:)/i.test(s)) return s
-  
-  return `${assetBase}/${fixPath(s)}`
+  if (Array.isArray(s)) return normalize(s[0])
+  let v: any = s
+  if (typeof s === 'string') {
+    const trimmed = s.trim()
+    if ((trimmed.startsWith('[') || trimmed.startsWith('{'))) {
+      try { const parsed = JSON.parse(trimmed); return normalize(parsed) } catch {}
+    }
+    v = trimmed
+  } else if (typeof s === 'object') {
+    // Handle different object formats
+    v = (s as any).path || (s as any).url || (s as any).image || (s as any).key || ''
+  }
+  v = (typeof v === 'string' ? v : '').trim()
+  if (!v) return ''
+  if (/^(https?:|data:|blob:)/i.test(v)) return v
+  return `${assetBase}/${fixPath(v)}`
 }
 
+const getImageUrl = normalize // Alias for compatibility
 
+// Get product image with support for color and variation filtering
+// This replicates the complex logic from [slug].vue
+const getProductImage = (item: any): string => {
+  const currentColor = getCurrentColor(item)
+  const itemKey = item.uniqueKey || item.id
+  const selectedVariation = getSelectedVariation(itemKey)
+  
+  // Helper to extract image path from image object
+  const extractImagePath = (img: any): string | null => {
+    if (!img) return null
+    if (img.image_name) {
+      if (typeof img.image_name === 'string') return normalize(img.image_name)
+      if (img.image_name.path) return normalize(img.image_name.path)
+      if (img.image_name.key) return normalize(img.image_name.key)
+    }
+    if (img.image) {
+      if (typeof img.image === 'string') return normalize(img.image)
+      if (img.image.path) return normalize(img.image.path)
+      if (img.image.key) return normalize(img.image.key)
+    }
+    if (img.path) return normalize(img.path)
+    if (img.key) return normalize(img.key)
+    return null
+  }
+
+  // If a variation is selected, filter images
+  if (selectedVariation) {
+    let variationPatternsToMatch: string[] = []
+    
+    // Check if variations are linked to colors
+    let variationsLinkedToColors = false
+    if (item.raw_variation && Array.isArray(item.raw_variation)) {
+      variationsLinkedToColors = item.raw_variation.some((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const parts = v.type.split('-')
+          return parts.length >= 2
+        }
+        return false
+      })
+    }
+
+    if (currentColor && variationsLinkedToColors) {
+      // Logic for color + variation
+      // We don't have the exact "variant type name" easily available unless we search raw_variation
+      // Try to find matching variant
+      const matchingVariant = item.raw_variation.find((v: any) => {
+        if (v.type && typeof v.type === 'string') {
+          const parts = v.type.split('-')
+          if (parts.length >= 2) {
+            const lastPart = parts[parts.length - 1].trim()
+            // Assume the first part might be related to color or a combined string
+            return lastPart === selectedVariation
+          }
+        }
+        return false
+      })
+
+      if (matchingVariant) {
+        variationPatternsToMatch = [matchingVariant.type]
+      } else {
+        variationPatternsToMatch = [selectedVariation]
+      }
+    } else {
+       variationPatternsToMatch = [selectedVariation]
+    }
+
+    // Check color_image field
+    const parsedColorImage = parseColorImage(item.color_image)
+    if (parsedColorImage && Array.isArray(parsedColorImage)) {
+      const matchingColorImages = parsedColorImage.filter((img: any) => {
+        if (img.variation_types && Array.isArray(img.variation_types) && img.variation_types.length > 0) {
+          const matchesVariation = variationPatternsToMatch.some((pattern) => 
+            img.variation_types.includes(pattern)
+          )
+          
+          if (currentColor && !variationsLinkedToColors) {
+            const colorCodeToMatch = currentColor.code || normalizeColorCode(currentColor.name)
+            const imgColorNormalized = normalizeColorCode(img.color)
+            return matchesVariation && imgColorNormalized === colorCodeToMatch
+          }
+          return matchesVariation
+        }
+        return false
+      })
+
+      if (matchingColorImages.length > 0) {
+        // Return the first matching image
+        // In a real comparison, we might want a gallery, but here just the main image
+         // Try to find in color_images_full_url first for better quality/path
+        const firstMatch = matchingColorImages[0]
+        const imageName = firstMatch.image_name
+        
+        if (typeof imageName === 'string') {
+          // Try to find in full urls
+           if (item.color_images_full_url && Array.isArray(item.color_images_full_url)) {
+              const matched = item.color_images_full_url.find((fi: any) => {
+                 const fiName = fi.image_name || fi.image || fi.path
+                 return typeof fiName === 'string' && fiName.includes(imageName) || 
+                        (typeof fiName === 'object' && fiName.key === imageName)
+              })
+              if (matched) return extractImagePath(matched) || normalize(imageName)
+           }
+        }
+        return extractImagePath(firstMatch) || normalize(imageName)
+      }
+    }
+  }
+
+  // Fallback to simple color matching if no variation match or no variation selected
+  if (currentColor) {
+    if (currentColor.image) {
+      if (/^(https?:|data:|blob:)/i.test(currentColor.image)) return currentColor.image
+      const assetBase = 'https://admin.gotawfeer.com'
+      return `${assetBase}/storage/app/public/product/${currentColor.image}`
+    }
+  }
+  
+  return getImageUrl(item.image) || '/images/category-placeholder.png'
+}
+
+// Handle image error - use placeholder
+const handleImageError = (e: any) => {
+  if (e.target && e.target.src !== '/images/category-placeholder.png') {
+    e.target.src = '/images/category-placeholder.png'
+  }
+}
+
+// Helper to get available size options from raw_variation
+const getAvailableVariations = (item: any) => {
+  if (!item.raw_variation || !Array.isArray(item.raw_variation)) return []
+  
+  const options = new Set<string>()
+  item.raw_variation.forEach((v: any) => {
+    if (v.type && typeof v.type === 'string') {
+      const parts = v.type.split('-')
+      if (parts.length >= 2) {
+        const lastPart = parts[parts.length - 1].trim()
+        options.add(lastPart)
+      } else {
+        options.add(v.type)
+      }
+    }
+  })
+  
+  // Initialize default selection if not set
+  const key = item.uniqueKey || item.id
+  if (!selectedVariations[key] && options.size > 0) {
+     // Default to first option
+     selectedVariations[key] = Array.from(options)[0]
+  }
+  
+  return Array.from(options)
+}
+
+// Check if any product has features
+const hasFeatures = computed(() => {
+  return compare.items.value.some((item: any) => item.features && item.features.length > 0)
+})
+
+// Check if any product has meta_description
+const hasMetaDescription = computed(() => {
+  return compare.items.value.some((item: any) => item.meta_description && item.meta_description.trim().length > 0)
+})
+
+// Check if any product has colors
+const hasColors = computed(() => {
+  return compare.items.value.some((item: any) => item.colors && Array.isArray(item.colors) && item.colors.length > 0)
+})
+
+// Check if any product has variation (checking raw_variation now as well)
+const hasVariation = computed(() => {
+  return compare.items.value.some((item: any) => 
+    (item.variation !== null && item.variation !== undefined) || 
+    (item.raw_variation && item.raw_variation.length > 0)
+  )
+})
+
+// Check if any product has description
+const hasDescription = computed(() => {
+  return compare.items.value.some((item: any) => item.description && item.description.trim().length > 0)
+})
+
+// Check if any product has brand
+const hasBrand = computed(() => {
+  return compare.items.value.some((item: any) => item.brand && item.brand.trim().length > 0)
+})
+
+// Check if any product has category
+const hasCategory = computed(() => {
+  return compare.items.value.some((item: any) => item.category && item.category.trim().length > 0)
+})
+
+
+const currencyCode = (cfg?.public?.currencyCode || 'SAR') as string
+
+function money(n: any): string {
+  const loc = locale?.value === 'ar' ? 'ar-SA' : 'en-US'
+  try {
+    return new Intl.NumberFormat(loc, { style: 'currency', currency: currencyCode }).format(Number((n as any)?.value ?? n) || 0)
+  } catch {
+    const sym = (cfg?.public?.currencySymbol || (locale?.value === 'ar' ? 'ر.س' : 'SAR')) as string
+    const raw = (n as any)?.value ?? n
+    const val = Number(raw != null ? raw : 0)
+    return `${val.toFixed(2)} ${sym}`
+  }
+}
 
 // Remove product from comparison
 const removeProduct = (productIdOrKey: number | string) => {
@@ -503,6 +671,7 @@ const clearOldData = () => {
 .product-header {
   position: relative;
   padding: 1rem;
+  padding-top: 3rem;
 }
 
 .remove-btn {
@@ -803,5 +972,37 @@ const clearOldData = () => {
   .feature-column {
     width: 150px;
   }
+}
+</style>
+
+<style scoped>
+/* Append new styles */
+.variation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+}
+
+.variation-btn {
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #333;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.variation-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.variation-btn.active {
+  background-color: #F58040; /* Primary color */
+  border-color: #F58040;
+  color: white;
 }
 </style>

@@ -36,7 +36,12 @@ export function useCompare() {
               variation: item.variation || null,
               features: item.features || [],
               specifications: item.specifications || {},
-              added_at: item.added_at || new Date().toISOString()
+              added_at: item.added_at || new Date().toISOString(),
+              // Extended fields for advanced image matching
+              color_image: item.color_image || null,
+              images_full_url: item.images_full_url || [],
+              color_images_full_url: item.color_images_full_url || [],
+              raw_variation: item.raw_variation || item.variation || []
             }))
             // Save cleaned data back to localStorage
             saveToStorage()
@@ -72,7 +77,7 @@ export function useCompare() {
     try {
       // Always use the admin API base URL for fetching product data
       const apiBase = 'https://admin.gotawfeer.com/api'
-      
+
       const response = await fetch(`${apiBase}/v2/products/${slug}`, {
         method: 'GET',
         headers: {
@@ -80,11 +85,11 @@ export function useCompare() {
           'Content-Type': 'application/json'
         }
       })
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch product: ${response.status}`)
       }
-      
+
       const data = await response.json()
       return data.data || data
     } catch (e: any) {
@@ -112,7 +117,7 @@ export function useCompare() {
     try {
       // Fetch full product data from API
       const productData = await fetchProductBySlug(slug)
-      
+
       if (!productData) {
         error.value = 'Failed to fetch product data'
         loading.value = false
@@ -138,7 +143,7 @@ export function useCompare() {
 
     // Create unique key based on product id + color + variation
     const uniqueKey = `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
-    
+
     // Check if this exact combination already exists
     const exists = items.value.find(item => item.uniqueKey === uniqueKey)
     if (exists) {
@@ -174,7 +179,7 @@ export function useCompare() {
       // Helper function to get product image URL (similar to ProductCard logic)
       const getProductImageUrl = (product: any): string => {
         const p = product || {}
-        
+
         // Helper to check if URL object is valid
         const isValidUrlObject = (obj: any): boolean => {
           if (!obj || typeof obj !== 'object') return false
@@ -182,7 +187,7 @@ export function useCompare() {
           if (obj.key && (!obj.path || obj.status === 404)) return false
           return true
         }
-        
+
         // Try to get thumbnail_full_url, but check if it's valid
         let thumbnailFullUrl = p?.thumbnail_full_url || p?.product?.thumbnail_full_url
         if (thumbnailFullUrl && typeof thumbnailFullUrl === 'object') {
@@ -192,7 +197,7 @@ export function useCompare() {
             thumbnailFullUrl = extractUrlValue(thumbnailFullUrl)
           }
         }
-        
+
         // Try to get image_full_url, but check if it's valid
         let imageFullUrl = p?.image_full_url || p?.product?.image_full_url
         if (imageFullUrl && typeof imageFullUrl === 'object') {
@@ -202,7 +207,7 @@ export function useCompare() {
             imageFullUrl = extractUrlValue(imageFullUrl)
           }
         }
-        
+
         // Helper to get string value from field (handle arrays)
         const getStringValue = (field: any): string | null => {
           if (!field) return null
@@ -215,7 +220,7 @@ export function useCompare() {
           if (typeof field === 'object' && field.key) return field.key
           return null
         }
-        
+
         // Try each field and get string value
         const raw =
           getStringValue(thumbnailFullUrl) ||
@@ -231,31 +236,31 @@ export function useCompare() {
           getStringValue(p?.product?.image) ||
           getStringValue(p?.product?.photo) ||
           ''
-        
+
         if (!raw) return ''
-        
+
         // If already a full URL, return as is
         if (/^(https?:|data:|blob:)/i.test(raw)) {
           return raw
         }
-        
+
         // Use fixed base URL
         const assetBase = 'https://admin.gotawfeer.com'
-        
+
         // Normalize path
         let path = String(raw).trim().replace(/\\/g, '/')
         path = path.replace(/^public\//, '')
         path = path.replace(/^app\/public\//, '')
         path = path.replace(/^storage\/app\/public\//, '')
         path = path.replace(/\/+/g, '/').replace(/^\//, '')
-        
+
         // If it's just a filename, add to product/thumbnail path
         if (!path.includes('/')) {
           path = `storage/app/public/product/thumbnail/${path}`
         } else if (!path.startsWith('storage/')) {
           path = `storage/app/public/product/${path}`
         }
-        
+
         return `${assetBase}/${path}`
       }
 
@@ -263,17 +268,17 @@ export function useCompare() {
       const getColorImageFromProduct = (product: any, colorCode: string): string | null => {
         const colorImages = product?.color_images_full_url || product?.product?.color_images_full_url || []
         if (!Array.isArray(colorImages) || colorImages.length === 0) return null
-        
+
         // Normalize color code for comparison
         const normalizeCode = (code: string) => String(code || '').toLowerCase().replace(/[^a-z0-9]/g, '')
         const normalizedColorCode = normalizeCode(colorCode)
-        
+
         // Find matching color image
         const colorImage = colorImages.find((img: any) => {
           const imgColor = normalizeCode(img.color || img.code || '')
           return imgColor === normalizedColorCode
         })
-        
+
         if (colorImage) {
           const imagePath = colorImage.image_name || colorImage.image || colorImage.path
           if (imagePath) {
@@ -300,7 +305,7 @@ export function useCompare() {
             image: getColorImageFromProduct(product, color.code || color.name || '')
           }))
         }
-        
+
         // Try nested product.colors_formatted
         if (product?.product?.colors_formatted && Array.isArray(product.product.colors_formatted) && product.product.colors_formatted.length > 0) {
           return product.product.colors_formatted.map((color: any) => ({
@@ -310,7 +315,7 @@ export function useCompare() {
             image: getColorImageFromProduct(product, color.code || color.name || '')
           }))
         }
-        
+
         // Try simple colors array
         if (product?.colors && Array.isArray(product.colors) && product.colors.length > 0) {
           return product.colors.map((color: string | any, index: number) => {
@@ -330,7 +335,7 @@ export function useCompare() {
             }
           })
         }
-        
+
         // Try nested product.colors
         if (product?.product?.colors && Array.isArray(product.product.colors) && product.product.colors.length > 0) {
           return product.product.colors.map((color: string | any, index: number) => {
@@ -350,7 +355,7 @@ export function useCompare() {
             }
           })
         }
-        
+
         return []
       }
 
@@ -360,29 +365,29 @@ export function useCompare() {
         if (product?.variation) {
           return product.variation
         }
-        
+
         // Try nested product.variation
         if (product?.product?.variation) {
           return product.product.variation
         }
-        
+
         // Try variations array (take first one)
         if (product?.variations && Array.isArray(product.variations) && product.variations.length > 0) {
           return product.variations[0]
         }
-        
+
         // Try nested product.variations
         if (product?.product?.variations && Array.isArray(product.product.variations) && product.product.variations.length > 0) {
           return product.product.variations[0]
         }
-        
+
         return null
       }
 
       // Add product with essential data including full image URL
       // Use color-specific image if provided, otherwise use default product image
       const productImage = colorImage || getProductImageUrl(product)
-      
+
       // Build display name with color/variation info
       let displayName = product.name
       if (selectedColor || selectedVariation) {
@@ -391,7 +396,7 @@ export function useCompare() {
         if (selectedVariation) parts.push(selectedVariation)
         displayName = `${product.name} (${parts.join(' - ')})`
       }
-      
+
       const compareItem = {
         id: product.id,
         uniqueKey: `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`,
@@ -412,7 +417,12 @@ export function useCompare() {
         selectedVariation: selectedVariation || null,
         features: product.features || [],
         specifications: product.specifications || {},
-        added_at: new Date().toISOString()
+        added_at: new Date().toISOString(),
+        // Extended fields for advanced image matching
+        color_image: product.color_image || null,
+        images_full_url: product.images_full_url || product.product?.images_full_url || [],
+        color_images_full_url: product.color_images_full_url || product.product?.color_images_full_url || [],
+        raw_variation: product.variation || product.variations || product.product?.variation || product.product?.variations || []
       }
 
       items.value.push(compareItem)
@@ -433,7 +443,7 @@ export function useCompare() {
 
     try {
       let index = -1
-      
+
       // If it's a string, treat as uniqueKey
       if (typeof productIdOrKey === 'string') {
         index = items.value.findIndex(item => item.uniqueKey === productIdOrKey)
@@ -441,7 +451,7 @@ export function useCompare() {
         // If it's a number, find by id (removes first match)
         index = items.value.findIndex(item => item.id === productIdOrKey)
       }
-      
+
       if (index > -1) {
         items.value.splice(index, 1)
         saveToStorage()
@@ -467,7 +477,7 @@ export function useCompare() {
     // Check if any variant of this product is in compare
     return items.value.some(item => item.id === productId)
   }
-  
+
   // Get unique key for a product with color/variation
   const getUniqueKey = (productId: number, selectedColor?: string, selectedVariation?: string) => {
     return `${productId}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
