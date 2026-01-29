@@ -22,7 +22,7 @@
           </svg>
           <h3 class="text-muted mb-3">{{ t('compare.empty_title') || 'لا توجد منتجات للمقارنة' }}</h3>
           <p class="text-muted mb-4">{{ t('compare.empty_description') || 'أضف منتجات للمقارنة لرؤية الفروقات بينها' }}</p>
-          <NuxtLink to="/products" class="btn btn-primary">
+          <NuxtLink to="/shop" class="btn btn-primary">
             {{ t('compare.browse_products') || 'تصفح المنتجات' }}
           </NuxtLink>
         </div>
