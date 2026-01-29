@@ -73,7 +73,7 @@
                     <div v-if="item.colors && item.colors.length > 0" class="current-color-info">
                       <span 
                         class="current-color-swatch" 
-                        :style="{ backgroundColor: getHexStyle(getCurrentColor(item)?.hex || getCurrentColor(item)?.code) }"
+                        :style="getColorSwatchStyle(item, getCurrentColor(item))"
                       ></span>
                       <span class="current-color-name">{{ getCurrentColor(item)?.name || 'اللون' }}</span>
                       <span class="color-counter">({{ getSelectedColorIndex(item.uniqueKey || item.id) + 1 }}/{{ item.colors.length }})</span>
@@ -86,7 +86,7 @@
                         :key="`thumb-${item.id}-${index}`"
                         class="color-thumb"
                         :class="{ active: getSelectedColorIndex(item.uniqueKey || item.id) === index }"
-                        :style="{ backgroundColor: getHexStyle(color.hex || color.code) }"
+                        :style="getColorSwatchStyle(item, color)"
                         :title="color.name || color.code"
                         @click="setSelectedColorIndex(item.uniqueKey || item.id, index)"
                       ></button>
@@ -151,7 +151,7 @@
                         v-for="(color, index) in item.colors" 
                         :key="`color-${item.id}-${index}`"
                         class="color-circle"
-                        :style="{ backgroundColor: getHexStyle(color.hex || color.code) }"
+                        :style="getColorSwatchStyle(item, color)"
                         :title="color.name || color.code"
                       ></div>
                   </div>
@@ -313,6 +313,33 @@ const getHexStyle = (colorValue: string | undefined | null) => {
   return c.startsWith('#') ? c : '#' + c
 }
 
+// Helper to get color swatch style (hex or background image)
+const getColorSwatchStyle = (item: any, color: any) => {
+  if (!color) return {}
+  const code = color.code || color.hex || ''
+  
+  // Check for image-based color code (starts with 'color_')
+  if (code && String(code).startsWith('color_')) {
+    if (item.color_images_full_url && Array.isArray(item.color_images_full_url)) {
+      const matched = item.color_images_full_url.find((ci: any) => ci.color === code)
+      if (matched) {
+        const imgPath = extractImagePath(matched)
+        if (imgPath) {
+           return { 
+             backgroundImage: `url(${getImageUrl(imgPath)})`,
+             backgroundSize: 'cover',
+             backgroundPosition: 'center',
+             backgroundColor: '#f8f9fa',
+             border: '1px solid #dee2e6' 
+           }
+        }
+      }
+    }
+  }
+  
+  return { backgroundColor: getHexStyle(code) }
+}
+
 // Helper to normalize color code for matching
 const normalizeColorCode = (code: string | null | undefined): string => {
   if (!code) return ''
@@ -383,6 +410,24 @@ const normalize = (s: any): string => {
 
 const getImageUrl = normalize // Alias for compatibility
 
+// Helper to extract image path from image object
+const extractImagePath = (img: any): string | null => {
+  if (!img) return null
+  if (img.image_name) {
+    if (typeof img.image_name === 'string') return normalize(img.image_name)
+    if (img.image_name.path) return normalize(img.image_name.path)
+    if (img.image_name.key) return normalize(img.image_name.key)
+  }
+  if (img.image) {
+    if (typeof img.image === 'string') return normalize(img.image)
+    if (img.image.path) return normalize(img.image.path)
+    if (img.image.key) return normalize(img.image.key)
+  }
+  if (img.path) return normalize(img.path)
+  if (img.key) return normalize(img.key)
+  return null
+}
+
 // Get product image with support for color and variation filtering
 // This replicates the complex logic from [slug].vue
 const getProductImage = (item: any): string => {
@@ -390,23 +435,7 @@ const getProductImage = (item: any): string => {
   const itemKey = item.uniqueKey || item.id
   const selectedVariation = getSelectedVariation(itemKey)
   
-  // Helper to extract image path from image object
-  const extractImagePath = (img: any): string | null => {
-    if (!img) return null
-    if (img.image_name) {
-      if (typeof img.image_name === 'string') return normalize(img.image_name)
-      if (img.image_name.path) return normalize(img.image_name.path)
-      if (img.image_name.key) return normalize(img.image_name.key)
-    }
-    if (img.image) {
-      if (typeof img.image === 'string') return normalize(img.image)
-      if (img.image.path) return normalize(img.image.path)
-      if (img.image.key) return normalize(img.image.key)
-    }
-    if (img.path) return normalize(img.path)
-    if (img.key) return normalize(img.key)
-    return null
-  }
+
 
   // If a variation is selected, filter images
   if (selectedVariation) {
