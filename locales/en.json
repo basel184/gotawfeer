@@ -705,6 +705,29 @@
       "order_items": "Order Items",
       "empty_title": "Track Your Order",
       "empty_description": "Enter order number or phone number to track your order status"
+    },
+    "delete_account": {
+      "title": "Delete Account",
+      "subtitle": "Permanently delete your account",
+      "warning_title": "Warning: This action is irreversible",
+      "warning_message": "Deleting your account will permanently remove all your data, including:",
+      "warning_items": {
+        "personal_info": "Your personal information",
+        "orders": "Order history",
+        "addresses": "Saved addresses",
+        "wishlist": "Wishlist",
+        "coupons": "Coupons and discounts",
+        "support_tickets": "Support tickets"
+      },
+      "confirmation_label": "I understand that this action cannot be undone and I want to permanently delete my account",
+      "delete_button": "Delete Account Permanently",
+      "deleting": "Deleting account...",
+      "cancel": "Cancel",
+      "success_title": "Account Deleted Successfully",
+      "success_message": "Your account and all your data have been permanently deleted. Thank you for using our services.",
+      "error_title": "Error Deleting Account",
+      "error_message": "An error occurred while trying to delete your account. Please try again or contact support.",
+      "confirm_checkbox_required": "Please confirm your understanding of the consequences before proceeding"
     }
   },
   "intellectual_property": {

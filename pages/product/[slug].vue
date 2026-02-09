@@ -13,6 +13,8 @@
   import { useCart } from '../../composables/useCart'
   import { useCompare } from '../../composables/useCompare'
   import { useTaqnyatAuth } from '../../composables/useTaqnyatAuth'
+  import { useVirtualTryOnCategories } from '../../composables/useVirtualTryOnCategories'
+  import ProductTryOnModal from '../../components/VirtualTryOn/ProductTryOnModal.vue'
 
   // Register Swiper components globally for this component
   const SwiperComponent = Swiper
@@ -222,6 +224,12 @@
   // Success message state
   const showSuccessMessage = ref(false)
   const successMessage = ref('')
+
+  // Virtual Try-On state
+  const vtoCategories = useVirtualTryOnCategories()
+  const showTryOnModal = ref(false)
+  const tryOnInitialShade = ref<any>(null)
+
 
   // Show success message function
   const showSuccess = (message: string) => {
@@ -1676,8 +1684,8 @@
   const selectedVariant = ref<any>(null)
   const availableVariants = ref<any[]>([])
   const availableColors = ref<any[]>([])
-  const availableSizes = ref<any[]>([])
   const availableVariations = ref<string[]>([]) // New: available variation types
+  const availableSizes = ref<any[]>([])
   const imageChanging = ref(false)
   
 
@@ -2041,6 +2049,45 @@
         return colorData
       })
       
+      // Filter out colors that don't have any matching variation with qty > 0
+      if (product.value.variation && Array.isArray(product.value.variation) && product.value.variation.length > 0) {
+        availableColors.value = availableColors.value.filter((colorData: any) => {
+          const colorNameToMatch = colorData.name || colorData.displayName || colorData.colorName || ''
+          const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+          const colorCodeNormalized = normalizeColorCode(colorData.code || colorData.hexCode)
+          
+          // Check if any variation matches this color AND has qty > 0
+          const hasStock = product.value.variation.some((v: any) => {
+            if (!v.type) return false
+            const vTypeNormalized = String(v.type).trim().toUpperCase()
+            
+            // Try multiple matching strategies
+            let matches = false
+            if (vTypeNormalized === colorNameNormalized) matches = true
+            else if (vTypeNormalized.includes(colorNameNormalized)) matches = true
+            else if (colorNameNormalized.includes(vTypeNormalized)) matches = true
+            else {
+              // Extract last meaningful part from variation.type
+              const vTypeParts = vTypeNormalized.split(/\s+/)
+              if (vTypeParts.length > 0) {
+                const lastPart = vTypeParts[vTypeParts.length - 1]
+                const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+                const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+                
+                if (lastTwoParts === colorNameNormalized || lastPart === colorNameNormalized) matches = true
+              }
+            }
+            
+            return matches && (v.qty && v.qty > 0)
+          })
+          
+          if (!hasStock) {
+            console.log('[Product] Filtering out color (no stock):', colorData.name)
+          }
+          return hasStock
+        })
+      }
+      
       // Sort colors by sort_order from variations array
       if (product.value.variation && Array.isArray(product.value.variation)) {
         availableColors.value.sort((a: any, b: any) => {
@@ -2209,6 +2256,45 @@
         })
         return colorData
       })
+
+      // Filter out colors that don't have any matching variation with qty > 0
+      if (product.value.variation && Array.isArray(product.value.variation) && product.value.variation.length > 0) {
+        availableColors.value = availableColors.value.filter((colorData: any) => {
+          const colorNameToMatch = colorData.name || colorData.displayName || colorData.colorName || ''
+          const colorNameNormalized = String(colorNameToMatch).trim().toUpperCase()
+          const colorCodeNormalized = normalizeColorCode(colorData.code || colorData.hexCode)
+          
+          // Check if any variation matches this color AND has qty > 0
+          const hasStock = product.value.variation.some((v: any) => {
+            if (!v.type) return false
+            const vTypeNormalized = String(v.type).trim().toUpperCase()
+            
+            // Try multiple matching strategies
+            let matches = false
+            if (vTypeNormalized === colorNameNormalized) matches = true
+            else if (vTypeNormalized.includes(colorNameNormalized)) matches = true
+            else if (colorNameNormalized.includes(vTypeNormalized)) matches = true
+            else {
+              // Extract last meaningful part from variation.type
+              const vTypeParts = vTypeNormalized.split(/\s+/)
+              if (vTypeParts.length > 0) {
+                const lastPart = vTypeParts[vTypeParts.length - 1]
+                const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+                const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+                
+                if (lastTwoParts === colorNameNormalized || lastPart === colorNameNormalized) matches = true
+              }
+            }
+            
+            return matches && (v.qty && v.qty > 0)
+          })
+          
+          if (!hasStock) {
+            console.log('[Product] Filtering out color (no stock):', colorData.name)
+          }
+          return hasStock
+        })
+      }
       
       console.log('[Product] Total unique colors found:', availableColors.value.length)
       
@@ -3758,6 +3844,76 @@
     }
   }
 
+  // Virtual Try-On functions
+  const supportsVirtualTryOn = computed(() => {
+    return vtoCategories.supportsVirtualTryOn(product.value)
+  })
+
+  const getMakeupTypeForProduct = computed(() => {
+    return vtoCategories.getMakeupType(product.value)
+  })
+
+  const convertProductColorsToShades = () => {
+    if (!product.value) return []
+    
+    const makeupType = getMakeupTypeForProduct.value
+    if (!makeupType) return []
+    
+    const defaultOpacity = vtoCategories.getDefaultOpacity(makeupType)
+    
+    // Use availableColors if they exist (they are already filtered for stock)
+    // Otherwise fall back to colors_formatted but filter them
+    let colorsToUse = []
+    
+    if (availableColors.value && availableColors.value.length > 0) {
+      colorsToUse = availableColors.value
+    } else {
+      colorsToUse = product.value.colors_formatted || []
+    }
+    
+    return colorsToUse.map((color: any, index: number) => ({
+      id: index + 1,
+      // Priority: hexCode (has #) -> code (might not have #) -> default
+      color: color.hexCode || (color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : color.code) || '#000000',
+      opacity: defaultOpacity,
+      type: makeupType,
+      name: color.name || color.colorName || color.displayName || `اللون ${index + 1}`
+    }))
+  }
+
+  const productShadesForModal = computed(() => {
+    return convertProductColorsToShades()
+  })
+
+  const openTryOnModal = () => {
+    console.log('[VTO] Opening modal...')
+    console.log('[VTO] Product:', product.value)
+    console.log('[VTO] Makeup type:', getMakeupTypeForProduct.value)
+    
+    const shades = convertProductColorsToShades()
+    console.log('[VTO] Converted shades:', shades)
+    
+    if (shades.length > 0) {
+      // Use selected color if available, otherwise use first color
+      const selectedShade = selectedColor.value 
+        ? shades.find((s: any) => s.name === selectedColor.value) || shades[0]
+        : shades[0]
+      
+      console.log('[VTO] Selected shade:', selectedShade)
+      tryOnInitialShade.value = selectedShade
+      showTryOnModal.value = true
+    } else {
+      console.warn('[VTO] No shades available!')
+      showSuccess('لا توجد ألوان متاحة للتجربة الافتراضية')
+    }
+  }
+
+  const closeTryOnModal = () => {
+    showTryOnModal.value = false
+    tryOnInitialShade.value = null
+  }
+
+
   function closeLoginModal() {
     showLoginModal.value = false
     loginSuccess.value = false
@@ -5135,6 +5291,18 @@
                 </div>
               </div>
             </div>
+            
+            <!-- Virtual Try-On Button (Mobile) -->
+            <div v-if="supportsVirtualTryOn && availableColors.length > 0" class="virtual-tryon-section search-box-mobile mb-3">
+              <button 
+                @click="openTryOnModal"
+                class="btn btn-virtual-tryon w-100"
+              >
+                <i class="fas fa-camera me-2"></i>
+                جربي المنتج افتراضياً
+              </button>
+            </div>
+            
             <!-- Variation Selection -->
             <div v-if="availableVariations.length > 0" class="variant-section search-box-mobile">
               <div class="variant-title-wrapper">
@@ -5319,6 +5487,18 @@
             </div>
           </div>
         </div>
+        
+        <!-- Virtual Try-On Button (Desktop) -->
+        <div v-if="supportsVirtualTryOn && availableColors.length > 0" class="virtual-tryon-section search-box-desktop mb-3">
+          <button 
+            @click="openTryOnModal"
+            class="btn btn-virtual-tryon w-100"
+          >
+            <i class="fas fa-camera me-2"></i>
+            جربي المنتج افتراضياً
+          </button>
+        </div>
+        
         <!-- Variation Selection -->
         <div v-if="availableVariations.length > 0" class="variant-section search-box-desktop">
           <div class="variant-title-wrapper">
@@ -6127,6 +6307,15 @@
       </div>
     </div>
   </div>
+  
+  <!-- Virtual Try-On Modal -->
+  <ProductTryOnModal
+    :isOpen="showTryOnModal"
+    :productName="title"
+    :initialShade="tryOnInitialShade"
+    :productShades="productShadesForModal"
+    @close="closeTryOnModal"
+  />
 </template>
 
 <style scoped>
@@ -8461,5 +8650,44 @@
   }
   .share-btn.whatsapp i {
     font-size: 20px;
+  }
+
+  /* Virtual Try-On Button Styles */
+  .btn-virtual-tryon {
+    background: #2575ba;
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-virtual-tryon:hover {
+    background: #2575ba;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  }
+
+  .btn-virtual-tryon:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-virtual-tryon i {
+    font-size: 18px;
+  }
+
+  @media (max-width: 768px) {
+    .btn-virtual-tryon {
+      padding: 12px 20px;
+      font-size: 14px;
+    }
   }
 </style>

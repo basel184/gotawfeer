@@ -4,6 +4,8 @@
  * A high-performance Virtual Makeup Try-On component using MediaPipe Face Mesh.
  */
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ThreeJSRenderer } from './renderers/ThreeJSRenderer'
+import { TextureManager } from './renderers/TextureManager'
 
 interface Shade {
   color: string
@@ -15,6 +17,7 @@ interface Shade {
 
 const props = defineProps<{
   initialShade?: Shade
+  productShades?: Shade[]
 }>()
 
 // --- State Management ---
@@ -31,6 +34,26 @@ const currentShade = ref<Shade>(props.initialShade || {
   type: "LIPSTICK",
   name: "Berry Pink"
 })
+
+// Contour placement options
+const contourPlacement = ref('default')
+const contourPlacements = [
+  { id: 'default', name: 'افتراضي', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/contour_default.png' },
+  { id: 'forehead', name: 'الجبهة', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/contour_forehead_side2.png' },
+  { id: 'inner_eyebrow', name: 'بين الحواجب', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/contour_inner_eyebrow.png' }
+]
+
+// Eyeliner placement options
+const eyelinerPlacement = ref('natural')
+const eyelinerPlacements = [
+  { id: 'natural', name: 'طبيعي', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/eyeliner_natural_top.png' },
+  { id: 'small_winged', name: 'جناح صغير', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/eyeliner_extrasmallwinged_top.png' },
+  { id: 'fringe_glam', name: 'جلام', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/eyeliner_fringe_glam.png' },
+  { id: 'thick_winged', name: 'جناح عريض', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/eyeliner_wingedthick.png' },
+  { id: 'cat_eye', name: 'عين القطة', image: 'https://loreal-cms-public.modiface.com/cmswebservice-linux/production/data/placement_images/320x320/eyeliner_cateye2_top.png' }
+]
+
+
 
 // --- Refs for HTML Elements ---
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -56,6 +79,11 @@ let faceMesh: any = null
 let camera: any = null
 let canvasCtx: CanvasRenderingContext2D | null = null
 
+// --- Three.js Renderers ---
+let threeRenderer: ThreeJSRenderer | null = null
+let textureManager: TextureManager | null = null
+const useThreeJS = ref(false) // Temporarily disabled until triangulation data is added
+
 // --- Facial Landmark Indices ---
 const LIP_OUTER = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
 const LIP_INNER = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
@@ -68,6 +96,22 @@ const LEFT_BROW = [70, 63, 105, 66, 107, 55, 65, 52, 53, 46]
 const RIGHT_BROW = [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
 const LEFT_UNDER_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 243, 190, 56, 28, 27, 29, 30, 247, 130]
 const RIGHT_UNDER_EYE = [263, 249, 390, 373, 374, 380, 381, 382, 362, 463, 414, 286, 258, 257, 259, 260, 467, 359]
+
+/**
+ * Initialize Three.js Renderer
+ */
+const initThreeJS = () => {
+  if (!canvasRef.value || !videoRef.value) return
+  
+  try {
+    threeRenderer = new ThreeJSRenderer(canvasRef.value, videoRef.value)
+    textureManager = new TextureManager()
+    console.log('✅ Three.js renderer initialized')
+  } catch (error) {
+    console.error('❌ Failed to initialize Three.js:', error)
+    useThreeJS.value = false // Fallback to canvas 2D
+  }
+}
 
 /**
  * Initialize MediaPipe Face Mesh
@@ -103,29 +147,113 @@ const initFaceMesh = async () => {
  * Main Processing Loop
  */
 const onResults = (results: any) => {
-  if (!canvasRef.value || !canvasCtx) return
+  if (!canvasRef.value) return
   const canvas = canvasRef.value
-  canvasCtx.save()
-  canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
-  canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
+  
   lastResults.value = results
+  
   if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
     const landmarks = results.multiFaceLandmarks[0]
-    const type = currentShade.value.type
-    switch(type) {
-      case 'LIPSTICK': applyLipstick(landmarks); break;
-      case 'BLUSH': applyBlush(landmarks); break;
-      case 'FOUNDATION': applyFoundation(landmarks); break;
-      case 'CONCEALER': applyConcealer(landmarks); break;
-      case 'LIPLINER': applyLipliner(landmarks); break;
-      case 'EYESHADOW': applyEyeshadow(landmarks); break;
-      case 'EYELINER': applyEyeliner(landmarks); break;
-      case 'MASCARA': applyMascara(landmarks); break;
-      case 'BROW': applyBrow(landmarks); break;
-      case 'CONTOUR': applyContour(landmarks); break;
+    
+    // Use Three.js renderer if enabled
+    if (useThreeJS.value && threeRenderer && textureManager) {
+      renderWithThreeJS(landmarks, results.image)
+    } else {
+      // Fallback to canvas 2D
+      if (!canvasCtx) return
+      canvasCtx.save()
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
+      canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
+      
+      const type = currentShade.value.type
+      switch(type) {
+        case 'LIPSTICK': applyLipstick(landmarks); break;
+        case 'BLUSH': applyBlush(landmarks); break;
+        case 'FOUNDATION': applyFoundation(landmarks); break;
+        case 'CONCEALER': applyConcealer(landmarks); break;
+        case 'LIPLINER': applyLipliner(landmarks); break;
+        case 'EYESHADOW': applyEyeshadow(landmarks); break;
+        case 'EYELINER': applyEyeliner(landmarks); break;
+        case 'MASCARA': applyMascara(landmarks); break;
+        case 'BROWS': applyBrow(landmarks); break;
+        case 'CONTOUR': applyContour(landmarks); break;
+      }
+      canvasCtx.restore()
+    }
+  } else {
+    // No face detected - show video feed
+    if (canvasCtx) {
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height)
+      canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
     }
   }
-  canvasCtx.restore()
+}
+
+/**
+ * Render using Three.js (NEW)
+ */
+const renderWithThreeJS = (landmarks: any[], image: any) => {
+  if (!threeRenderer || !textureManager || !canvasRef.value) return
+  
+  const canvas = canvasRef.value
+  const { color, opacity, type } = currentShade.value
+  
+  // Update face mesh geometry
+  threeRenderer.updateFaceMesh(landmarks)
+  
+  // Generate and apply texture based on makeup type
+  let texture
+  
+  switch(type) {
+    case 'FOUNDATION':
+      texture = textureManager.generateFoundationTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'LIPSTICK':
+      texture = textureManager.generateLipstickTexture(512, 512, color, opacity, landmarks, 'matte')
+      break
+    
+    case 'BLUSH':
+      texture = textureManager.generateBlushTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'EYESHADOW':
+      texture = textureManager.generateEyeshadowTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'CONTOUR':
+      texture = textureManager.generateContourTexture(512, 512, color, opacity, landmarks, contourPlacement.value as any)
+      break
+    
+    case 'CONCEALER':
+      texture = textureManager.generateConcealerTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'LIPLINER':
+      texture = textureManager.generateLipLinerTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'EYELINER':
+      // Use procedural for now (can load external PNGs later)
+      const style = eyelinerPlacement.value === 'natural' ? 'natural' : 'winged'
+      texture = textureManager.generateEyelinerTexture(512, 512, color, opacity, landmarks, style)
+      break
+    
+    case 'BROWS':
+      texture = textureManager.generateBrowTexture(512, 512, color, opacity, landmarks)
+      break
+    
+    case 'MASCARA':
+      texture = textureManager.generateMascaraTexture(512, 512, color, opacity, landmarks)
+      break
+  }
+  
+  if (texture) {
+    threeRenderer.applyMakeup(type, texture)
+  }
+  
+  // Render the scene
+  threeRenderer.render()
 }
 
 // --- Specific Drawing Functions (All with null checks) ---
@@ -218,15 +346,77 @@ const applyEyeliner = (landmarks: any[], isMascara = false) => {
   if (!canvasCtx || !canvasRef.value) return
   const canvas = canvasRef.value
   const { color, opacity } = currentShade.value
-  const drawLiner = (indices: number[]) => {
+  
+  const drawLiner = (indices: number[], lineWidth: number = 2, extendWing: boolean = false, wingLength: number = 0) => {
     canvasCtx!.beginPath()
     const path = indices.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-    canvasCtx!.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y))
-    canvasCtx!.save(); canvasCtx!.strokeStyle = color; canvasCtx!.globalAlpha = isMascara ? opacity * 0.5 : opacity
-    canvasCtx!.lineWidth = isMascara ? 4 : 2; canvasCtx!.lineCap = 'round'
-    canvasCtx!.filter = 'blur(0.5px)'; canvasCtx!.stroke(); canvasCtx!.restore()
+    
+    // Reverse the path to draw from outer corner to inner corner
+    const reversedPath = [...path].reverse()
+    
+    canvasCtx!.moveTo(reversedPath[0].x, reversedPath[0].y)
+    reversedPath.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y))
+    
+    // Add wing extension if needed
+    if (extendWing && path.length > 1) {
+      const firstPoint = path[0]  // Changed from lastPoint to firstPoint
+      
+      // Determine if it's left or right eye
+      const isLeftEye = indices[0] < 300
+      
+      // Wing should extend outward (toward temple) and slightly downward
+      // For left eye: extend to the LEFT and down (toward left temple)
+      // For right eye: extend to the RIGHT and down (toward right temple)
+      
+      // Calculate wing endpoint from FIRST point (inner corner)
+      // Horizontal: outward from face center
+      // Vertical: slightly downward for horizontal look
+      const horizontalDirection = isLeftEye ? -1 : 1  // Left for left eye, right for right eye
+      const wingX = firstPoint.x + (horizontalDirection * wingLength * 0.9)  // 90% horizontal
+      const wingY = firstPoint.y + (wingLength * 0.1)  // 10% downward (changed from -0.4 upward)
+      
+      canvasCtx!.lineTo(wingX, wingY)
+    }
+    
+    canvasCtx!.save()
+    canvasCtx!.strokeStyle = color
+    canvasCtx!.globalAlpha = isMascara ? opacity * 0.5 : opacity
+    canvasCtx!.lineWidth = lineWidth
+    canvasCtx!.lineCap = 'round'
+    canvasCtx!.lineJoin = 'round'
+    canvasCtx!.filter = 'blur(0.5px)'
+    canvasCtx!.stroke()
+    canvasCtx!.restore()
   }
-  drawLiner(LEFT_LINER); drawLiner(RIGHT_LINER)
+  
+  // Apply based on selected eyeliner style
+  if (!isMascara) {
+    switch(eyelinerPlacement.value) {
+      case 'natural':
+        drawLiner(LEFT_LINER, 2, false)
+        drawLiner(RIGHT_LINER, 2, false)
+        break
+      case 'small_winged':
+        drawLiner(LEFT_LINER, 2, true, canvas.width * 0.025)  // 2.5% of canvas width
+        drawLiner(RIGHT_LINER, 2, true, canvas.width * 0.025)
+        break
+      case 'fringe_glam':
+        drawLiner(LEFT_LINER, 2.5, true, canvas.width * 0.035)  // 3.5%
+        drawLiner(RIGHT_LINER, 2.5, true, canvas.width * 0.035)
+        break
+      case 'thick_winged':
+        drawLiner(LEFT_LINER, 3.5, true, canvas.width * 0.045)  // 4.5%
+        drawLiner(RIGHT_LINER, 3.5, true, canvas.width * 0.045)
+        break
+      case 'cat_eye':
+        drawLiner(LEFT_LINER, 4, true, canvas.width * 0.055)  // 5.5%
+        drawLiner(RIGHT_LINER, 4, true, canvas.width * 0.055)
+        break
+    }
+  } else {
+    drawLiner(LEFT_LINER, 4, false)
+    drawLiner(RIGHT_LINER, 4, false)
+  }
 }
 
 const applyMascara = (landmarks: any[]) => applyEyeliner(landmarks, true)
@@ -263,15 +453,44 @@ const applyContour = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
   const canvas = canvasRef.value
   const { color, opacity } = currentShade.value
-  const drawZone = (idx: number) => {
-    const x = landmarks[idx].x * canvas.width; const y = (landmarks[idx].y + 0.05) * canvas.height; const radius = canvas.width * 0.08
+  
+  const drawZone = (idx: number, offsetY: number = 0.05, radiusMultiplier: number = 0.08) => {
+    const x = landmarks[idx].x * canvas.width
+    const y = (landmarks[idx].y + offsetY) * canvas.height
+    const radius = canvas.width * radiusMultiplier
     const gradient = canvasCtx!.createRadialGradient(x, y, 0, x, y, radius)
-    gradient.addColorStop(0, color); gradient.addColorStop(1, 'transparent')
-    canvasCtx!.save(); canvasCtx!.globalCompositeOperation = 'multiply'; canvasCtx!.globalAlpha = opacity * 0.4
-    canvasCtx!.fillStyle = gradient; canvasCtx!.beginPath(); canvasCtx!.arc(x, y, radius, 0, Math.PI * 2)
-    canvasCtx!.fill(); canvasCtx!.restore()
+    gradient.addColorStop(0, color)
+    gradient.addColorStop(1, 'transparent')
+    canvasCtx!.save()
+    canvasCtx!.globalCompositeOperation = 'multiply'
+    canvasCtx!.globalAlpha = opacity * 0.4
+    canvasCtx!.fillStyle = gradient
+    canvasCtx!.beginPath()
+    canvasCtx!.arc(x, y, radius, 0, Math.PI * 2)
+    canvasCtx!.fill()
+    canvasCtx!.restore()
   }
-  drawZone(123); drawZone(352)
+  
+  // Apply based on selected placement
+  switch(contourPlacement.value) {
+    case 'default':
+      // Cheekbones (default)
+      drawZone(123, 0.05, 0.08)  // Left cheekbone
+      drawZone(352, 0.05, 0.08)  // Right cheekbone
+      break
+    
+    case 'forehead':
+      // Forehead sides
+      drawZone(54, -0.08, 0.07)   // Left forehead
+      drawZone(284, -0.08, 0.07)  // Right forehead
+      break
+    
+    case 'inner_eyebrow':
+      // Between eyebrows (nose bridge)
+      drawZone(6, -0.02, 0.05)    // Nose bridge top
+      drawZone(197, 0.01, 0.04)   // Nose bridge middle
+      break
+  }
 }
 
 // --- Mode Management ---
@@ -318,9 +537,25 @@ const handleFileUpload = (event: Event) => {
 
 const redrawWithCachedLandmarks = () => { if (lastResults.value) onResults(lastResults.value) }
 watch(currentShade, () => { if (!isCameraMode.value) redrawWithCachedLandmarks() }, { deep: true })
+watch(contourPlacement, () => { if (!isCameraMode.value) redrawWithCachedLandmarks() })
+watch(eyelinerPlacement, () => { if (!isCameraMode.value) redrawWithCachedLandmarks() })
 
-onMounted(async () => { if (canvasRef.value) canvasCtx = canvasRef.value.getContext('2d'); await initFaceMesh(); await startCamera() })
-onUnmounted(() => { if (camera) camera.stop(); if (faceMesh) faceMesh.close() })
+
+onMounted(async () => { 
+  if (canvasRef.value) {
+    canvasCtx = canvasRef.value.getContext('2d')
+    // initThreeJS() // Initialize Three.js renderer
+  }
+  await initFaceMesh()
+  await startCamera()
+})
+
+onUnmounted(() => { 
+  if (camera) camera.stop()
+  if (faceMesh) faceMesh.close()
+  if (threeRenderer) threeRenderer.dispose()
+  if (textureManager) textureManager.clearCache()
+})
 
 // --- Data ---
 const modelLibrary = Array.from({length: 12}, (_, i) => `https://dsf-cdn.loreal.io/vto/vto-lorealsa-maybellineny-usa-web-production-std/add_makeup_models_view${i+1}_thumbnail_image.jpg`)
@@ -336,8 +571,9 @@ const categories = [
   { id: 'MASCARA', name: 'ماسكارا', icon: 'fas fa-eye' },
   { id: 'BROW', name: 'حواجب', icon: 'fas fa-minus' }
 ]
-const activeCategory = ref('LIPSTICK')
-const availableShades = ref<Shade[]>([
+const activeCategory = ref(props.initialShade?.type || 'LIPSTICK')
+// Default shades
+const defaultShades: Shade[] = [
   { id: 101, color: "#F5DEB3", opacity: 0.3, type: "FOUNDATION", name: "Light Sand" },
   { id: 201, color: "#8B4513", opacity: 0.25, type: "CONTOUR", name: "Deep Sculpt" },
   { id: 301, color: "#FFE4C4", opacity: 0.4, type: "CONCEALER", name: "Bright Eye" },
@@ -348,7 +584,17 @@ const availableShades = ref<Shade[]>([
   { id: 801, color: "#000000", opacity: 0.8, type: "EYELINER", name: "Ink Black" },
   { id: 901, color: "#111111", opacity: 0.9, type: "MASCARA", name: "Volume Max" },
   { id: 1001, color: "#3E2723", opacity: 0.6, type: "BROW", name: "Dark Brown" }
+]
+
+// Merge product shades with default shades
+const availableShades = ref<Shade[]>([
+  ...(props.productShades || []),
+  ...defaultShades
 ])
+
+console.log('[MakeupTryOn] Available shades:', availableShades.value)
+console.log('[MakeupTryOn] Product shades:', props.productShades)
+console.log('[MakeupTryOn] Active category:', activeCategory.value)
 const filteredShades = computed(() => availableShades.value.filter(s => s.type === activeCategory.value))
 const selectShade = (shade: Shade) => currentShade.value = shade
 watch(activeCategory, (newCat) => { const first = availableShades.value.find(s => s.type === newCat); if (first) currentShade.value = first })
@@ -392,7 +638,7 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
       </div>
     </div>
     <div class="vto-sidebar card shadow-lg">
-      <div class="category-slider-wrapper">
+      <div class="category-slider-wrapper d-none">
         <button @click="scrollContainer(categoryScrollRef, 'left')" class="slider-arrow left"><i class="fas fa-chevron-right"></i></button>
         <div class="category-tabs" ref="categoryScrollRef">
           <button v-for="cat in categories" :key="cat.id" class="cat-tab" :class="{ active: activeCategory === cat.id }" @click="activeCategory = cat.id">
@@ -414,11 +660,47 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
           </button>
         </div>
       </div>
+      
+      <!-- Contour Placement Selector (only show for CONTOUR type) -->
+      <div v-if="activeCategory === 'CONTOUR'" class="contour-placement-picker">
+        <label>اختر مكان الكونتور:</label>
+        <div class="placement-grid">
+          <button 
+            v-for="placement in contourPlacements" 
+            :key="placement.id" 
+            class="placement-btn" 
+            :class="{ selected: contourPlacement === placement.id }"
+            @click="contourPlacement = placement.id"
+          >
+            <img :src="placement.image" :alt="placement.name" />
+            <span>{{ placement.name }}</span>
+            <i v-if="contourPlacement === placement.id" class="fas fa-check-circle"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Eyeliner Placement Selector (only show for EYELINER type) -->
+      <div v-if="activeCategory === 'EYELINER'" class="eyeliner-placement-picker">
+        <label>اختر نمط الآيلاينر:</label>
+        <div class="placement-grid placement-grid-5">
+          <button 
+            v-for="placement in eyelinerPlacements" 
+            :key="placement.id" 
+            class="placement-btn" 
+            :class="{ selected: eyelinerPlacement === placement.id }"
+            @click="eyelinerPlacement = placement.id"
+          >
+            <img :src="placement.image" :alt="placement.name" />
+            <span>{{ placement.name }}</span>
+            <i v-if="eyelinerPlacement === placement.id" class="fas fa-check-circle"></i>
+          </button>
+        </div>
+      </div>
+      
       <div class="intensity-slider">
         <div class="slider-header"><label>حدة اللون</label><span>{{ Math.round(currentShade.opacity * 100) }}%</span></div>
         <input type="range" v-model.number="currentShade.opacity" min="0.2" max="0.8" step="0.05" />
       </div>
-      <button class="btn btn-primary btn-lg w-100 mt-4 rounded-pill">إضافة للسلة</button>
     </div>
   </div>
 </template>
@@ -426,11 +708,12 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
 <style scoped>
 .vto-widget { 
   display: grid; 
-  grid-template-columns: 1fr 280px; 
+  grid-template-columns: 1fr 520px; 
   gap: 1.25rem; 
   padding: 0.75rem; 
-  max-width: 900px; 
-  margin: 0 auto; 
+  max-width: 100%; 
+  margin: 0 auto;
+  height: 520px;
 }
 @media (max-width: 991px) { .vto-widget { grid-template-columns: 1fr; } }
 .vto-display { display: flex; flex-direction: column; overflow: hidden; }
@@ -475,7 +758,7 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
 .category { font-size: 0.85rem; color: #C2185B; font-weight: 700; display: block; margin-bottom: 0.4rem; }
 .current-product h4 { font-weight: 800; margin: 0; color: #1e293b; }
 .shade-picker label { font-weight: 700; color: #475569; margin-bottom: 1rem; display: block; }
-.shades-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; }
+.shades-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.8rem; }
 .shade-btn { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; }
 .shade-btn.selected { border-color: #1e293b; }
 .intensity-slider .slider-header { display: flex; justify-content: space-between; margin-bottom: 0.8rem; }
@@ -485,4 +768,131 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
 .vto-spinner { width: 2.5rem; height: 2.5rem; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #C2185B; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10; color: white; text-align: center; }
+
+/* Contour Placement Picker */
+.contour-placement-picker {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+}
+
+.contour-placement-picker label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #495057;
+  margin-bottom: 0.75rem;
+}
+
+.placement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.placement-btn {
+  position: relative;
+  background: white;
+  border: 2px solid #dee2e6;
+  border-radius: 10px;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.placement-btn img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.placement-btn span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6c757d;
+  text-align: center;
+}
+
+.placement-btn i.fa-check-circle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.placement-btn:hover {
+  border-color: #C2185B;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(194, 24, 91, 0.2);
+}
+
+.placement-btn.selected {
+  border-color: #C2185B;
+  background: linear-gradient(135deg, #fff5f8, #ffe6f0);
+  box-shadow: 0 4px 12px rgba(194, 24, 91, 0.3);
+}
+
+.placement-btn.selected span {
+  color: #C2185B;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .placement-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .placement-btn {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .placement-btn img {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .placement-btn span {
+    font-size: 0.7rem;
+  }
+}
+
+/* Eyeliner Placement Picker */
+.eyeliner-placement-picker {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  border-radius: 12px;
+}
+
+.eyeliner-placement-picker label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1565c0;
+  margin-bottom: 0.75rem;
+}
+
+.placement-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 768px) {
+  .placement-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .placement-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 </style>

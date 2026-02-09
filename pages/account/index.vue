@@ -1097,6 +1097,51 @@ onMounted(async () => {
   loadRestockRequests()
 })
 
+// Delete account state
+const deleteAccountConfirmed = ref(false)
+const deleteAccountLoading = ref(false)
+const deleteAccountError = ref('')
+
+// Delete account function
+const deleteAccount = async () => {
+  if (!deleteAccountConfirmed.value) {
+    deleteAccountError.value = t('account.delete_account.confirm_checkbox_required')
+    return
+  }
+
+  if (!confirm(t('account.delete_account.warning_title') + '\n\n' + t('account.delete_account.warning_message'))) {
+    return
+  }
+
+  deleteAccountLoading.value = true
+  deleteAccountError.value = ''
+
+  try {
+    const { $del } = useApi()
+    await $del('v1/customer/account-delete', undefined, { skipGuestParams: true })
+    
+    // Show success message
+    toastMessage.value = t('account.delete_account.success_message')
+    toastType.value = 'success'
+    showToastMessage.value = true
+    
+    // Wait 2 seconds then logout and redirect
+    setTimeout(() => {
+      auth.setToken(null)
+      auth.setUser(null)
+      navigateTo('/')
+    }, 2000)
+  } catch (error: any) {
+    console.error('Error deleting account:', error)
+    deleteAccountError.value = error?.data?.message || t('account.delete_account.error_message')
+    toastMessage.value = deleteAccountError.value
+    toastType.value = 'error'
+    showToastMessage.value = true
+  } finally {
+    deleteAccountLoading.value = false
+  }
+}
+
 // Tab navigation
 const tabs = computed(() => [
   { id: 'profile', name: t('account.tabs.profile'), icon: '👤' },
@@ -1105,7 +1150,8 @@ const tabs = computed(() => [
   { id: 'addresses', name: t('account.tabs.addresses'), icon: '📍' },
   { id: 'support', name: t('account.tabs.support'), icon: '🎫' },
   { id: 'coupons', name: t('account.tabs.coupons'), icon: '🎟️' },
-  { id: 'tracking', name: t('account.tabs.tracking'), icon: '🚚' }
+  { id: 'tracking', name: t('account.tabs.tracking'), icon: '🚚' },
+  { id: 'delete_account', name: t('account.delete_account.title'), icon: '🗑️' }
 ])
 </script>
 
@@ -1944,6 +1990,93 @@ const tabs = computed(() => [
               <div class="empty-icon">🚚</div>
               <h3>{{ t('account.tracking.empty_title') }}</h3>
               <p>{{ t('account.tracking.empty_description') }}</p>
+            </div>
+          </div>
+
+          <!-- Delete Account Tab -->
+          <div v-if="activeTab === 'delete_account'" class="tab-content">
+            <div class="tab-header">
+              <h2>{{ t('account.delete_account.title') }}</h2>
+              <p>{{ t('account.delete_account.subtitle') }}</p>
+            </div>
+
+            <div class="delete-account-container">
+              <!-- Warning Section -->
+              <div class="warning-box">
+                <div class="warning-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#ef4444"/>
+                  </svg>
+                </div>
+                <h3>{{ t('account.delete_account.warning_title') }}</h3>
+                <p>{{ t('account.delete_account.warning_message') }}</p>
+                
+                <ul class="warning-list">
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.personal_info') }}
+                  </li>
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.orders') }}
+                  </li>
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.addresses') }}
+                  </li>
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.wishlist') }}
+                  </li>
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.coupons') }}
+                  </li>
+                  <li>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    {{ t('account.delete_account.warning_items.support_tickets') }}
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Confirmation Section -->
+              <div class="confirmation-section">
+                <label class="confirmation-checkbox">
+                  <input 
+                    type="checkbox" 
+                    v-model="deleteAccountConfirmed"
+                    :disabled="deleteAccountLoading"
+                  />
+                  <span>{{ t('account.delete_account.confirmation_label') }}</span>
+                </label>
+
+                <div v-if="deleteAccountError" class="error-message">
+                  {{ deleteAccountError }}
+                </div>
+
+                <div class="delete-actions">
+                  <button 
+                    class="action-btn danger" 
+                    @click="deleteAccount"
+                    :disabled="deleteAccountLoading || !deleteAccountConfirmed"
+                  >
+                    <span v-if="deleteAccountLoading">{{ t('account.delete_account.deleting') }}</span>
+                    <span v-else>{{ t('account.delete_account.delete_button') }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -5397,6 +5530,145 @@ const tabs = computed(() => [
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  /* Delete Account Styles */
+  .delete-account-container {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .warning-box {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 2px solid #fca5a5;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+
+  .warning-icon {
+    margin: 0 auto 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .warning-box h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #dc2626;
+    margin: 0 0 16px;
+  }
+
+  .warning-box p {
+    font-size: 16px;
+    color: #991b1b;
+    margin: 0 0 24px;
+    line-height: 1.6;
+  }
+
+  .warning-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: right;
+  }
+
+  .warning-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: #7f1d1d;
+    font-weight: 500;
+  }
+
+  .warning-list li svg {
+    flex-shrink: 0;
+    color: #dc2626;
+  }
+
+  .confirmation-section {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .confirmation-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    margin-bottom: 24px;
+  }
+
+  .confirmation-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .confirmation-checkbox span {
+    font-size: 15px;
+    color: #374151;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .delete-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .action-btn.danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+    padding: 16px 32px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  }
+
+  .action-btn.danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+  }
+
+  .action-btn.danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    .delete-account-container {
+      max-width: 100%;
+    }
+
+    .warning-box,
+    .confirmation-section {
+      padding: 20px;
+    }
+
+    .warning-box h3 {
+      font-size: 20px;
+    }
+
+    .warning-list li {
+      font-size: 14px;
     }
   }
 </style>
