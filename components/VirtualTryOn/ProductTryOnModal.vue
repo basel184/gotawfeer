@@ -201,22 +201,74 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .vto-modal-overlay {
+    padding: 0;
+  }
+
   .vto-modal-container {
     max-width: 100vw;
     max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
     border-radius: 0;
+    overflow: hidden;
   }
   
   .vto-modal-header {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
   .vto-modal-title {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .vto-modal-title i {
+    margin-left: 0.5rem;
+    margin-right: 0;
+  }
+  
+  .vto-modal-close {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-right: 0.5rem;
   }
   
   .vto-modal-body {
-    padding: 1rem;
+    padding: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .vto-modal-loading {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vto-modal-header {
+    padding: 0.5rem 0.75rem;
+    min-height: 48px;
+  }
+
+  .vto-modal-title {
+    font-size: 0.85rem;
+  }
+
+  .vto-modal-close {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
 }
 </style>

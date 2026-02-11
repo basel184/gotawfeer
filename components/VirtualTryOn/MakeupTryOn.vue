@@ -558,7 +558,7 @@ onUnmounted(() => {
 })
 
 // --- Data ---
-const modelLibrary = Array.from({length: 12}, (_, i) => `https://dsf-cdn.loreal.io/vto/vto-lorealsa-maybellineny-usa-web-production-std/add_makeup_models_view${i+1}_thumbnail_image.jpg`)
+const modelLibrary = [1, 3, 4, 5, 6, 7, 8, 9, 10].map(i => `https://dsf-cdn.loreal.io/vto/vto-lorealsa-maybellineny-usa-web-production-std/add_makeup_models_view${i}_thumbnail_image.jpg`)
 const categories = [
   { id: 'FOUNDATION', name: 'كريم أساس', icon: 'fas fa-magic' },
   { id: 'CONTOUR', name: 'كونتور', icon: 'fas fa-mask' },
@@ -715,7 +715,7 @@ watch(activeCategory, (newCat) => { const first = availableShades.value.find(s =
   margin: 0 auto;
   height: 520px;
 }
-@media (max-width: 991px) { .vto-widget { grid-template-columns: 1fr; } }
+@media (max-width: 991px) { .vto-widget { grid-template-columns: 1fr; height: auto;} }
 .vto-display { display: flex; flex-direction: column; overflow: hidden; }
 .vto-main-canvas-container { 
   position: relative; 
