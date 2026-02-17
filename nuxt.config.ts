@@ -47,7 +47,7 @@ export default defineNuxtConfig({
       viewport: 'width=device-width, initial-scale=1',
       title: 'جو توفير - Go Tawfeer',
       meta: [
-        { name: 'google-site-verification', content: '1gyaz0E3NOYy7ltVXVKCUZS1uv2zc044W3FGLpNoXrA' },
+        { name: 'google-site-verification', content: 'geS-xtt6gqCCJUhBq0R1wBcMHE635p899jv4uOMBu-I' },
         { name: 'description', content: 'مرحباً بكم في جو توفير، وجهتك الأولى للتسوق الإلكتروني في المملكة العربية السعودية.' },
         { name: 'format-detection', content: 'telephone=no' }
       ],
