@@ -547,7 +547,11 @@ onMounted(async () => {
     // initThreeJS() // Initialize Three.js renderer
   }
   await initFaceMesh()
-  await startCamera()
+  if (modelLibrary.length > 0) {
+    await toggleMode('model', modelLibrary[0])
+  } else {
+    await startCamera()
+  }
 })
 
 onUnmounted(() => { 

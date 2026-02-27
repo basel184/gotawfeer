@@ -10,6 +10,9 @@ export default defineNuxtConfig({
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
       fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '',
       fbConversionApiToken: process.env.NUXT_PUBLIC_FB_CONVERSION_API_TOKEN || '',
+      snapchatPixelId: process.env.NUXT_PUBLIC_SNAPCHAT_PIXEL_ID || 'f607062b-c823-407a-9f93-1dc2542be238',
+      currency: process.env.NUXT_PUBLIC_CURRENCY || 'SAR',
+      currencySymbol: process.env.NUXT_PUBLIC_CURRENCY_SYMBOL || 'ر.س'
     }
   },
 
@@ -137,13 +140,37 @@ export default defineNuxtConfig({
             fbq('init', '${process.env.NUXT_PUBLIC_FB_PIXEL_ID || ''}');
           `,
           type: 'text/javascript'
+        },
+        {
+          hid: 'snapchat-pixel',
+          innerHTML: `
+            (function (e, t, n) {
+              if (e.snaptr) return;
+              var a = e.snaptr = function () {
+                a.handleRequest ? a.handleRequest.apply(a, arguments) : a.queue.push(arguments);
+              };
+              a.queue = [];
+              var s = 'script';
+              var r = t.createElement(s);
+              r.async = true;
+              r.src = n;
+              var u = t.getElementsByTagName(s)[0];
+              u.parentNode.insertBefore(r, u);
+            })(window, document, 'https://sc-static.net/scevent.min.js');
+            snaptr('init', '${process.env.NUXT_PUBLIC_SNAPCHAT_PIXEL_ID || 'f607062b-c823-407a-9f93-1dc2542be238'}', {
+              currency: 'SAR'
+            });
+            snaptr('track', 'PAGE_VIEW');
+          `,
+          type: 'text/javascript'
         }
       ],
       __dangerouslyDisableSanitizersByTagID: {
         gtm: ['innerHTML'],
         clarity: ['innerHTML'],
         tiktok: ['innerHTML'],
-        'facebook-pixel': ['innerHTML']
+        'facebook-pixel': ['innerHTML'],
+        'snapchat-pixel': ['innerHTML']
       }
     }) as any
   },
