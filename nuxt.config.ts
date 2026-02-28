@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
-      fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '',
+      fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '1369120761123220',
       fbConversionApiToken: process.env.NUXT_PUBLIC_FB_CONVERSION_API_TOKEN || '',
       snapchatPixelId: process.env.NUXT_PUBLIC_SNAPCHAT_PIXEL_ID || 'f607062b-c823-407a-9f93-1dc2542be238',
       googleAdsConversionId: process.env.NUXT_PUBLIC_GOOGLE_ADS_CONVERSION_ID || 'AW-17945118619',
