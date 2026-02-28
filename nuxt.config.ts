@@ -11,6 +11,8 @@ export default defineNuxtConfig({
       fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '',
       fbConversionApiToken: process.env.NUXT_PUBLIC_FB_CONVERSION_API_TOKEN || '',
       snapchatPixelId: process.env.NUXT_PUBLIC_SNAPCHAT_PIXEL_ID || 'f607062b-c823-407a-9f93-1dc2542be238',
+      googleAdsConversionId: process.env.NUXT_PUBLIC_GOOGLE_ADS_CONVERSION_ID || 'AW-17945118619',
+      googleAdsConversionLabel: process.env.NUXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL || 'Vm7MCL6qpPYbEJuP8-xC',
       currency: process.env.NUXT_PUBLIC_CURRENCY || 'SAR',
       currencySymbol: process.env.NUXT_PUBLIC_CURRENCY_SYMBOL || 'ر.س'
     }
@@ -163,6 +165,24 @@ export default defineNuxtConfig({
             snaptr('track', 'PAGE_VIEW');
           `,
           type: 'text/javascript'
+        },
+        {
+          hid: 'google-ads',
+          src: 'https://www.googletagmanager.com/gtag/js?id=AW-17945118619',
+          async: true
+        },
+        {
+          hid: 'google-ads-init',
+          innerHTML: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-17945118619', {
+              'allow_google_signals': true,
+              'allow_ad_personalization_signals': true
+            });
+          `,
+          type: 'text/javascript'
         }
       ],
       __dangerouslyDisableSanitizersByTagID: {
@@ -170,7 +190,8 @@ export default defineNuxtConfig({
         clarity: ['innerHTML'],
         tiktok: ['innerHTML'],
         'facebook-pixel': ['innerHTML'],
-        'snapchat-pixel': ['innerHTML']
+        'snapchat-pixel': ['innerHTML'],
+        'google-ads-init': ['innerHTML']
       }
     }) as any
   },
