@@ -266,6 +266,7 @@ onMounted(() => {
 const trackPurchaseEvent = () => {
   try {
     const fbPixel = useFacebookPixel()
+    const googleAds = useGoogleAdsConversion()
     
     // Get order value from URL params
     const orderValue = parseFloat(route.query.order_value as string || route.query.value as string || '0')
@@ -284,6 +285,7 @@ const trackPurchaseEvent = () => {
     
     // If we have order data, track the purchase
     if (orderValue > 0 || orderId.value) {
+      // Track Facebook Pixel Purchase
       fbPixel.trackPurchase({
         content_ids: productIds.length > 0 ? productIds : ['unknown'],
         num_items: numItems,
@@ -293,9 +295,17 @@ const trackPurchaseEvent = () => {
       })
       
       console.log('[Success] Facebook Pixel Purchase tracked')
+      
+      // Track Google Ads Conversion
+      googleAds.trackPurchaseConversion({
+        id: orderId.value || orderIds.value?.[0] || 'unknown',
+        total: orderValue
+      })
+      
+      console.log('[Success] Google Ads Conversion tracked')
     }
   } catch (fbError) {
-    console.warn('[Success] Facebook Pixel Purchase tracking failed:', fbError)
+    console.warn('[Success] Purchase tracking failed:', fbError)
   }
 }
 </script>
