@@ -1954,7 +1954,7 @@
           :class="{ 
             'active': selectedColorIndex === index,
             'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
-            'out-of-stock': color.qty === 0
+ 
           }"
           :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))  
             ? { 

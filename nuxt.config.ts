@@ -25,6 +25,9 @@ export default defineNuxtConfig({
       '/api/**': {
         cors: true,
         headers: { 'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE' }
+      },
+      '/models-banners/**': {
+        proxy: 'https://admin.gotawfeer.com/models-banners/**'
       }
     }
   },

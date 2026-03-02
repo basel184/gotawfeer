@@ -69,6 +69,18 @@ const handleDragStart = (event: DragEvent) => {
   }
 }
 
+const handleSelectStart = (event: Event) => {
+  if (!isEditableElement(event.target)) {
+    blockEvent(event)
+  }
+}
+
+const handleMouseDown = (event: MouseEvent) => {
+  if (event.detail > 1) {
+    blockEvent(event)
+  }
+}
+
 // Get i18n instance
 const { $i18n } = useNuxtApp()
 const { locale } = useI18n()
@@ -116,7 +128,32 @@ useHead(() => {
 // Initialize on mount
 onMounted(() => {
   updateHtmlAttributes()
+  
+  // Add protection listeners
+  if (process.client) {
+    document.addEventListener('keydown', handleKeydown)
+    document.addEventListener('copy', handleClipboard)
+    document.addEventListener('cut', handleClipboard)
+    document.addEventListener('paste', handleClipboard)
+    document.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('dragstart', handleDragStart)
+    document.addEventListener('selectstart', handleSelectStart)
+    document.addEventListener('mousedown', handleMouseDown)
+  }
+})
 
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (process.client) {
+    document.removeEventListener('keydown', handleKeydown)
+    document.removeEventListener('copy', handleClipboard)
+    document.removeEventListener('cut', handleClipboard)
+    document.removeEventListener('paste', handleClipboard)
+    document.removeEventListener('contextmenu', handleContextMenu)
+    document.removeEventListener('dragstart', handleDragStart)
+    document.removeEventListener('selectstart', handleSelectStart)
+    document.removeEventListener('mousedown', handleMouseDown)
+  }
 })
 </script>
 

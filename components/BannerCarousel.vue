@@ -95,11 +95,15 @@ const onErr = (e: any) => {
         :modules="modules"
         :navigation="isCarousel"
         :pagination="!isCarousel"
-        :loop="false"
+        :loop="true"
         :slides-per-view="isCarousel ? 3 : 1"
         :spaceBetween="isCarousel ? 18 : 12"
         :dir="'rtl'"
         :breakpoints="isCarousel ? carouselBreakpoints : undefined"
+        :autoplay="{
+          delay: 5000,
+          disableOnInteraction: false
+        }"
       >
         <SwiperSlide v-for="(b,i) in banners" :key="b?.id || i">
           <div :class="['slide', { 'slide--multi': isCarousel }]">

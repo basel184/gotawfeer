@@ -507,24 +507,96 @@ const startCamera = async () => {
 }
 
 const toggleMode = async (mode: 'camera' | 'upload' | 'model', modelUrl?: string) => {
-  isLoading.value = true
-  if (camera) { await camera.stop(); camera = null }
-  if (mode === 'camera') { isCameraMode.value = true; activeModelUrl.value = null; await startCamera() }
-  else if (mode === 'upload') { isCameraMode.value = false; activeModelUrl.value = null }
-  else if (mode === 'model' && modelUrl) { isCameraMode.value = false; activeModelUrl.value = modelUrl; await processStaticImage(modelUrl) }
-  isLoading.value = false
+  try {
+    isLoading.value = true
+    isModelLoading.value = true
+    
+    // Stop camera if running
+    if (camera) { 
+      try {
+        await camera.stop()
+      } catch (e) {
+        console.warn('[MakeupTryOn] Error stopping camera:', e)
+      }
+      camera = null 
+    }
+    
+    if (mode === 'camera') { 
+      isCameraMode.value = true
+      activeModelUrl.value = null
+      await startCamera() 
+    } 
+    else if (mode === 'upload') { 
+      isCameraMode.value = false
+      activeModelUrl.value = null
+    } 
+    else if (mode === 'model' && modelUrl) { 
+      isCameraMode.value = false
+      activeModelUrl.value = modelUrl
+      console.log('[MakeupTryOn] Switching to model mode:', modelUrl)
+      await processStaticImage(modelUrl)
+    }
+  } catch (error) {
+    console.error('[MakeupTryOn] Error in toggleMode:', error)
+    cameraError.value = 'حدث خطأ أثناء تبديل الوضع'
+  } finally {
+    isLoading.value = false
+    isModelLoading.value = false
+  }
 }
 
 const processStaticImage = async (src: string) => {
-  const img = new Image(); img.crossOrigin = "anonymous"
-  img.onload = async () => {
-    if (canvasRef.value) {
-      const scale = Math.min(1, 800 / img.width)
-      canvasRef.value.width = img.width * scale; canvasRef.value.height = img.height * scale
+  return new Promise<void>((resolve, reject) => {
+    try {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      
+      img.onload = async () => {
+        try {
+          console.log('[MakeupTryOn] Image loaded successfully:', src)
+          
+          if (canvasRef.value && canvasCtx) {
+            const scale = Math.min(1, 800 / img.width)
+            canvasRef.value.width = img.width * scale
+            canvasRef.value.height = img.height * scale
+            
+            // Draw the image to canvas first
+            canvasCtx.drawImage(img, 0, 0, canvasRef.value.width, canvasRef.value.height)
+            console.log('[MakeupTryOn] Image drawn to canvas')
+          }
+          
+          if (faceMesh) {
+            console.log('[MakeupTryOn] Sending image to FaceMesh')
+            await faceMesh.send({ image: img })
+            console.log('[MakeupTryOn] FaceMesh processing complete')
+          } else {
+            console.warn('[MakeupTryOn] FaceMesh not initialized')
+          }
+          
+          resolve()
+        } catch (error) {
+          console.error('[MakeupTryOn] Error processing image:', error)
+          reject(error)
+        }
+      }
+      
+      img.onerror = (error) => {
+        console.error('[MakeupTryOn] Failed to load image:', src, error)
+        reject(new Error(`Failed to load image: ${src}`))
+      }
+      
+      img.onabort = () => {
+        console.error('[MakeupTryOn] Image loading aborted:', src)
+        reject(new Error(`Image loading aborted: ${src}`))
+      }
+      
+      console.log('[MakeupTryOn] Starting to load image:', src)
+      img.src = src
+    } catch (error) {
+      console.error('[MakeupTryOn] Error in processStaticImage:', error)
+      reject(error)
     }
-    await faceMesh.send({ image: img })
-  }
-  img.src = src
+  })
 }
 
 const handleFileUpload = (event: Event) => {
@@ -562,7 +634,13 @@ onUnmounted(() => {
 })
 
 // --- Data ---
-const modelLibrary = [1, 3, 4, 5, 6, 7, 8, 9, 10].map(i => `https://dsf-cdn.loreal.io/vto/vto-lorealsa-maybellineny-usa-web-production-std/add_makeup_models_view${i}_thumbnail_image.jpg`)
+const modelLibrary = [
+  '/models-banners/model_0.png',
+  '/models-banners/model_1.png',
+  '/models-banners/model_2.png',
+  '/models-banners/model_3.png',
+  '/models-banners/model_4.png'
+]
 const categories = [
   { id: 'FOUNDATION', name: 'كريم أساس', icon: 'fas fa-magic' },
   { id: 'CONTOUR', name: 'كونتور', icon: 'fas fa-mask' },

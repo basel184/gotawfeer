@@ -183,7 +183,7 @@ const recentSearches = ref<string[]>([])
 const q = ref<string>((route.query.q as string) || '')
 // If has_discount=true, default to highest_discount sort
 const initialSort = route.query.has_discount === 'true' 
-  ? 'highest_discount' 
+  ? 'has_discount' 
   : ((route.query.sort as string) || 'latest')
 const sort_by = ref<string>(initialSort)
 const product_type = ref<string>('')
@@ -823,13 +823,25 @@ const loadPage = async () => {
 
 // Reset and fetch from first page
 const resetAndFetch = async () => {
-  offset.value = 1
-  total.value = 0
-  items.value = []
-  await loadPage()
-  // Re-setup observer after reset
-  await nextTick()
-  setupInfiniteScroll()
+  try {
+    offset.value = 1
+    total.value = 0
+    items.value = []
+    loading.value = true
+    await loadPage()
+    // Re-setup observer after reset
+    await nextTick()
+    setupInfiniteScroll()
+  } catch (error) {
+    console.error('[shop] Failed to load products:', error)
+    // Show error message to user
+    if (process.client) {
+      // You can add a toast notification here
+      console.warn('[shop] Error loading products - please try again')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // Infinite scroll sentinel
@@ -1004,7 +1016,7 @@ const stopRouteWatcher = watch(() => route.fullPath, async (newPath, oldPath) =>
       sort_by.value = newQuery.sort === 'newest' ? 'latest' : newQuery.sort
     } else if (newQuery.has_discount === 'true' && !newQuery.sort) {
       // If has_discount=true and no sort specified, default to highest_discount
-      sort_by.value = 'highest_discount'
+      sort_by.value = 'has_discount'
     }
     
     // Reset and reload products
@@ -1125,6 +1137,17 @@ const priceRangeText = computed(() => {
   return parts.length ? parts.join(' - ') : ''
 })
 
+// Count active filters
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (q.value?.trim()) count++
+  if (Array.isArray(category.value) && category.value.length > 0) count++
+  if (Array.isArray(brand.value) && brand.value.length > 0) count++
+  if (price_min.value != null || price_max.value != null) count++
+  if (sort_by.value && sort_by.value !== 'latest') count++
+  return count
+})
+
 // Cart event handlers
 const handleAddToCart = async (product: any) => {
   try {
@@ -1168,8 +1191,58 @@ const clearFilters = () => {
 
 // Apply filters and close drawer
 const applyFilters = () => {
-  resetAndFetch()
+  // Update URL with current filter state
+  const query: any = { ...route.query }
+  
+  // Update search query
+  if (q.value?.trim()) {
+    query.q = q.value.trim()
+  } else {
+    delete query.q
+  }
+  
+  // Update category filter
+  if (Array.isArray(category.value) && category.value.length > 0) {
+    query.category = category.value.length === 1 ? category.value[0] : category.value
+  } else {
+    delete query.category
+  }
+  
+  // Update brand filter
+  if (Array.isArray(brand.value) && brand.value.length > 0) {
+    query.brand = brand.value.length === 1 ? brand.value[0] : brand.value
+  } else {
+    delete query.brand
+  }
+  
+  // Update price filters
+  if (price_min.value != null && price_min.value > 0) {
+    query.price_min = price_min.value
+  } else {
+    delete query.price_min
+  }
+  
+  if (price_max.value != null && price_max.value > 0 && price_max.value < priceRangeMax.value) {
+    query.price_max = price_max.value
+  } else {
+    delete query.price_max
+  }
+  
+  // Update sort
+  if (sort_by.value && sort_by.value !== 'latest') {
+    query.sort = sort_by.value
+  } else {
+    delete query.sort
+  }
+  
+  // Update URL
+  router.replace({ path: route.path, query })
+  
+  // Close drawer immediately
   filterDrawerOpen.value = false
+  
+  // Then fetch data
+  resetAndFetch()
 }
 
 // Helper functions for modal (same as before)
@@ -1798,7 +1871,7 @@ const handleProductDetails = () => {
             {{ t('shop.sort_by') }}
           </div>
           <select v-model="sort_by" class="sort-select">
-            <option value="highest_discount">{{ t('shop.sort_options.highest_discount') }}</option>
+            <option value="has_discount">{{ t('shop.sort_options.highest_discount') }}</option>
             <option value="best_selling">{{ t('shop.sort_options.best_selling') }}</option>
             <option value="latest">{{ t('shop.sort_options.latest') }}</option>
             <option value="low-high">{{ t('shop.sort_options.low_high') }}</option>
@@ -1822,7 +1895,7 @@ const handleProductDetails = () => {
                 type="number" 
                 class="price-input" 
                 v-model.number="priceSliderMin"
-                @change="handleMinPriceInput"
+                @input="handleMinPriceInput"
                 :min="priceRangeMin"
                 :max="priceRangeMax"
                 dir="ltr"
@@ -1832,7 +1905,7 @@ const handleProductDetails = () => {
                 type="number" 
                 class="price-input" 
                 v-model.number="priceSliderMax"
-                @change="handleMaxPriceInput"
+                @input="handleMaxPriceInput"
                 :min="priceRangeMin"
                 :max="priceRangeMax"
                 dir="ltr"
@@ -1945,7 +2018,7 @@ const handleProductDetails = () => {
         <div class="result">{{ t('shop.results') }}: {{ items.length }} / {{ total }}</div>
         <div class="spacer" />
         <select v-model="sort_by" class="select small">
-          <option value="highest_discount">{{ t('shop.sort_options.highest_discount') }}</option>
+          <option value="has_discount">{{ t('shop.sort_options.highest_discount') }}</option>
           <option value="best_selling">{{ t('shop.sort_options.best_selling') }}</option>
           <option value="latest">{{ t('shop.sort_options.latest') }}</option>
           <option value="low-high">{{ t('shop.sort_options.low_high') }}</option>
@@ -1960,16 +2033,9 @@ const handleProductDetails = () => {
         <p v-if="items.length > 0">{{ items.length }} {{ t('shop.search_results.products_count') }}</p>
       </div>
       
-      <!-- Best Selling Banner -->
-      <div v-if="isBestSelling" class="best-selling-banner">
-        <img src="/images/الافضل-مبيعا-جو-توفير.png" alt="الأفضل مبيعاً" class="banner-image" />
-      </div>
+
       
       <!-- Offers Header -->
-      <div v-if="route.query.has_discount === 'true' ">
-        <img src="/images/خصومات2-جوتوفير.png" width="100%" height="auto" alt="العروض" class="banner-image" />
-      </div>
-
       <div class="grid">
         <!-- Product Cards -->
         <ProductCard 
