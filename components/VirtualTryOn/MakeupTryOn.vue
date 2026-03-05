@@ -97,6 +97,70 @@ const RIGHT_BROW = [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
 const LEFT_UNDER_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 243, 190, 56, 28, 27, 29, 30, 247, 130]
 const RIGHT_UNDER_EYE = [263, 249, 390, 373, 374, 380, 381, 382, 362, 463, 414, 286, 258, 257, 259, 260, 467, 359]
 
+// --- Smoothing & Drawing Helpers ---
+let smoothedLandmarks: any[] | null = null
+const SMOOTHING = 0.45
+
+const smoothLandmarks = (raw: any[]): any[] => {
+  if (!smoothedLandmarks || smoothedLandmarks.length !== raw.length) {
+    smoothedLandmarks = raw.map(l => ({ x: l.x, y: l.y, z: l.z || 0 }))
+    return smoothedLandmarks
+  }
+  for (let i = 0; i < raw.length; i++) {
+    smoothedLandmarks[i].x += (raw[i].x - smoothedLandmarks[i].x) * (1 - SMOOTHING)
+    smoothedLandmarks[i].y += (raw[i].y - smoothedLandmarks[i].y) * (1 - SMOOTHING)
+    smoothedLandmarks[i].z += ((raw[i].z || 0) - smoothedLandmarks[i].z) * (1 - SMOOTHING)
+  }
+  return smoothedLandmarks
+}
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+const toCanvas = (lm: any[], indices: number[], w: number, h: number) =>
+  indices.map(i => ({ x: lm[i].x * w, y: lm[i].y * h }))
+
+const drawSmoothClosed = (ctx: CanvasRenderingContext2D, rawPts: { x: number; y: number }[]) => {
+  let pts = rawPts
+  const last = pts[pts.length - 1], first = pts[0]
+  if (Math.abs(last.x - first.x) < 0.5 && Math.abs(last.y - first.y) < 0.5) pts = pts.slice(0, -1)
+  const n = pts.length
+  if (n < 3) { pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.closePath(); return }
+  ctx.moveTo(pts[0].x, pts[0].y)
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n]
+    const t = 0.4
+    ctx.bezierCurveTo(
+      p1.x + (p2.x - p0.x) * t / 3, p1.y + (p2.y - p0.y) * t / 3,
+      p2.x - (p3.x - p1.x) * t / 3, p2.y - (p3.y - p1.y) * t / 3,
+      p2.x, p2.y
+    )
+  }
+  ctx.closePath()
+}
+
+const drawSmoothOpen = (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) => {
+  if (pts.length < 2) return
+  ctx.moveTo(pts[0].x, pts[0].y)
+  if (pts.length === 2) { ctx.lineTo(pts[1].x, pts[1].y); return }
+  const t = 0.4
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = i > 0 ? pts[i - 1] : pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = i < pts.length - 2 ? pts[i + 2] : pts[i + 1]
+    ctx.bezierCurveTo(
+      p1.x + (p2.x - p0.x) * t / 3, p1.y + (p2.y - p0.y) * t / 3,
+      p2.x - (p3.x - p1.x) * t / 3, p2.y - (p3.y - p1.y) * t / 3,
+      p2.x, p2.y
+    )
+  }
+}
+
 /**
  * Initialize Three.js Renderer
  */
@@ -153,7 +217,7 @@ const onResults = (results: any) => {
   lastResults.value = results
   
   if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-    const landmarks = results.multiFaceLandmarks[0]
+    const landmarks = smoothLandmarks(results.multiFaceLandmarks[0])
     
     // Use Three.js renderer if enabled
     if (useThreeJS.value && threeRenderer && textureManager) {
@@ -175,7 +239,7 @@ const onResults = (results: any) => {
         case 'EYESHADOW': applyEyeshadow(landmarks); break;
         case 'EYELINER': applyEyeliner(landmarks); break;
         case 'MASCARA': applyMascara(landmarks); break;
-        case 'BROWS': applyBrow(landmarks); break;
+        case 'BROW': applyBrow(landmarks); break;
         case 'CONTOUR': applyContour(landmarks); break;
       }
       canvasCtx.restore()
@@ -260,136 +324,237 @@ const renderWithThreeJS = (landmarks: any[], image: any) => {
 
 const applyLipstick = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
-  canvasCtx.beginPath()
-  const outerCoords = LIP_OUTER.map(idx => ({ x: landmarks[idx].x * canvas.width, y: landmarks[idx].y * canvas.height }))
-  canvasCtx.moveTo(outerCoords[0].x, outerCoords[0].y)
-  outerCoords.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y))
-  canvasCtx.closePath()
-  const innerCoords = LIP_INNER.map(idx => ({ x: landmarks[idx].x * canvas.width, y: landmarks[idx].y * canvas.height }))
-  canvasCtx.moveTo(innerCoords[0].x, innerCoords[0].y)
-  innerCoords.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y))
-  canvasCtx.closePath()
+  const w = c.width, h = c.height
+  const outer = toCanvas(landmarks, LIP_OUTER, w, h)
+  const inner = toCanvas(landmarks, LIP_INNER, w, h)
+
+  const buildPath = () => {
+    canvasCtx!.beginPath()
+    drawSmoothClosed(canvasCtx!, outer)
+    drawSmoothClosed(canvasCtx!, inner)
+  }
+
+  // Layer 1: Base with multiply for natural skin blending
   canvasCtx.save()
-  canvasCtx.globalCompositeOperation = 'soft-light'
+  buildPath()
+  canvasCtx.globalCompositeOperation = 'multiply'
+  canvasCtx.globalAlpha = opacity * 0.45
   canvasCtx.fillStyle = color
-  canvasCtx.globalAlpha = opacity
-  canvasCtx.filter = 'blur(1.5px)'
+  canvasCtx.filter = 'blur(1px)'
   canvasCtx.fill('evenodd')
-  canvasCtx.filter = 'none'
+  canvasCtx.restore()
+
+  // Layer 2: soft-light for color richness
+  canvasCtx.save()
+  buildPath()
+  canvasCtx.globalCompositeOperation = 'soft-light'
+  canvasCtx.globalAlpha = opacity * 0.7
+  canvasCtx.fillStyle = color
+  canvasCtx.filter = 'blur(0.5px)'
+  canvasCtx.fill('evenodd')
+  canvasCtx.restore()
+
+  // Layer 3: Gloss highlight on lower lip center
+  const bot = landmarks[17], top = landmarks[0]
+  const lipH = Math.abs(bot.y - top.y) * h
+  const cx = bot.x * w, cy = (bot.y * h + top.y * h) / 2 + lipH * 0.15
+  const r = Math.max(lipH * 0.7, 1)
+  canvasCtx.save()
+  buildPath()
+  canvasCtx.clip('evenodd')
+  const g = canvasCtx.createRadialGradient(cx, cy, 0, cx, cy, r)
+  g.addColorStop(0, `rgba(255,255,255,${opacity * 0.12})`)
+  g.addColorStop(1, 'transparent')
+  canvasCtx.globalCompositeOperation = 'screen'
+  canvasCtx.fillStyle = g
+  canvasCtx.fillRect(0, 0, w, h)
   canvasCtx.restore()
 }
 
 const applyBlush = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
-  const drawCheek = (centerIdx: number) => {
-    const x = landmarks[centerIdx].x * canvas.width
-    const y = landmarks[centerIdx].y * canvas.height
-    const radius = canvas.width * 0.1
-    const gradient = canvasCtx!.createRadialGradient(x, y, 0, x, y, radius)
-    gradient.addColorStop(0, color); gradient.addColorStop(1, 'transparent')
+
+  const drawCheek = (idx: number, angle: number) => {
+    const x = landmarks[idx].x * c.width
+    const y = landmarks[idx].y * c.height
+    const rx = c.width * 0.085
+    const ry = c.height * 0.055
+
     canvasCtx!.save()
-    canvasCtx!.globalAlpha = opacity * 0.6
+    canvasCtx!.translate(x, y)
+    canvasCtx!.rotate(angle)
+
+    // Outer soft layer
+    const g1 = canvasCtx!.createRadialGradient(0, 0, 0, 0, 0, Math.max(rx, ry))
+    g1.addColorStop(0, color)
+    g1.addColorStop(0.5, hexToRgba(color, 0.4))
+    g1.addColorStop(1, 'transparent')
     canvasCtx!.globalCompositeOperation = 'soft-light'
-    canvasCtx!.fillStyle = gradient
-    canvasCtx!.beginPath(); canvasCtx!.arc(x, y, radius, 0, Math.PI * 2); canvasCtx!.fill()
+    canvasCtx!.globalAlpha = opacity * 0.55
+    canvasCtx!.fillStyle = g1
+    canvasCtx!.beginPath()
+    canvasCtx!.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2)
+    canvasCtx!.fill()
+
+    // Inner concentrated layer
+    const g2 = canvasCtx!.createRadialGradient(0, 0, 0, 0, 0, Math.max(rx, ry) * 0.5)
+    g2.addColorStop(0, color)
+    g2.addColorStop(1, 'transparent')
+    canvasCtx!.globalAlpha = opacity * 0.3
+    canvasCtx!.beginPath()
+    canvasCtx!.ellipse(0, 0, rx * 0.55, ry * 0.55, 0, 0, Math.PI * 2)
+    canvasCtx!.fillStyle = g2
+    canvasCtx!.fill()
+
     canvasCtx!.restore()
   }
-  drawCheek(234); drawCheek(454)
+
+  drawCheek(234, -0.2)
+  drawCheek(454, 0.2)
 }
 
 const applyFoundation = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
-  canvasCtx.beginPath()
-  const path = FACE_OVAL.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-  canvasCtx.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y)); canvasCtx.closePath()
+  const pts = toCanvas(landmarks, FACE_OVAL, c.width, c.height)
+
+  const buildPath = () => { canvasCtx!.beginPath(); drawSmoothClosed(canvasCtx!, pts) }
+
+  // Pass 1: soft-light base
   canvasCtx.save()
+  buildPath()
   canvasCtx.globalCompositeOperation = 'soft-light'
-  canvasCtx.globalAlpha = opacity * 0.4
+  canvasCtx.globalAlpha = opacity * 0.35
   canvasCtx.fillStyle = color
-  canvasCtx.filter = 'blur(10px)'; canvasCtx.fill()
+  canvasCtx.filter = 'blur(12px)'
+  canvasCtx.fill()
+  canvasCtx.restore()
+
+  // Pass 2: subtle overlay for skin smoothing
+  canvasCtx.save()
+  buildPath()
+  canvasCtx.globalCompositeOperation = 'overlay'
+  canvasCtx.globalAlpha = opacity * 0.15
+  canvasCtx.fillStyle = color
+  canvasCtx.filter = 'blur(20px)'
+  canvasCtx.fill()
   canvasCtx.restore()
 }
 
 const applyLipliner = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
+  const pts = toCanvas(landmarks, LIP_OUTER, c.width, c.height)
+
+  canvasCtx.save()
   canvasCtx.beginPath()
-  const path = LIP_OUTER.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-  canvasCtx.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y)); canvasCtx.closePath()
-  canvasCtx.save(); canvasCtx.strokeStyle = color; canvasCtx.globalAlpha = opacity
-  canvasCtx.lineWidth = 2; canvasCtx.filter = 'blur(1px)'; canvasCtx.stroke()
+  drawSmoothClosed(canvasCtx, pts)
+  canvasCtx.strokeStyle = color
+  canvasCtx.globalAlpha = opacity
+  canvasCtx.lineWidth = 1.8
+  canvasCtx.lineCap = 'round'
+  canvasCtx.lineJoin = 'round'
+  canvasCtx.filter = 'blur(0.5px)'
+  canvasCtx.stroke()
   canvasCtx.restore()
 }
 
 const applyEyeshadow = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
+
   const drawEye = (indices: number[]) => {
+    const pts = toCanvas(landmarks, indices, c.width, c.height)
+    let cx = 0, cy = 0, minY = Infinity, maxY = -Infinity
+    pts.forEach(p => { cx += p.x; cy += p.y; minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) })
+    cx /= pts.length; cy /= pts.length
+    const h = maxY - minY
+
+    // Layer 1: Base fill
+    canvasCtx!.save()
     canvasCtx!.beginPath()
-    const path = indices.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-    canvasCtx!.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y)); canvasCtx!.closePath()
-    canvasCtx!.save(); canvasCtx!.globalCompositeOperation = 'soft-light'; canvasCtx!.globalAlpha = opacity
-    canvasCtx!.fillStyle = color; canvasCtx!.filter = 'blur(4px)'; canvasCtx!.fill(); canvasCtx!.restore()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.globalCompositeOperation = 'soft-light'
+    canvasCtx!.globalAlpha = opacity * 0.7
+    canvasCtx!.fillStyle = color
+    canvasCtx!.filter = 'blur(3px)'
+    canvasCtx!.fill()
+    canvasCtx!.restore()
+
+    // Layer 2: Gradient from lid to crease
+    canvasCtx!.save()
+    canvasCtx!.beginPath()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.clip()
+    const grad = canvasCtx!.createLinearGradient(cx, maxY, cx, minY - h * 0.3)
+    grad.addColorStop(0, color)
+    grad.addColorStop(0.6, hexToRgba(color, 0.3))
+    grad.addColorStop(1, 'transparent')
+    canvasCtx!.globalCompositeOperation = 'multiply'
+    canvasCtx!.globalAlpha = opacity * 0.5
+    canvasCtx!.fillStyle = grad
+    canvasCtx!.fillRect(cx - c.width * 0.15, minY - h, c.width * 0.3, h * 3)
+    canvasCtx!.restore()
   }
-  drawEye(LEFT_EYE_TOP); drawEye(RIGHT_EYE_TOP)
+
+  drawEye(LEFT_EYE_TOP)
+  drawEye(RIGHT_EYE_TOP)
 }
 
 const applyEyeliner = (landmarks: any[], isMascara = false) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
-  
-  const drawLiner = (indices: number[], lineWidth: number = 2, extendWing: boolean = false, wingLength: number = 0) => {
-    canvasCtx!.beginPath()
-    const path = indices.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-    
-    // Reverse the path to draw from outer corner to inner corner
-    const reversedPath = [...path].reverse()
-    
-    canvasCtx!.moveTo(reversedPath[0].x, reversedPath[0].y)
-    reversedPath.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y))
-    
-    // Add wing extension if needed
-    if (extendWing && path.length > 1) {
-      const firstPoint = path[0]  // Changed from lastPoint to firstPoint
-      
-      // Determine if it's left or right eye
-      const isLeftEye = indices[0] < 300
-      
-      // Wing should extend outward (toward temple) and slightly downward
-      // For left eye: extend to the LEFT and down (toward left temple)
-      // For right eye: extend to the RIGHT and down (toward right temple)
-      
-      // Calculate wing endpoint from FIRST point (inner corner)
-      // Horizontal: outward from face center
-      // Vertical: slightly downward for horizontal look
-      const horizontalDirection = isLeftEye ? -1 : 1  // Left for left eye, right for right eye
-      const wingX = firstPoint.x + (horizontalDirection * wingLength * 0.9)  // 90% horizontal
-      const wingY = firstPoint.y + (wingLength * 0.1)  // 10% downward (changed from -0.4 upward)
-      
-      canvasCtx!.lineTo(wingX, wingY)
-    }
-    
+
+  const drawLiner = (indices: number[], baseWidth: number, extendWing: boolean, wingLen: number = 0) => {
+    const pts = toCanvas(landmarks, indices, c.width, c.height)
+    const reversed = [...pts].reverse()
+
     canvasCtx!.save()
     canvasCtx!.strokeStyle = color
     canvasCtx!.globalAlpha = isMascara ? opacity * 0.5 : opacity
-    canvasCtx!.lineWidth = lineWidth
     canvasCtx!.lineCap = 'round'
     canvasCtx!.lineJoin = 'round'
-    canvasCtx!.filter = 'blur(0.5px)'
+    canvasCtx!.filter = 'blur(0.3px)'
+
+    // Draw smooth curve
+    canvasCtx!.beginPath()
+    drawSmoothOpen(canvasCtx!, reversed)
+
+    // Wing with smooth quadratic curve
+    if (extendWing && pts.length > 1) {
+      const isLeft = indices[0] < 300
+      const tip = pts[0]
+      const dir = isLeft ? -1 : 1
+      const wingX = tip.x + dir * wingLen * 0.9
+      const wingY = tip.y + wingLen * 0.1
+      const ctrlX = tip.x + dir * wingLen * 0.5
+      const ctrlY = tip.y - wingLen * 0.15
+      canvasCtx!.quadraticCurveTo(ctrlX, ctrlY, wingX, wingY)
+    }
+
+    canvasCtx!.lineWidth = baseWidth
     canvasCtx!.stroke()
+
+    // Second softer pass for depth
+    if (!isMascara && baseWidth > 2) {
+      canvasCtx!.globalAlpha *= 0.35
+      canvasCtx!.lineWidth = baseWidth * 0.5
+      canvasCtx!.beginPath()
+      drawSmoothOpen(canvasCtx!, reversed)
+      canvasCtx!.stroke()
+    }
+
     canvasCtx!.restore()
   }
-  
-  // Apply based on selected eyeliner style
+
   if (!isMascara) {
     switch(eyelinerPlacement.value) {
       case 'natural':
@@ -397,20 +562,20 @@ const applyEyeliner = (landmarks: any[], isMascara = false) => {
         drawLiner(RIGHT_LINER, 2, false)
         break
       case 'small_winged':
-        drawLiner(LEFT_LINER, 2, true, canvas.width * 0.025)  // 2.5% of canvas width
-        drawLiner(RIGHT_LINER, 2, true, canvas.width * 0.025)
+        drawLiner(LEFT_LINER, 2.2, true, c.width * 0.025)
+        drawLiner(RIGHT_LINER, 2.2, true, c.width * 0.025)
         break
       case 'fringe_glam':
-        drawLiner(LEFT_LINER, 2.5, true, canvas.width * 0.035)  // 3.5%
-        drawLiner(RIGHT_LINER, 2.5, true, canvas.width * 0.035)
+        drawLiner(LEFT_LINER, 2.8, true, c.width * 0.035)
+        drawLiner(RIGHT_LINER, 2.8, true, c.width * 0.035)
         break
       case 'thick_winged':
-        drawLiner(LEFT_LINER, 3.5, true, canvas.width * 0.045)  // 4.5%
-        drawLiner(RIGHT_LINER, 3.5, true, canvas.width * 0.045)
+        drawLiner(LEFT_LINER, 3.5, true, c.width * 0.045)
+        drawLiner(RIGHT_LINER, 3.5, true, c.width * 0.045)
         break
       case 'cat_eye':
-        drawLiner(LEFT_LINER, 4, true, canvas.width * 0.055)  // 5.5%
-        drawLiner(RIGHT_LINER, 4, true, canvas.width * 0.055)
+        drawLiner(LEFT_LINER, 4, true, c.width * 0.055)
+        drawLiner(RIGHT_LINER, 4, true, c.width * 0.055)
         break
     }
   } else {
@@ -423,72 +588,129 @@ const applyMascara = (landmarks: any[]) => applyEyeliner(landmarks, true)
 
 const applyBrow = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
+
   const drawBrow = (indices: number[]) => {
+    const pts = toCanvas(landmarks, indices, c.width, c.height)
+    let minX = Infinity, maxX = -Infinity, cy = 0
+    pts.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); cy += p.y })
+    cy /= pts.length
+
+    // Layer 1: Base fill
+    canvasCtx!.save()
     canvasCtx!.beginPath()
-    const path = indices.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-    canvasCtx!.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y)); canvasCtx!.closePath()
-    canvasCtx!.save(); canvasCtx!.globalCompositeOperation = 'multiply'; canvasCtx!.globalAlpha = opacity * 0.7
-    canvasCtx!.fillStyle = color; canvasCtx!.filter = 'blur(2px)'; canvasCtx!.fill(); canvasCtx!.restore()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.globalCompositeOperation = 'multiply'
+    canvasCtx!.globalAlpha = opacity * 0.6
+    canvasCtx!.fillStyle = color
+    canvasCtx!.filter = 'blur(1.5px)'
+    canvasCtx!.fill()
+    canvasCtx!.restore()
+
+    // Layer 2: Gradient fade (lighter at tail)
+    canvasCtx!.save()
+    canvasCtx!.beginPath()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.clip()
+    const grad = canvasCtx!.createLinearGradient(minX, cy, maxX, cy)
+    grad.addColorStop(0, hexToRgba(color, 0.6))
+    grad.addColorStop(0.4, color)
+    grad.addColorStop(1, hexToRgba(color, 0.3))
+    canvasCtx!.globalCompositeOperation = 'multiply'
+    canvasCtx!.globalAlpha = opacity * 0.4
+    canvasCtx!.fillStyle = grad
+    canvasCtx!.filter = 'blur(1px)'
+    canvasCtx!.fillRect(minX - 5, cy - 20, maxX - minX + 10, 40)
+    canvasCtx!.restore()
   }
-  drawBrow(LEFT_BROW); drawBrow(RIGHT_BROW)
+
+  drawBrow(LEFT_BROW)
+  drawBrow(RIGHT_BROW)
 }
 
 const applyConcealer = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
+
   const drawArea = (indices: number[]) => {
+    const pts = toCanvas(landmarks, indices, c.width, c.height)
+    let cx = 0, cy = 0
+    pts.forEach(p => { cx += p.x; cy += p.y })
+    cx /= pts.length; cy /= pts.length
+
+    // Layer 1: Broad coverage
+    canvasCtx!.save()
     canvasCtx!.beginPath()
-    const path = indices.map(i => ({ x: landmarks[i].x * canvas.width, y: landmarks[i].y * canvas.height }))
-    canvasCtx!.moveTo(path[0].x, path[0].y); path.slice(1).forEach(pt => canvasCtx!.lineTo(pt.x, pt.y)); canvasCtx!.closePath()
-    canvasCtx!.save(); canvasCtx!.globalCompositeOperation = 'soft-light'; canvasCtx!.globalAlpha = opacity * 0.5
-    canvasCtx!.fillStyle = color; canvasCtx!.filter = 'blur(8px)'; canvasCtx!.fill(); canvasCtx!.restore()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.globalCompositeOperation = 'soft-light'
+    canvasCtx!.globalAlpha = opacity * 0.45
+    canvasCtx!.fillStyle = color
+    canvasCtx!.filter = 'blur(8px)'
+    canvasCtx!.fill()
+    canvasCtx!.restore()
+
+    // Layer 2: Brightening center
+    canvasCtx!.save()
+    canvasCtx!.beginPath()
+    drawSmoothClosed(canvasCtx!, pts)
+    canvasCtx!.clip()
+    const r = c.width * 0.06
+    const g = canvasCtx!.createRadialGradient(cx, cy, 0, cx, cy, r)
+    g.addColorStop(0, hexToRgba(color, 0.3))
+    g.addColorStop(1, 'transparent')
+    canvasCtx!.globalCompositeOperation = 'screen'
+    canvasCtx!.globalAlpha = opacity * 0.2
+    canvasCtx!.fillStyle = g
+    canvasCtx!.fillRect(cx - r, cy - r, r * 2, r * 2)
+    canvasCtx!.restore()
   }
-  drawArea(LEFT_UNDER_EYE); drawArea(RIGHT_UNDER_EYE)
+
+  drawArea(LEFT_UNDER_EYE)
+  drawArea(RIGHT_UNDER_EYE)
 }
 
 const applyContour = (landmarks: any[]) => {
   if (!canvasCtx || !canvasRef.value) return
-  const canvas = canvasRef.value
+  const c = canvasRef.value
   const { color, opacity } = currentShade.value
-  
-  const drawZone = (idx: number, offsetY: number = 0.05, radiusMultiplier: number = 0.08) => {
-    const x = landmarks[idx].x * canvas.width
-    const y = (landmarks[idx].y + offsetY) * canvas.height
-    const radius = canvas.width * radiusMultiplier
-    const gradient = canvasCtx!.createRadialGradient(x, y, 0, x, y, radius)
-    gradient.addColorStop(0, color)
-    gradient.addColorStop(1, 'transparent')
+
+  const drawZone = (idx: number, offsetY: number, rx: number, ry: number, angle: number = 0) => {
+    const x = landmarks[idx].x * c.width
+    const y = (landmarks[idx].y + offsetY) * c.height
+
     canvasCtx!.save()
+    canvasCtx!.translate(x, y)
+    canvasCtx!.rotate(angle)
+
+    const grad = canvasCtx!.createRadialGradient(0, 0, 0, 0, 0, Math.max(rx, ry))
+    grad.addColorStop(0, color)
+    grad.addColorStop(0.5, hexToRgba(color, 0.4))
+    grad.addColorStop(1, 'transparent')
     canvasCtx!.globalCompositeOperation = 'multiply'
     canvasCtx!.globalAlpha = opacity * 0.4
-    canvasCtx!.fillStyle = gradient
+    canvasCtx!.fillStyle = grad
     canvasCtx!.beginPath()
-    canvasCtx!.arc(x, y, radius, 0, Math.PI * 2)
+    canvasCtx!.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2)
     canvasCtx!.fill()
+
     canvasCtx!.restore()
   }
-  
-  // Apply based on selected placement
+
+  const rBase = c.width * 0.08
   switch(contourPlacement.value) {
     case 'default':
-      // Cheekbones (default)
-      drawZone(123, 0.05, 0.08)  // Left cheekbone
-      drawZone(352, 0.05, 0.08)  // Right cheekbone
+      drawZone(123, 0.05, rBase, rBase * 0.65, -0.3)
+      drawZone(352, 0.05, rBase, rBase * 0.65, 0.3)
       break
-    
     case 'forehead':
-      // Forehead sides
-      drawZone(54, -0.08, 0.07)   // Left forehead
-      drawZone(284, -0.08, 0.07)  // Right forehead
+      drawZone(54, -0.08, rBase * 0.9, rBase * 0.55, -0.2)
+      drawZone(284, -0.08, rBase * 0.9, rBase * 0.55, 0.2)
       break
-    
     case 'inner_eyebrow':
-      // Between eyebrows (nose bridge)
-      drawZone(6, -0.02, 0.05)    // Nose bridge top
-      drawZone(197, 0.01, 0.04)   // Nose bridge middle
+      drawZone(6, -0.02, rBase * 0.55, rBase * 0.4)
+      drawZone(197, 0.01, rBase * 0.45, rBase * 0.35)
       break
   }
 }
@@ -520,6 +742,8 @@ const toggleMode = async (mode: 'camera' | 'upload' | 'model', modelUrl?: string
       }
       camera = null 
     }
+    smoothedLandmarks = null
+    lastResults.value = null
     
     if (mode === 'camera') { 
       isCameraMode.value = true
@@ -615,7 +839,11 @@ watch(eyelinerPlacement, () => { if (!isCameraMode.value) redrawWithCachedLandma
 
 onMounted(async () => { 
   if (canvasRef.value) {
-    canvasCtx = canvasRef.value.getContext('2d')
+    canvasCtx = canvasRef.value.getContext('2d', { willReadFrequently: false })
+    if (canvasCtx) {
+      canvasCtx.imageSmoothingEnabled = true
+      canvasCtx.imageSmoothingQuality = 'high'
+    }
     // initThreeJS() // Initialize Three.js renderer
   }
   await initFaceMesh()
@@ -671,7 +899,7 @@ const defaultShades: Shade[] = [
 // Merge product shades with default shades
 const availableShades = ref<Shade[]>([
   ...(props.productShades || []),
-  ...defaultShades
+
 ])
 
 console.log('[MakeupTryOn] Available shades:', availableShades.value)

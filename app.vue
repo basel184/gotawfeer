@@ -130,16 +130,17 @@ onMounted(() => {
   updateHtmlAttributes()
   
   // Add protection listeners
-  if (process.client) {
-    document.addEventListener('keydown', handleKeydown)
-    document.addEventListener('copy', handleClipboard)
-    document.addEventListener('cut', handleClipboard)
-    document.addEventListener('paste', handleClipboard)
-    document.addEventListener('contextmenu', handleContextMenu)
-    document.addEventListener('dragstart', handleDragStart)
-    document.addEventListener('selectstart', handleSelectStart)
-    document.addEventListener('mousedown', handleMouseDown)
-  }
+  
+  //if (process.client) {
+  //  document.addEventListener('keydown', handleKeydown)
+  //  document.addEventListener('copy', handleClipboard)
+  //  document.addEventListener('cut', handleClipboard)
+  //  document.addEventListener('paste', handleClipboard)
+  //  document.addEventListener('contextmenu', handleContextMenu)
+  //  document.addEventListener('dragstart', handleDragStart)
+  //  document.addEventListener('selectstart', handleSelectStart)
+  //  document.addEventListener('mousedown', handleMouseDown)
+  //}
 })
 
 // Cleanup on unmount
