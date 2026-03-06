@@ -38,11 +38,13 @@ import { ref, watch, onUnmounted } from 'vue'
 import MakeupTryOn from './MakeupTryOn.vue'
 
 interface Shade {
-  id: number
+  id?: number
   color: string
-  opacity: number
+  colorIntensity: number
   type: string
-  name: string
+  name?: string
+  texture?: string
+  pattern?: string
 }
 
 interface Props {

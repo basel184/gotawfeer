@@ -3859,7 +3859,7 @@
     const makeupType = getMakeupTypeForProduct.value
     if (!makeupType) return []
     
-    const defaultOpacity = vtoCategories.getDefaultOpacity(makeupType)
+    const defaultColorIntensity = vtoCategories.getDefaultColorIntensity(makeupType)
     
     // Use availableColors if they exist (they are already filtered for stock)
     // Otherwise fall back to colors_formatted but filter them
@@ -3873,9 +3873,8 @@
     
     return colorsToUse.map((color: any, index: number) => ({
       id: index + 1,
-      // Priority: hexCode (has #) -> code (might not have #) -> default
       color: color.hexCode || (color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : color.code) || '#000000',
-      opacity: defaultOpacity,
+      colorIntensity: defaultColorIntensity,
       type: makeupType,
       name: color.name || color.colorName || color.displayName || `اللون ${index + 1}`
     }))
