@@ -8,7 +8,13 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 1. Create file entry in YouCam
+    // Decode base64 to get file size
+    const base64Data = body.imageBase64.replace(/^data:image\/\w+;base64,/, '')
+    const buffer = Buffer.from(base64Data, 'base64')
+    const contentType = body.content_type || 'image/jpeg'
+    const fileName = body.file_name || 'selfie.jpg'
+
+    // 1. Create file entry in YouCam (files array format)
     const fileResponse: any = await $fetch('https://yce-api-01.makeupar.com/s2s/v2.0/file/makeup-vto', {
       method: 'POST',
       headers: {
@@ -16,25 +22,30 @@ export default defineEventHandler(async (event) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: {
-        file_name: body.file_name || 'selfie.jpg',
-        content_type: body.content_type || 'image/jpeg'
+        files: [{
+          content_type: contentType,
+          file_name: fileName,
+          file_size: buffer.length
+        }]
       }
     })
 
-    const uploadUrl = fileResponse?.data?.upload_url
-    const fileId = fileResponse?.data?.file_id
+    const fileData = fileResponse?.data?.files?.[0]
+    const fileId = fileData?.file_id
+    const uploadRequest = fileData?.requests?.[0]
 
-    if (!uploadUrl || !fileId) {
+    if (!fileId || !uploadRequest?.url) {
+      console.error('[YouCam Upload] Unexpected response:', JSON.stringify(fileResponse))
       throw new Error('Failed to get upload URL from YouCam')
     }
 
-    // 2. Upload the actual file data
-    const base64Data = body.imageBase64.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(base64Data, 'base64')
-
-    await $fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': body.content_type || 'image/jpeg' },
+    // 2. Upload the actual file to the presigned URL
+    await $fetch(uploadRequest.url, {
+      method: uploadRequest.method || 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(buffer.length)
+      },
       body: buffer
     })
 
