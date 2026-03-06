@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   srcDir: '.',
 
   runtimeConfig: {
-    youcamApiKey: process.env.YOUCAM_API_KEY || '',
+    youcamApiKey: process.env.YOUCAM_API_KEY || 'sk-WXwUhXmN_sLVSROhdOl5VFlZ_3eROZ8F_jqF79RsBwq0DfSa-V5Hvti5wwZEOiGe',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api',
       fbPixelId: process.env.NUXT_PUBLIC_FB_PIXEL_ID || '1369120761123220',
