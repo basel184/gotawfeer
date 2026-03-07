@@ -1971,6 +1971,7 @@
               @click.stop.prevent="selectColor(index)"
               :disabled="color.qty === 0"
             >
+
         </button>
         <div v-if="remainingColorsCount > 0" class="color-more">
           <span>+{{ remainingColorsCount }}</span>

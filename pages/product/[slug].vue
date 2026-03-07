@@ -341,18 +341,20 @@
   }
 
   const normalizeOriginalName = (value: string): string => {
-    return String(value || '').replace(/[_-]+/g, ' ').trim()
+    return value.replace(/[_-]+/g, ' ').trim()
   }
 
   const isGenericColorName = (value: string): boolean => {
-    return /^color\s*\d+$/i.test(String(value || ''))
+    return /^color\s*\d+$/i.test(value)
   }
 
   const hasMeaningfulOriginalName = (color: any): boolean => {
     const rawName = typeof color?.originalName === 'string' ? color.originalName.trim() : ''
     if (!rawName) return false
+
     const normalizedRaw = normalizeOriginalName(rawName)
     if (!normalizedRaw) return false
+
     return !isGenericColorName(normalizedRaw)
   }
 
@@ -517,31 +519,10 @@
             return trimmed
           }
           
-          // If it's a filename (key), search in images_full_url for the matching path
+          // If it's a filename (key), construct full URL for color_images_full_url
           const imageKey = trimmed
-          if (p?.images_full_url && Array.isArray(p.images_full_url)) {
-            const matchedImage = p.images_full_url.find((fullImg: any) => {
-              if (fullImg.key && fullImg.key === imageKey) {
-                return true
-              }
-              // Also check if key is in path
-              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
-                return true
-              }
-              return false
-            })
-            
-            if (matchedImage && matchedImage.path) {
-              const pathStr = String(matchedImage.path).trim()
-              if (/^(https?:|data:|blob:)/i.test(pathStr)) {
-                return pathStr
-              }
-              return normalize(matchedImage.path)
-            }
-          }
-          
-          // Fallback to normalize the string
-          return normalize(trimmed)
+          // Build full URL for storage images
+          return `https://admin.gotawfeer.com/storage/app/public/${imageKey}`
         } else if (img.image_name.path) {
           // If path is a full URL, return it directly (this is the preferred source)
           const pathStr = String(img.image_name.path).trim()
@@ -550,30 +531,9 @@
           }
           return normalize(img.image_name.path)
         } else if (img.image_name.key) {
-          // Search in images_full_url for the matching path using key
+          // For color_images_full_url, construct full URL from key
           const imageKey = img.image_name.key
-          if (p?.images_full_url && Array.isArray(p.images_full_url)) {
-            const matchedImage = p.images_full_url.find((fullImg: any) => {
-              if (fullImg.key && fullImg.key === imageKey) {
-                return true
-              }
-              // Also check if key is in path
-              if (fullImg.path && typeof fullImg.path === 'string' && fullImg.path.includes(imageKey)) {
-                return true
-              }
-              return false
-            })
-            
-            if (matchedImage && matchedImage.path) {
-              const pathStr = String(matchedImage.path).trim()
-              if (/^(https?:|data:|blob:)/i.test(pathStr)) {
-                return pathStr
-              }
-              return normalize(matchedImage.path)
-            }
-          }
-          // Fallback to normalize the key
-          return normalize(img.image_name.key)
+          return `https://admin.gotawfeer.com/storage/app/public/product/${imageKey}`
         }
       }
       
@@ -834,14 +794,16 @@
     
     // If a color is selected (but no variation), filter images by color
     if (selectedColor.value) {
-      // Find the selected color object to get its normalized code
+      // Find the selected color object to get its color ID
       const selectedColorObj = availableColors.value.find((c: any) => c.name === selectedColor.value)
+      const colorIdToMatch = selectedColorObj?.colorId || selectedColorObj?.code
       const colorCodeToMatch = selectedColorObj?.code || normalizeColorCode(selectedColor.value)
       
       console.log('[Product] Filtering images by selected color:', {
         selectedColor: selectedColor.value,
+        colorIdToMatch: colorIdToMatch,
         colorCodeToMatch: colorCodeToMatch,
-        availableColors: availableColors.value
+        selectedColorObj: selectedColorObj
       })
       
       // Check color_images_full_url
@@ -849,6 +811,10 @@
       if (p?.color_images_full_url && Array.isArray(p.color_images_full_url)) {
         colorImages = p.color_images_full_url
           .filter((img: any) => {
+            // Match by colorId first (most reliable), then by normalized color code
+            if (colorIdToMatch && img.color === colorIdToMatch) {
+              return true
+            }
             const imgColorNormalized = normalizeColorCode(img.color)
             return imgColorNormalized === colorCodeToMatch
           })
@@ -1863,21 +1829,15 @@
   const selectedColorName = computed(() => {
     if (!selectedColor.value) return ''
     
-    // First, try to find in product.value.colors array (most reliable source)
-    if (product.value?.colors && Array.isArray(product.value.colors)) {
-      const normalizedSelected = normalizeColorCode(selectedColor.value)
-      const colorFromProduct = product.value.colors.find((c: any) => {
-        if (!c || typeof c !== 'object') return false
-        const colorCode = normalizeColorCode(c.code || c.hexCode || '')
-        const colorName = c.name || ''
-        return colorCode === normalizedSelected || 
-               colorName === selectedColor.value ||
-               c.code === selectedColor.value
-      })
-      
-      if (colorFromProduct && colorFromProduct.name) {
-        return colorFromProduct.name
-      }
+    // First, try to find in availableColors (most reliable for image-based colors)
+    const colorFromAvailable = availableColors.value.find((c: any) => 
+      c.name === selectedColor.value || 
+      c.code === selectedColor.value ||
+      c.hexCode === selectedColor.value
+    )
+    
+    if (colorFromAvailable) {
+      return colorFromAvailable.displayName || colorFromAvailable.colorName || colorFromAvailable.name || selectedColor.value
     }
     
     // Find the color object from availableColorsWithQty
@@ -1892,15 +1852,21 @@
       return colorObj.displayName || colorObj.colorName || colorObj.name || selectedColor.value
     }
     
-    // If not found in availableColorsWithQty, try availableColors
-    const colorFromAvailable = availableColors.value.find((c: any) => 
-      c.name === selectedColor.value || 
-      c.code === selectedColor.value ||
-      c.hexCode === selectedColor.value
-    )
-    
-    if (colorFromAvailable) {
-      return colorFromAvailable.displayName || colorFromAvailable.colorName || colorFromAvailable.name || selectedColor.value
+    // Try to find in product.value.colors array
+    if (product.value?.colors && Array.isArray(product.value.colors)) {
+      const normalizedSelected = normalizeColorCode(selectedColor.value)
+      const colorFromProduct = product.value.colors.find((c: any) => {
+        if (!c || typeof c !== 'object') return false
+        const colorCode = normalizeColorCode(c.code || c.hexCode || '')
+        const colorName = c.name || ''
+        return colorCode === normalizedSelected || 
+               colorName === selectedColor.value ||
+               c.code === selectedColor.value
+      })
+      
+      if (colorFromProduct && colorFromProduct.name) {
+        return colorFromProduct.name
+      }
     }
     
     // Fallback to selectedColor value itself
@@ -1924,6 +1890,69 @@
       colors: product.value.colors,
       colorImagesFullUrl: product.value.color_images_full_url
     })
+    
+    // Check if we have color_images_full_url but no colors_formatted
+    // In this case, create colors from the unique color IDs in color_images_full_url
+    if ((!product.value.colors_formatted || product.value.colors_formatted.length === 0) && 
+        product.value.color_images_full_url && 
+        Array.isArray(product.value.color_images_full_url) && 
+        product.value.color_images_full_url.length > 0) {
+      
+      console.log('[Product] Creating colors from color_images_full_url')
+      
+      // Get unique color IDs from color_images_full_url
+      const colorMap = new Map<string, any>()
+      product.value.color_images_full_url.forEach((img: any) => {
+        const colorId = img.color
+        if (colorId && !colorMap.has(colorId)) {
+          colorMap.set(colorId, img)
+        }
+      })
+      
+      // Create color objects from unique color IDs
+      // Sort variations by sort_order to match color order
+      const sortedVariations = product.value.variation 
+        ? [...product.value.variation].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+        : []
+      
+      availableColors.value = Array.from(colorMap.values()).map((img: any, index: number) => {
+        let imagePath = ''
+        if (img.image_name?.key) {
+          imagePath = `https://admin.gotawfeer.com/storage/app/public/product/${img.image_name.key}`
+        } else if (typeof img.image_name === 'string') {
+          imagePath = `https://admin.gotawfeer.com/storage/app/public/product/${img.image_name}`
+        }
+        
+        // Get color name and SKU from sorted variation by index
+        let colorName = img.color || `اللون ${index + 1}`
+        let colorSku = ''
+        
+        if (sortedVariations.length > index) {
+          const variation = sortedVariations[index]
+          if (variation && variation.type) {
+            colorName = variation.type
+            colorSku = variation.sku || ''
+          }
+        }
+        
+        return {
+          name: colorName,
+          originalName: img.color, // Keep original color ID for hasMeaningfulOriginalName check
+          code: img.color,
+          hexCode: '', // No hex for image-based colors
+          image: imagePath,
+          originalImage: img.image_name?.key || img.image_name || '',
+          imageName: img.image_name?.key || img.image_name || '',
+          isImageColor: true,
+          colorId: img.color,
+          sku: colorSku
+        }
+      })
+      
+      console.log('[Product] Colors created from color_images_full_url:', availableColors.value)
+      console.log('[Product] Available variations:', product.value.variation?.map((v: any) => ({ type: v.type, sku: v.sku })))
+      return
+    }
     
     // Initialize colors with proper image mapping
     if (product.value.colors_formatted && Array.isArray(product.value.colors_formatted) && product.value.colors_formatted.length > 0) {
@@ -3178,7 +3207,7 @@
 
   // Handle color selection
   const selectColor = async (color: any) => {
-    console.log('[Product] Selecting color:', color.name)
+    console.log('[Product] Selecting color:', color.name, 'colorId:', color.colorId)
     
     // Destroy existing Swiper instances before changing color
     try {
@@ -3203,6 +3232,22 @@
     // Auto-select first variation if no variation is selected
     if (!selectedVariation.value && availableVariations.value.length > 0) {
       selectedVariation.value = availableVariations.value[0]
+    }
+    
+    // Find and update SKU based on selected color
+    // The color.name should match variation.type exactly
+    if (product.value?.variation && Array.isArray(product.value.variation)) {
+      // Find variation that matches the selected color name
+      const matchingVariation = product.value.variation.find((v: any) => {
+        // Match by color name (which is variation.type)
+        return v.type === color.name
+      })
+      if (matchingVariation) {
+        console.log('[Product] Found matching variation with SKU:', matchingVariation.sku, 'type:', matchingVariation.type)
+        selectedVariant.value = matchingVariation
+      } else {
+        console.warn('[Product] No matching variation found for color:', color.name, 'Available:', product.value.variation.map((v: any) => v.type))
+      }
     }
     
     updateSelectedVariant()
@@ -3857,27 +3902,55 @@
     if (!product.value) return []
     
     const makeupType = getMakeupTypeForProduct.value
-    if (!makeupType) return []
+    if (!makeupType) {
+      console.warn('[VTO] No makeup type found for product')
+      return []
+    }
     
     const defaultColorIntensity = vtoCategories.getDefaultColorIntensity(makeupType)
     
-    // Use availableColors if they exist (they are already filtered for stock)
-    // Otherwise fall back to colors_formatted but filter them
-    let colorsToUse = []
+    // Always use colors_formatted (hex-based colors) for VTO
+    console.log('[VTO] Using hex-based colors from colors_formatted')
     
-    if (availableColors.value && availableColors.value.length > 0) {
-      colorsToUse = availableColors.value
-    } else {
-      colorsToUse = product.value.colors_formatted || []
+    // Get colors from colors_formatted
+    const colorsFormatted = product.value.colors_formatted || []
+    
+    if (colorsFormatted.length === 0) {
+      console.warn('[VTO] No colors_formatted found')
+      return []
     }
     
-    return colorsToUse.map((color: any, index: number) => ({
+    // Get variation data to check quantity
+    const variations = product.value.variation || []
+    
+    // Filter colors that have available quantity
+    const availableColorsWithQty = colorsFormatted.filter((color: any) => {
+      // Find matching variation by name
+      const matchingVariation = variations.find((v: any) => v.type === color.name)
+      
+      // Only include colors with qty > 0
+      if (matchingVariation) {
+        return matchingVariation.qty > 0
+      }
+      
+      // If no matching variation found, exclude it
+      return false
+    })
+    
+    console.log('[VTO] Available colors with qty > 0:', availableColorsWithQty)
+    
+    // Convert to shades format
+    const shades = availableColorsWithQty.map((color: any, index: number) => ({
       id: index + 1,
-      color: color.hexCode || (color.code && !color.code.startsWith('#') ? `#${color.code.toUpperCase()}` : color.code) || '#000000',
+      color: color.code || color.hexCode || '#000000',
       colorIntensity: defaultColorIntensity,
       type: makeupType,
-      name: color.name || color.colorName || color.displayName || `اللون ${index + 1}`
+      name: color.name || `اللون ${index + 1}`,
+      isImageColor: false
     }))
+    
+    console.log('[VTO] Final shades for VTO:', shades)
+    return shades
   }
 
   const productShadesForModal = computed(() => {
@@ -3887,6 +3960,9 @@
   const openTryOnModal = () => {
     console.log('[VTO] Opening modal...')
     console.log('[VTO] Product:', product.value)
+    console.log('[VTO] Category ID:', product.value?.category_id || product.value?.category?.id)
+    console.log('[VTO] Sub Category ID:', product.value?.sub_category_id || product.value?.sub_category?.id)
+    console.log('[VTO] Supports VTO:', supportsVirtualTryOn.value)
     console.log('[VTO] Makeup type:', getMakeupTypeForProduct.value)
     
     const shades = convertProductColorsToShades()
@@ -5465,15 +5541,13 @@
                 :class="{ 
                   active: selectedColor === color.name, 
                   'has-image': hasColorImage(color) && !hasMeaningfulOriginalName(color),
-              
                 }"
                 :style="(hasColorImage(color) && !hasMeaningfulOriginalName(color))
                   ? { 
-                      backgroundImage: `url(${color.image})`,
+                      backgroundImage: `url('${color.image}')`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundColor: color.hexCode || getColorValue(color.code)
+                      backgroundRepeat: 'no-repeat'
                     }
                   : { 
                       backgroundColor: color.hexCode || getColorValue(color.code) 
@@ -7318,9 +7392,7 @@
     background-color:#ef4444;
     z-index:1;
   }
-  .color-option-wrapper.disabled{
-    opacity:0.6;
-  }
+
   .color-option-wrapper.disabled .color-option:hover{
     border-color:#e5e7eb;
     transform:scale(1);

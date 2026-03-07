@@ -13,6 +13,7 @@ interface Shade {
   id?: number
   texture?: string
   pattern?: string
+  isImageColor?: boolean
 }
 
 const props = defineProps<{
@@ -60,45 +61,92 @@ const scrollContainer = (refEl: HTMLElement | null, direction: 'left' | 'right')
 }
 
 // --- YouCam API: Build Effects Payload ---
+// Confirmed working format: array of {category, palettes}, color="#RRGGBB", colorIntensity camelCase 0-100
 const buildEffects = (): any[] => {
   const s = currentShade.value
-  const effects: any[] = [
-    { category: 'skin_smooth', skinSmoothStrength: 50, skinSmoothColorIntensity: 50 }
-  ]
 
   switch (s.type) {
     case 'foundation':
-      effects.push({ category: 'foundation', palettes: [{ color: s.color, colorIntensity: s.colorIntensity, glowIntensity: 30, coverageIntensity: 50 }] })
-      break
+      return [{
+        category: 'foundation',
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
     case 'contour':
-      effects.push({ category: 'contour', pattern: { name: contourPlacement.value }, palettes: [{ color: s.color, colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'contour',
+        pattern: { name: contourPlacement.value },
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
     case 'concealer':
-      effects.push({ category: 'concealer', palettes: [{ color: s.color, colorIntensity: s.colorIntensity, colorUnderEyeIntensity: s.colorIntensity, coverageLevel: 50 }] })
-      break
+      return [{
+        category: 'concealer',
+        palettes: [{
+          color: s.color,
+          colorIntensity: s.colorIntensity,
+          colorUnderEyeIntensity: s.colorIntensity,
+          coverageLevel: 50
+        }]
+      }]
     case 'blush':
-      effects.push({ category: 'blush', pattern: { name: s.pattern || '1color1' }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'blush',
+        pattern: { name: s.pattern || '1color1' },
+        palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
+      }]
     case 'lip_color':
-      effects.push({ category: 'lip_color', shape: { name: 'original' }, style: { type: 'full' }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'lip_color',
+        palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
+      }]
     case 'lip_liner':
-      effects.push({ category: 'lip_liner', pattern: { name: s.pattern || 'LipLiner1' }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity, thickness: 50, smoothness: 50 }] })
-      break
+      return [{
+        category: 'lip_liner',
+        pattern: { name: s.pattern || 'LipLiner1' },
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
     case 'eye_shadow':
-      effects.push({ category: 'eye_shadow', pattern: { name: s.pattern || '1color1' }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'eye_shadow',
+        pattern: { name: s.pattern || '1color1' },
+        palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
+      }]
     case 'eye_liner':
-      effects.push({ category: 'eye_liner', pattern: { name: eyelinerPlacement.value }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'eye_liner',
+        pattern: { name: eyelinerPlacement.value },
+        palettes: [{ color: s.color, texture: 'matte', colorIntensity: s.colorIntensity }]
+      }]
     case 'eyelashes':
-      effects.push({ category: 'eyelashes', pattern: { name: s.pattern || 'Natural1' }, palettes: [{ color: s.color, colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'eyelashes',
+        pattern: { name: s.pattern || 'Natural1' },
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
     case 'eyebrows':
-      effects.push({ category: 'eyebrows', pattern: { type: 'color' }, palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }] })
-      break
+      return [{
+        category: 'eyebrows',
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
+    case 'bronzer':
+      return [{
+        category: 'bronzer',
+        pattern: { name: s.pattern || '1color1' },
+        palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
+      }]
+    case 'highlight':
+      return [{
+        category: 'highlight',
+        pattern: { name: s.pattern || '1color1' },
+        palettes: [{ color: s.color, texture: s.texture || 'shimmer', colorIntensity: s.colorIntensity }]
+      }]
+    case 'skin':
+      return [{
+        category: 'skin',
+        palettes: [{ color: s.color, colorIntensity: s.colorIntensity }]
+      }]
+    default:
+      return []
   }
-  return effects
 }
 
 // --- YouCam API: Apply Makeup ---
@@ -108,7 +156,10 @@ const applyMakeup = async () => {
   cameraError.value = null
 
   try {
-    let taskBody: any = { effects: buildEffects(), version: '1.0' }
+    const taskBody: any = {
+      effects: buildEffects(),
+      version: '1.0'           // required by YouCam API
+    }
 
     // If source is a data URL (camera/upload), upload to YouCam first
     if (sourceImageUrl.value.startsWith('data:')) {
@@ -262,14 +313,17 @@ const modelLibrary = [
 const categories = [
   { id: 'foundation', name: 'كريم أساس', icon: 'fas fa-magic' },
   { id: 'contour', name: 'كونتور', icon: 'fas fa-mask' },
+  { id: 'bronzer', name: 'برونزر', icon: 'fas fa-sun' },
   { id: 'concealer', name: 'كونسيلر', icon: 'fas fa-eye' },
+  { id: 'highlight', name: 'هايلايتر', icon: 'fas fa-star' },
   { id: 'blush', name: 'بلاشر', icon: 'fas fa-smile' },
   { id: 'lip_color', name: 'أحمر شفاه', icon: 'fas fa-palette' },
   { id: 'lip_liner', name: 'محدد شفاه', icon: 'fas fa-pen' },
   { id: 'eye_shadow', name: 'ظلال عيون', icon: 'fas fa-eye-slash' },
   { id: 'eye_liner', name: 'كحل / آيلاينر', icon: 'fas fa-paint-brush' },
   { id: 'eyelashes', name: 'رموش / ماسكارا', icon: 'fas fa-eye' },
-  { id: 'eyebrows', name: 'حواجب', icon: 'fas fa-minus' }
+  { id: 'eyebrows', name: 'حواجب', icon: 'fas fa-minus' },
+  { id: 'skin', name: 'بشرة', icon: 'fas fa-hand-sparkles' }
 ]
 
 const activeCategory = ref(props.initialShade?.type || 'lip_color')
@@ -280,8 +334,14 @@ const defaultShades: Shade[] = [
   { id: 103, color: "#C4A882", colorIntensity: 55, type: "foundation", name: "عسلي", texture: "matte" },
   { id: 201, color: "#8B4513", colorIntensity: 40, type: "contour", name: "نحت عميق" },
   { id: 202, color: "#A0522D", colorIntensity: 35, type: "contour", name: "نحت خفيف" },
+  { id: 211, color: "#C4813A", colorIntensity: 40, type: "bronzer", name: "برونزر دافئ", texture: "matte", pattern: "1color1" },
+  { id: 212, color: "#A0522D", colorIntensity: 35, type: "bronzer", name: "برونزر عميق", texture: "matte", pattern: "1color1" },
+  { id: 213, color: "#D2691E", colorIntensity: 30, type: "bronzer", name: "برونزر ذهبي", texture: "shimmer", pattern: "1color1" },
   { id: 301, color: "#FFE4C4", colorIntensity: 50, type: "concealer", name: "إشراق" },
   { id: 302, color: "#FFDAB9", colorIntensity: 45, type: "concealer", name: "خوخي" },
+  { id: 221, color: "#FFD700", colorIntensity: 40, type: "highlight", name: "ذهبي", texture: "shimmer", pattern: "1color1" },
+  { id: 222, color: "#FFF8DC", colorIntensity: 35, type: "highlight", name: "شامبانيا", texture: "shimmer", pattern: "1color1" },
+  { id: 223, color: "#FFB6C1", colorIntensity: 30, type: "highlight", name: "وردي ألماسي", texture: "shimmer", pattern: "1color1" },
   { id: 401, color: "#f48fb1", colorIntensity: 50, type: "blush", name: "وردي طبيعي", texture: "matte", pattern: "1color1" },
   { id: 402, color: "#e91e63", colorIntensity: 45, type: "blush", name: "فوشيا", texture: "matte", pattern: "1color1" },
   { id: 403, color: "#ff8a80", colorIntensity: 40, type: "blush", name: "مرجاني", texture: "satin", pattern: "1color1" },
@@ -300,7 +360,10 @@ const defaultShades: Shade[] = [
   { id: 901, color: "#111111", colorIntensity: 70, type: "eyelashes", name: "كثيف أسود", pattern: "Natural1" },
   { id: 902, color: "#000000", colorIntensity: 80, type: "eyelashes", name: "درامي", pattern: "UpperDense1" },
   { id: 1001, color: "#3E2723", colorIntensity: 55, type: "eyebrows", name: "بني غامق" },
-  { id: 1002, color: "#1B1B1B", colorIntensity: 50, type: "eyebrows", name: "أسود" }
+  { id: 1002, color: "#1B1B1B", colorIntensity: 50, type: "eyebrows", name: "أسود" },
+  { id: 1101, color: "#F5DEB3", colorIntensity: 40, type: "skin", name: "فاتح" },
+  { id: 1102, color: "#D2B48C", colorIntensity: 45, type: "skin", name: "بيج" },
+  { id: 1103, color: "#C4A882", colorIntensity: 50, type: "skin", name: "عسلي" }
 ]
 
 const availableShades = ref<Shade[]>(
@@ -511,8 +574,9 @@ watch(activeCategory, (newCat) => {
 .current-product h4 { font-weight: 800; margin: 0; color: #1e293b; }
 .shade-picker label { font-weight: 700; color: #475569; margin-bottom: 1rem; display: block; }
 .shades-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.8rem; }
-.shade-btn { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; }
-.shade-btn.selected { border-color: #1e293b; }
+.shade-btn { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; background-size: cover; background-position: center; }
+.shade-btn.selected { border-color: #1e293b; box-shadow: 0 0 0 3px rgba(194, 24, 91, 0.3); }
+.shade-btn.image-color { background-repeat: no-repeat; }
 .intensity-slider .slider-header { display: flex; justify-content: space-between; margin-bottom: 0.8rem; }
 .intensity-slider label { font-weight: 700; color: #475569; }
 .intensity-slider input { width: 100%; accent-color: #C2185B; }

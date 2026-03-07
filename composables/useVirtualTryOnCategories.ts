@@ -57,8 +57,8 @@ export const useVirtualTryOnCategories = () => {
     const supportsVirtualTryOn = (product: any): boolean => {
         if (!product) return false
 
-        const categoryId = product.category_id || product.category?.id
-        const subCategoryId = product.sub_category_id || product.sub_category?.id
+        const categoryId = product.category_id || product.category?.id || product.categoryId
+        const subCategoryId = product.sub_category_id || product.sub_category?.id || product.subCategoryId
 
         if (!categoryId) return false
 
@@ -76,8 +76,8 @@ export const useVirtualTryOnCategories = () => {
     const getMakeupType = (product: any): string | null => {
         if (!product) return null
 
-        const categoryId = product.category_id || product.category?.id
-        const subCategoryId = product.sub_category_id || product.sub_category?.id
+        const categoryId = product.category_id || product.category?.id || product.categoryId
+        const subCategoryId = product.sub_category_id || product.sub_category?.id || product.subCategoryId
 
         if (!categoryId) return null
 
