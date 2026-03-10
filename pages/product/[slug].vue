@@ -1873,6 +1873,21 @@
     return selectedColor.value
   })
 
+  // Global colors mapping for fixing color_XXX names
+  const globalColorVariants = ref<any[]>([])
+  
+  const fetchGlobalColors = async () => {
+    if (globalColorVariants.value.length > 0) return
+    try {
+      const res = await $get('v1/product-variants/colors')
+      if (Array.isArray(res)) {
+        globalColorVariants.value = res
+      }
+    } catch (e) {
+      console.warn('[Product] Failed to fetch global colors:', e)
+    }
+  }
+
   // Initialize variants when product loads
   const initializeVariants = () => {
     if (!product.value) return
@@ -1923,16 +1938,60 @@
           imagePath = `https://admin.gotawfeer.com/storage/app/public/product/${img.image_name}`
         }
         
-        // Get color name and SKU from sorted variation by index
+        // By default use color name
         let colorName = img.color || `اللون ${index + 1}`
         let colorSku = ''
         
-        if (sortedVariations.length > index) {
-          const variation = sortedVariations[index]
-          if (variation && variation.type) {
-            colorName = variation.type
-            colorSku = variation.sku || ''
+        // Extract color ID if the format is color_XXX
+        const colorStr = typeof img.color === 'string' ? img.color : ''
+        const colorIdMatch = colorStr.match(/color_(\d+)/i)
+        const colorId = colorIdMatch ? colorIdMatch[1] : null
+        
+        // Find actual text name from global colors if ID matches
+        if (colorId && globalColorVariants.value.length > 0) {
+          const matchingGlobal = globalColorVariants.value.find(c => String(c.id) === String(colorId))
+          if (matchingGlobal && matchingGlobal.name) {
+            colorName = matchingGlobal.name
           }
+        }
+        
+        const originalName = colorName // store resolved API name to search in variations
+        
+        // Find matching variation by name instead of strict index
+        let matchingVariation = null
+        if (sortedVariations.length > 0) {
+          matchingVariation = sortedVariations.find(v => {
+            if (!v.type) return false
+            const vTypeNormalized = String(v.type).trim().toUpperCase()
+            const colorNameNormalized = String(colorName).trim().toUpperCase()
+            
+            // Extract meaningful part
+            const vTypeParts = vTypeNormalized.split(/\s+/)
+            if (vTypeParts.length > 0) {
+              const lastPart = vTypeParts[vTypeParts.length - 1]
+              const secondLastPart = vTypeParts.length > 1 ? vTypeParts[vTypeParts.length - 2] : ''
+              const lastTwoParts = secondLastPart ? `${secondLastPart} ${lastPart}` : lastPart
+              if (lastTwoParts === colorNameNormalized || lastPart === colorNameNormalized) return true
+            }
+            
+            return vTypeNormalized === colorNameNormalized || 
+                   vTypeNormalized.includes(colorNameNormalized) || 
+                   colorNameNormalized.includes(vTypeNormalized)
+          })
+          
+          if (matchingVariation) {
+            colorName = matchingVariation.type
+            colorSku = matchingVariation.sku || ''
+          }
+        }
+        
+        // Fallback to strict index mapping ONLY if no variation was matched and it's not a generic ID name
+        if (!matchingVariation && sortedVariations.length > index) {
+            const fallbackVariation = sortedVariations[index]
+            if (fallbackVariation && fallbackVariation.type && colorStr.startsWith('color_')) {
+                colorName = fallbackVariation.type
+                colorSku = fallbackVariation.sku || ''
+            }
         }
         
         return {
@@ -1945,9 +2004,27 @@
           imageName: img.image_name?.key || img.image_name || '',
           isImageColor: true,
           colorId: img.color,
-          sku: colorSku
+          sku: colorSku,
+          _rawNameForSort: originalName
         }
       })
+      
+      // Sort colors based on their order in sortedVariations
+      if (sortedVariations.length > 0) {
+        availableColors.value.sort((a: any, b: any) => {
+          const findIndexInVars = (colorObj: any) => {
+             const cName = String(colorObj.name).trim().toUpperCase()
+             const cRaw = String(colorObj._rawNameForSort).trim().toUpperCase()
+             const vIndex = sortedVariations.findIndex(v => {
+                const vType = String(v.type).trim().toUpperCase()
+                return vType === cName || vType.includes(cName) || cName.includes(vType) ||
+                       vType === cRaw || vType.includes(cRaw) || cRaw.includes(vType)
+             })
+             return vIndex >= 0 ? vIndex : 999
+          }
+          return findIndexInVars(a) - findIndexInVars(b)
+        })
+      }
       
       console.log('[Product] Colors created from color_images_full_url:', availableColors.value)
       console.log('[Product] Available variations:', product.value.variation?.map((v: any) => ({ type: v.type, sku: v.sku })))
@@ -4186,6 +4263,9 @@
       product.value = res
       loadingProgress.value = 50
       
+      // Fetch global colors for proper names before assigning
+      await fetchGlobalColors()
+
       // Initialize variants after product is loaded
       initializeVariants()
       console.log('[Product] After initializeVariants, availableColors:', availableColors.value)
