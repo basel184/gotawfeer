@@ -699,8 +699,8 @@ const buildBody = () => {
     }
   }
   
-  // Only add has_discount if explicitly set
-  if (route.query.has_discount === 'true') {
+  // Only add has_discount if explicitly set via query param OR if user selected discount sort
+  if (route.query.has_discount === 'true' || sort_by.value === 'has_discount') {
     body.has_discount = true
   }
   

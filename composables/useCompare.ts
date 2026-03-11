@@ -141,15 +141,15 @@ export function useCompare() {
       return false
     }
 
-    // Create unique key based on product id + color + variation
-    const uniqueKey = `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
-
-    // Check if this exact combination already exists
-    const exists = items.value.find(item => item.uniqueKey === uniqueKey)
-    if (exists) {
-      error.value = 'Product with this color/variation already in comparison'
+    // Prevent adding the same product (by ID) more than once, regardless of color/variation
+    const alreadyAdded = items.value.find(item => item.id === product.id)
+    if (alreadyAdded) {
+      error.value = 'Product already in comparison'
       return false
     }
+
+    // Create unique key based on product id + color + variation
+    const uniqueKey = `${product.id}-${selectedColor || 'default'}-${selectedVariation || 'default'}`
 
     // Check maximum limit
     if (items.value.length >= MAX_COMPARE_ITEMS) {

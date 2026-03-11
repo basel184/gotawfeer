@@ -849,7 +849,11 @@
           const message = t('product.product_added_to_compare') || 'تم إضافة المنتج إلى المقارنة'
           showSuccessToast(message)
         } else {
-          const errorMsg = compare.error.value || t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء إضافة المنتج إلى المقارنة'
+          // Show appropriate message based on error
+          const alreadyExists = compare.error.value === 'Product already in comparison'
+          const errorMsg = alreadyExists
+            ? (t('product.product_already_in_compare') || 'هذا المنتج موجود بالفعل في قائمة المقارنة')
+            : (compare.error.value || t('product.error_adding_product_to_compare') || 'حدث خطأ أثناء إضافة المنتج إلى المقارنة')
           showSuccessToast(errorMsg)
         }
       }
