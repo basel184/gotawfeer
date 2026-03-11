@@ -171,7 +171,7 @@ const groupedCategories = computed(() => {
         'zz.png',
         '1.png',
         '34.webp',
-        '34.webp'
+        'Artboard 1 copy 2.png'
       ]
     : [
         'Mask-Group-45.webp',
@@ -183,7 +183,7 @@ const groupedCategories = computed(() => {
         'Mask-Group-63.webp',
         'Mask-Group-64.webp',
         '53.webp',
-        '53.webp'
+        'Artboard 1.png'
       ]
   
   // Process main categories and extract childes/children
