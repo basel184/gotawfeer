@@ -4037,8 +4037,8 @@
   const openTryOnModal = () => {
     console.log('[VTO] Opening modal...')
     console.log('[VTO] Product:', product.value)
-    console.log('[VTO] Category ID:', product.value?.category_id || product.value?.category?.id)
-    console.log('[VTO] Sub Category ID:', product.value?.sub_category_id || product.value?.sub_category?.id)
+    console.log('[VTO] API supports_virtual_try_on:', product.value?.supports_virtual_try_on)
+    console.log('[VTO] API makeup_category:', product.value?.makeup_category)
     console.log('[VTO] Supports VTO:', supportsVirtualTryOn.value)
     console.log('[VTO] Makeup type:', getMakeupTypeForProduct.value)
     
@@ -5454,7 +5454,7 @@
                 class="btn btn-virtual-tryon w-100"
               >
                 <i class="fas fa-camera me-2"></i>
-                جربي المنتج افتراضياً
+                {{ t('product.virtual_tryon') }}
               </button>
             </div>
             
@@ -5648,7 +5648,7 @@
             class="btn btn-virtual-tryon w-100"
           >
             <i class="fas fa-camera me-2"></i>
-            جربي المنتج افتراضياً
+            {{ t('product.virtual_tryon') }}
           </button>
         </div>
         

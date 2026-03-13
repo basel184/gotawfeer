@@ -464,6 +464,7 @@
     }
   },
   "product": {
+    "virtual_tryon": "جرّب المنتج افتراضياً",
     "no_recommended": "لا يوجد منتجات موصى بها",
     "title": "منتج",
     "login_required_review_title": "يجب تسجيل الدخول لإضافة تقييم",

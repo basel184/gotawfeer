@@ -53,16 +53,22 @@ export const useVirtualTryOnCategories = () => {
 
     /**
      * Check if a product supports virtual try-on
+     * First checks API field (supports_virtual_try_on), then falls back to category mapping
      */
     const supportsVirtualTryOn = (product: any): boolean => {
         if (!product) return false
 
+        // Check API field first
+        if (product.supports_virtual_try_on !== undefined) {
+            return product.supports_virtual_try_on === 1 || product.supports_virtual_try_on === true
+        }
+
+        // Fallback: check category/subcategory mapping
         const categoryId = product.category_id || product.category?.id || product.categoryId
         const subCategoryId = product.sub_category_id || product.sub_category?.id || product.subCategoryId
 
         if (!categoryId) return false
 
-        // Check if the category/subcategory combination is supported
         return categoryMappings.some(mapping => {
             const categoryMatches = mapping.categoryId === categoryId
             const subcategoryMatches = !subCategoryId || mapping.subcategoryIds.includes(subCategoryId)
@@ -72,16 +78,22 @@ export const useVirtualTryOnCategories = () => {
 
     /**
      * Get makeup type for a product
+     * First checks API field (makeup_category), then falls back to category mapping
      */
     const getMakeupType = (product: any): string | null => {
         if (!product) return null
 
+        // Check API field first
+        if (product.makeup_category) {
+            return product.makeup_category
+        }
+
+        // Fallback: check category/subcategory mapping
         const categoryId = product.category_id || product.category?.id || product.categoryId
         const subCategoryId = product.sub_category_id || product.sub_category?.id || product.subCategoryId
 
         if (!categoryId) return null
 
-        // Find the matching mapping
         const mapping = categoryMappings.find(m => {
             const categoryMatches = m.categoryId === categoryId
             const subcategoryMatches = !subCategoryId || m.subcategoryIds.includes(subCategoryId)

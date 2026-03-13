@@ -427,6 +427,7 @@
     "product": "Product"
   },
   "product": {
+    "virtual_tryon": "Try Product Virtually",
     "no_recommended": "No recommended products",
     "recommended_products": "Recommended Products",
     "write_review": "Write Your Review",
