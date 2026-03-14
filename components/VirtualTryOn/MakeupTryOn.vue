@@ -94,9 +94,30 @@ const buildEffects = (): any[] => {
         palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
       }]
     case 'lip_color':
+      const texture = s.texture || 'matte'
+      const palette: any = {
+        color: s.color,
+        texture: texture,
+        colorIntensity: s.colorIntensity
+      }
+      
+      // Add required fields based on texture
+      if (['gloss', 'holographic', 'metallic', 'sheer', 'shimmer'].includes(texture)) {
+        palette.gloss = 50
+        palette.transparencyIntensity = 50
+      }
+      if (['holographic', 'metallic', 'shimmer'].includes(texture)) {
+        palette.shimmerColor = s.color
+        palette.shimmerIntensity = 50
+        palette.shimmerDensity = 50
+        palette.shimmerSize = 50
+      }
+      
       return [{
         category: 'lip_color',
-        palettes: [{ color: s.color, texture: s.texture || 'matte', colorIntensity: s.colorIntensity }]
+        shape: { name: 'original' },
+        palettes: [palette],
+        style: { type: 'full' }
       }]
     case 'lip_liner':
       return [{
@@ -156,9 +177,18 @@ const applyMakeup = async () => {
   cameraError.value = null
 
   try {
+    console.log('[MakeupTryOn] currentShade.value:', currentShade.value)
+    console.log('[MakeupTryOn] currentShade.value.type:', currentShade.value?.type)
+    
+    const effects = buildEffects()
+    console.log('[MakeupTryOn] buildEffects() returned:', JSON.stringify(effects, null, 2))
+    
+    if (!effects || effects.length === 0) {
+      throw new Error(`لا يمكن بناء effects - نوع المكياج غير صحيح: ${currentShade.value?.type}`)
+    }
+    
     const taskBody: any = {
-      effects: buildEffects(),
-      version: '1.0'           // required by YouCam API
+      effects: effects
     }
 
     // If source is a data URL (camera/upload), upload to YouCam first
@@ -173,6 +203,8 @@ const applyMakeup = async () => {
       taskBody.src_file_url = sourceImageUrl.value
     }
 
+    console.log('[MakeupTryOn] Full taskBody being sent:', JSON.stringify(taskBody, null, 2))
+    
     // Start task
     const taskRes: any = await $fetch('/api/youcam/task', { method: 'POST', body: taskBody })
     if (!taskRes?.data?.task_id) throw new Error('لم يتم استلام معرف المهمة')
@@ -195,6 +227,14 @@ const applyMakeup = async () => {
     throw new Error('انتهت مهلة المعالجة')
   } catch (err: any) {
     console.error('[MakeupTryOn] Error:', err)
+    console.error('[MakeupTryOn] Error data:', err.data)
+    console.error('[MakeupTryOn] Error response:', err.response?._data || err.response?.data)
+    const youcamDetails = err.data?.youcam || err.response?._data?.data?.youcam || {}
+    const sentPayload = err.data?.sent || err.response?._data?.data?.sent || {}
+    if (Object.keys(youcamDetails).length > 0) {
+      console.error('[MakeupTryOn] YouCam error details:', JSON.stringify(youcamDetails, null, 2))
+      console.error('[MakeupTryOn] Sent payload:', JSON.stringify(sentPayload, null, 2))
+    }
     cameraError.value = err.message || 'حدث خطأ أثناء المعالجة'
   } finally {
     isProcessing.value = false
@@ -260,7 +300,19 @@ const toggleMode = async (mode: 'camera' | 'upload' | 'model', modelUrl?: string
   } else if (mode === 'model' && modelUrl) {
     isCameraMode.value = false
     activeModelUrl.value = modelUrl
-    sourceImageUrl.value = `https://admin.gotawfeer.com${modelUrl}`
+    // Fetch model image as base64 so it gets uploaded to YouCam (avoids external URL access issues)
+    try {
+      const response = await fetch(modelUrl)
+      const blob = await response.blob()
+      const reader = new FileReader()
+      sourceImageUrl.value = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
+    } catch (e) {
+      console.error('[MakeupTryOn] Failed to fetch model image:', e)
+      sourceImageUrl.value = `https://admin.gotawfeer.com${modelUrl}`
+    }
     await applyMakeup()
   }
 
