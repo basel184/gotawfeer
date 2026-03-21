@@ -2014,19 +2014,6 @@ const handleProductDetails = () => {
     </div>
 
     <main class="content">
-      <!-- Category Banner -->
-      <div v-if="category.length > 0" class="category-banner-section mb-4">
-        <img 
-          :src="locale === 'ar' 
-            ? 'https://admin.gotawfeer.com/banners-categories/Artboard%201%20copy.png'
-            : 'https://admin.gotawfeer.com/banners-categories/Artboard%201%20copy%203.png'"
-          :alt="t('shop.category_banner')"
-          class="category-banner-img"
-          loading="lazy"
-          @error="(e: any) => { e.target.style.display = 'none' }"
-        />
-      </div>
-
       <div class="toolbar">
         <div class="result">{{ t('shop.results') }}: {{ items.length }} / {{ total }}</div>
         <div class="spacer" />
