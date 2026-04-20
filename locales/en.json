@@ -606,6 +606,7 @@
       "phone_placeholder": "Example: +966501234567",
       "address": "Detailed Address",
       "city": "City",
+      "zip": "National Address",
       "saving": "Saving...",
       "update": "Update",
       "add": "Add",

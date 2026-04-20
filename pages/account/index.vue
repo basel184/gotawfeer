@@ -226,7 +226,8 @@ interface Address {
   phone?: string
   address: string
   city: string
-  zip: string
+  zip?: string
+  zip_code?: string
   country: string
   latitude?: string | number
   longitude?: string | number
@@ -245,7 +246,8 @@ const addressForm = ref({
   contact_person_number: '',
   phone: '', // Required field
   address: '',
-  city: ''
+  city: '',
+  zip: '' // العنوان الوطني - الرمز البريدي
 })
 
 const addressFormLoading = ref(false)
@@ -585,7 +587,8 @@ const openAddressForm = () => {
     contact_person_number: '',
     phone: '', // Required field
     address: '',
-    city: ''
+    city: '',
+    zip: '' // العنوان الوطني - إجباري
   }
   addressFormError.value = ''
   showAddressForm.value = true
@@ -599,7 +602,8 @@ const editAddress = (address: Address) => {
     contact_person_number: address.contact_person_number || '',
     phone: address.phone || address.contact_person_number || '', // Use phone or fallback to contact_person_number
     address: address.address || '',
-    city: address.city || ''
+    city: address.city || '',
+    zip: address.zip || address.zip_code || '' // العنوان الوطني
   }
   addressFormError.value = ''
   showAddressForm.value = true
@@ -627,7 +631,7 @@ const saveAddress = async () => {
       contact_person_number: addressForm.value.contact_person_number,
       address: addressForm.value.address,
       city: addressForm.value.city,
-      zip: '', // Default empty
+      zip: addressForm.value.zip || '', // العنوان الوطني
       country: 'Saudi Arabia', // Default value
       // Required fields with fallbacks - ensure they are not empty
       phone: addressForm.value.phone || addressForm.value.contact_person_number || '',
@@ -2141,6 +2145,21 @@ const tabs = computed(() => [
                 required
                 :disabled="addressFormLoading"
               />
+            </div>
+
+            <div class="form-group">
+              <label for="zip">{{ t('account.addresses.zip') }} <span class="required">*</span></label>
+              <input
+                id="zip"
+                v-model="addressForm.zip"
+                type="text"
+                required
+                :disabled="addressFormLoading"
+                placeholder="مثال: RRRD-2929 أو 12345"
+                pattern="[0-9a-zA-Z\-]+"
+                title="الرجاء إدخال العنوان الوطني السعودي"
+              />
+              <small class="field-hint">العنوان الوطني السعودي (مثال: RRRD-2929 أو 12345)</small>
             </div>
 
             <div v-if="addressFormError" class="error-message">

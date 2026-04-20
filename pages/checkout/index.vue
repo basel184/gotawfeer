@@ -1627,6 +1627,20 @@ onMounted(async () => {
             <input v-model="addressForm.city" type="text" required :disabled="addressFormLoading" placeholder="المدينة" />
           </div>
 
+          <div class="form-group">
+            <label>{{ t('account.addresses.zip') }} <span class="required">*</span></label>
+            <input
+              v-model="addressForm.zip"
+              type="text"
+              required
+              :disabled="addressFormLoading"
+              placeholder="مثال: 12345"
+              pattern="[0-9a-zA-Z\-]+"
+              title="الرجاء إدخال العنوان الوطني السعودي"
+            />
+            <small class="field-hint">العنوان الوطني السعودي (مثال: RRRD-2929 أو 12345)</small>
+          </div>
+
           <!-- Map Section -->
           <ClientOnly>
             <div class="form-group">
@@ -1681,6 +1695,7 @@ onMounted(async () => {
       </div>
     </div>
   </teleport>
+  
 </template>
 
 <style scoped>
